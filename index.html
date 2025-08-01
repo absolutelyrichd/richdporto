@@ -3,957 +3,549 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Portofolio</title>
-    <!-- Memuat Tailwind CSS dari CDN untuk styling yang cepat dan responsif -->
+    <title>Dasbor Manajemen Portofolio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Memuat Chart.js untuk diagram -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Memuat Font Awesome untuk ikon -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Memuat Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, writeBatch, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables for Firebase (MANDATORY)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Fallback Firebase configuration
-        const fallbackFirebaseConfig = {
-            apiKey: "AIzaSyDXXt1ZI9WjZhJ0zoKsfInsjWfECK4dWoI",
-    authDomain: "richdporto.firebaseapp.com",
-    projectId: "richdporto",
-    storageBucket: "richdporto.firebasestorage.app",
-    messagingSenderId: "720478988067",
-    appId: "1:720478988067:web:a21abb0396f99872a38e96",
-    measurementId: "G-S793S8TH7V"
-        };
-        // Use provided firebase config or fallback if not defined/empty
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' && __firebase_config !== '{}' ? __firebase_config : JSON.stringify(fallbackFirebaseConfig));
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-
-        // Global variables for portfolio data and UI elements
-        let investments = [];
-        let customAssetTypes = [];
-        let editingInvestmentId = null;
-        let portfolioChart = null;
-        let userId = null;
-        let isAuthReady = false;
-
-        // Default options for dropdowns
-        const defaultAssetTypes = ['Saham', 'Reksadana', 'Kripto', 'Properti'];
-
-        const elegantColors = ['#4A90E2', '#50E3C2', '#F5A623', '#BD10E0', '#FF2D55', '#00A79D', '#FF7E6B', '#A2416D'];
-
-        // DOM element references
-        const investmentFormModal = document.getElementById('investmentFormModal');
-        const openAddInvestmentModalButton = document.getElementById('openAddInvestmentModalButton');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const investmentForm = document.getElementById('investmentForm');
-        const formTitle = document.getElementById('formTitle');
-        const submitButton = document.getElementById('submitButton');
-        const portfolioTableBody = document.getElementById('portfolioTableBody');
-        const noInvestmentsMessage = document.getElementById('noInvestmentsMessage');
-        const portfolioChartCanvas = document.getElementById('portfolioChart');
-        const portfolioLegend = document.getElementById('portfolioLegend');
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = {
-            'dashboard': document.getElementById('dashboard'),
-            'kalkulator': document.getElementById('kalkulator'),
-            'data-management': document.getElementById('data-management')
-        };
-        const assetTypeOptionInput = document.getElementById('assetTypeOptionInput');
-        const addAssetTypeOptionButton = document.getElementById('addAssetTypeOptionButton');
-        const currentAssetTypeOptionsList = document.getElementById('currentAssetTypeOptionsList');
-        const loginButton = document.getElementById('loginButton');
-        const logoutButton = document.getElementById('logoutButton');
-        const authStatusDiv = document.getElementById('authStatus');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const mainContent = document.getElementById('mainContent');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const confirmModal = document.getElementById('confirmModal');
-        const confirmMessage = document.getElementById('confirmMessage');
-        const confirmYesBtn = document.getElementById('confirmYes');
-        const confirmNoBtn = document.getElementById('confirmNo');
-        const messageModal = document.getElementById('messageModal');
-        const messageText = document.getElementById('messageText');
-        const messageCloseBtn = document.getElementById('messageClose');
-        const messageModalIcon = document.getElementById('messageModalIcon');
-        const mobileMenuButton = document.getElementById('mobileMenuButton');
-        const sidebar = document.getElementById('sidebar');
-
-        // --- Firebase Authentication ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                authStatusDiv.textContent = `Masuk sebagai: ${user.displayName || user.email || 'Pengguna Anonim'}`;
-                userIdDisplay.textContent = `ID Pengguna: ${userId}`;
-                loginButton.classList.add('hidden');
-                logoutButton.classList.remove('hidden');
-                mainContent.classList.remove('hidden');
-                displayMessage(`Berhasil masuk! ID Pengguna: ${userId}`, "success");
-                await loadDataFromFirestore();
-            } else {
-                userId = null;
-                authStatusDiv.textContent = 'Belum masuk';
-                userIdDisplay.textContent = '';
-                loginButton.classList.remove('hidden');
-                logoutButton.classList.add('hidden');
-                mainContent.classList.add('hidden');
-                investments = [];
-                customAssetTypes = [];
-                renderAll();
-                displayMessage("Anda telah keluar atau belum masuk. Data tidak akan disimpan.", "info");
-            }
-            isAuthReady = true;
-            hideLoading();
-        });
-
-        async function handleGoogleLogin() {
-            showLoading("Masuk dengan Google...");
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Error signing in with Google:", error);
-                displayMessage(`Gagal masuk dengan Google: ${error.message}`, "error");
-                hideLoading();
-            }
-        }
-
-        async function handleLogout() {
-            showLoading("Keluar...");
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Error signing out:", error);
-                displayMessage(`Gagal keluar: ${error.message}`, "error");
-                hideLoading();
-            }
-        }
-
-        // --- Firebase Firestore Data Operations ---
-        function getUserInvestmentsCollectionRef() {
-            if (!userId) return null;
-            return collection(db, `artifacts/${appId}/users/${userId}/investmentPortfolio`);
-        }
-
-        function getUserCustomOptionsDocRef() {
-            if (!userId) return null;
-            return doc(db, `artifacts/${appId}/users/${userId}/settings/customOptions`);
-        }
-
-        async function loadDataFromFirestore() {
-            if (!userId) return;
-            showLoading("Memuat data portofolio...");
-            try {
-                const investmentsColRef = getUserInvestmentsCollectionRef();
-                if (investmentsColRef) {
-                    onSnapshot(investmentsColRef, (snapshot) => {
-                        investments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderAll();
-                        hideLoading();
-                    }, (error) => {
-                        console.error("Error listening to investments collection:", error);
-                        displayMessage(`Gagal memuat portofolio: ${error.message}`, "error");
-                        hideLoading();
-                    });
-                }
-
-                const customOptionsDocRef = getUserCustomOptionsDocRef();
-                if (customOptionsDocRef) {
-                    onSnapshot(customOptionsDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const data = docSnap.data();
-                            customAssetTypes = data.assetTypes || [];
-                        } else {
-                            customAssetTypes = [];
-                        }
-                        updateAllDropdowns();
-                        hideLoading();
-                    }, (error) => {
-                        console.error("Error listening to custom options:", error);
-                        displayMessage(`Gagal memuat opsi kustom: ${error.message}`, "error");
-                        hideLoading();
-                    });
-                }
-            } catch (error) {
-                console.error("Error loading data from Firestore:", error);
-                displayMessage(`Gagal memuat data dari Firebase: ${error.message}`, "error");
-                hideLoading();
-            }
-        }
-
-        async function saveInvestmentToFirestore(investmentData) {
-            if (!userId) {
-                displayMessage("Anda harus masuk untuk menyimpan investasi.", "error");
-                return false;
-            }
-            showLoading("Menyimpan investasi...");
-            try {
-                const investmentsColRef = getUserInvestmentsCollectionRef();
-                if (!investmentsColRef) return false;
-
-                if (investmentData.id) {
-                    const investmentDocRef = doc(investmentsColRef, investmentData.id);
-                    await setDoc(investmentDocRef, investmentData, { merge: true });
-                } else {
-                    await addDoc(investmentsColRef, investmentData);
-                }
-                hideLoading();
-                return true;
-            } catch (error) {
-                console.error("Error saving investment to Firestore:", error);
-                displayMessage(`Gagal menyimpan investasi: ${error.message}`, "error");
-                hideLoading();
-                return false;
-            }
-        }
-
-        async function deleteInvestmentFromFirestore(investmentId) {
-            if (!userId) {
-                displayMessage("Anda harus masuk untuk menghapus investasi.", "error");
-                return false;
-            }
-            showLoading("Menghapus investasi...");
-            try {
-                const investmentsColRef = getUserInvestmentsCollectionRef();
-                if (!investmentsColRef) return false;
-
-                const investmentDocRef = doc(investmentsColRef, investmentId);
-                await deleteDoc(investmentDocRef);
-                displayMessage("Investasi berhasil dihapus!", "success");
-                hideLoading();
-                return true;
-            } catch (error) {
-                console.error("Error deleting investment from Firestore:", error);
-                displayMessage(`Gagal menghapus investasi: ${error.message}`, "error");
-                hideLoading();
-                return false;
-            }
-        }
-
-        async function saveCustomDropdownOptionsToFirestore() {
-            if (!userId) {
-                displayMessage("Anda harus masuk untuk menyimpan opsi kustom.", "error");
-                return false;
-            }
-            showLoading("Menyimpan opsi kustom...");
-            try {
-                const customOptionsDocRef = getUserCustomOptionsDocRef();
-                if (!customOptionsDocRef) return false;
-
-                await setDoc(customOptionsDocRef, { assetTypes: customAssetTypes });
-                displayMessage("Opsi kustom berhasil disimpan!", "success");
-                hideLoading();
-                return true;
-            } catch (error) {
-                console.error("Error saving custom options to Firestore:", error);
-                displayMessage(`Gagal menyimpan opsi kustom: ${error.message}`, "error");
-                hideLoading();
-                return false;
-            }
-        }
-
-        // --- UI and Data Rendering ---
-        function populateSelect(selectElement, optionsArray, includeManual = true) {
-            selectElement.innerHTML = '';
-            optionsArray.forEach(option => {
-                const opt = document.createElement('option');
-                opt.value = option;
-                opt.textContent = option;
-                selectElement.appendChild(opt);
-            });
-            if (includeManual) {
-                const manualOpt = document.createElement('option');
-                manualOpt.value = 'manual';
-                manualOpt.textContent = 'Lainnya (input manual)';
-                selectElement.appendChild(manualOpt);
-            }
-        }
-
-        function renderCustomOptionsList(optionsArray, listElement) {
-            listElement.innerHTML = '';
-            if (optionsArray.length === 0) {
-                listElement.innerHTML = '<li class="text-gray-500">Belum ada opsi kustom.</li>';
-                return;
-            }
-            optionsArray.forEach(option => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center py-1';
-                li.innerHTML = `
-                    <span>${option}</span>
-                    <button data-value="${option}" class="delete-custom-option-button text-red-500 hover:text-red-700 text-sm font-bold ml-2">Hapus</button>
-                `;
-                listElement.appendChild(li);
-            });
-        }
-
-        function updateAllDropdowns() {
-            const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])].sort();
-            populateSelect(document.getElementById('tipeAset'), allAssetTypes, true);
-            renderCustomOptionsList(customAssetTypes, currentAssetTypeOptionsList);
-        }
-
-        function renderPortfolio() {
-            portfolioTableBody.innerHTML = '';
-
-            if (investments.length === 0) {
-                noInvestmentsMessage.classList.remove('hidden');
-                portfolioTableBody.classList.add('hidden');
-            } else {
-                noInvestmentsMessage.classList.add('hidden');
-                portfolioTableBody.classList.remove('hidden');
-                investments.forEach(inv => {
-                    const row = document.createElement('tr');
-                    row.className = 'bg-white border-b hover:bg-gray-50';
-                    const totalInvestasi = parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli);
-                    // Placeholder for current value and P/L
-                    const nilaiSaatIni = totalInvestasi; // Replace with real-time data if available
-                    const pnl = nilaiSaatIni - totalInvestasi;
-                    const pnlPercentage = totalInvestasi > 0 ? (pnl / totalInvestasi) * 100 : 0;
-                    const pnlColor = pnl >= 0 ? 'text-green-600' : 'text-red-600';
-
-                    row.innerHTML = `
-                        <td class="py-4 px-6 font-medium text-gray-900">${inv.namaAset}</td>
-                        <td class="py-4 px-6">${inv.tipeAset}</td>
-                        <td class="py-4 px-6">${parseFloat(inv.jumlahUnit).toLocaleString('id-ID')}</td>
-                        <td class="py-4 px-6">Rp ${parseFloat(inv.hargaBeli).toLocaleString('id-ID')}</td>
-                        <td class="py-4 px-6">Rp ${totalInvestasi.toLocaleString('id-ID')}</td>
-                        <td class="py-4 px-6 ${pnlColor}">Rp ${pnl.toLocaleString('id-ID')} (${pnlPercentage.toFixed(2)}%)</td>
-                        <td class="py-4 px-6">${new Date(inv.tanggalBeli).toLocaleDateString('id-ID')}</td>
-                        <td class="py-4 px-6 flex space-x-2">
-                            <button data-id="${inv.id}" class="edit-button text-yellow-500 hover:text-yellow-700"><i class="fas fa-edit"></i></button>
-                            <button data-id="${inv.id}" class="delete-button text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    portfolioTableBody.appendChild(row);
-                });
-            }
-            updateDashboardMetrics();
-        }
-        
-        function updateDashboardMetrics() {
-            const totalPortfolioValue = investments.reduce((acc, inv) => acc + (parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli)), 0);
-            document.getElementById('totalPortfolioValue').textContent = `Rp ${totalPortfolioValue.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            // Placeholder for total profit/loss
-            document.getElementById('totalProfitLoss').textContent = `Rp 0.00`;
-            document.getElementById('totalProfitLoss').className = 'text-2xl font-bold text-gray-600';
-        }
-
-        function renderAll() {
-            renderPortfolio();
-            updateAllDropdowns();
-            renderCharts();
-        }
-
-        // --- Chart.js Functions ---
-        function renderCharts() {
-            const data = investments.reduce((acc, inv) => {
-                const value = parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli);
-                if (acc[inv.tipeAset]) {
-                    acc[inv.tipeAset] += value;
-                } else {
-                    acc[inv.tipeAset] = value;
-                }
-                return acc;
-            }, {});
-
-            const labels = Object.keys(data);
-            const values = Object.values(data);
-
-            if (portfolioChart) {
-                portfolioChart.destroy();
-            }
-
-            if (labels.length > 0) {
-                 portfolioChart = new Chart(portfolioChartCanvas, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: elegantColors.slice(0, labels.length),
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            title: { display: true, text: 'Alokasi Aset Portofolio', font: { size: 16 }, color: '#374151' }
-                        }
-                    }
-                });
-                renderChartLegend(portfolioLegend, labels, elegantColors.slice(0, labels.length));
-            } else {
-                 portfolioLegend.innerHTML = '<p class="text-center text-gray-500">Data tidak cukup untuk menampilkan chart.</p>';
-            }
-        }
-
-        function renderChartLegend(legendContainer, labels, colors) {
-            if (!legendContainer) return;
-            legendContainer.innerHTML = '';
-            labels.forEach((label, index) => {
-                const legendItem = document.createElement('div');
-                legendItem.className = 'flex items-center space-x-2';
-                legendItem.innerHTML = `
-                    <span class="w-3 h-3 rounded-full" style="background-color: ${colors[index]}"></span>
-                    <span class="text-sm text-gray-700">${label}</span>
-                `;
-                legendContainer.appendChild(legendItem);
-            });
-        }
-        
-        // --- Calculator Functions ---
-        function calculateAveragingDown() {
-            const entryPrice = parseFloat(document.getElementById('avgEntryPrice').value);
-            const avgDownPercent = parseFloat(document.getElementById('avgDownPercent').value);
-            const avgLevels = parseInt(document.getElementById('avgLevels').value);
-            const resultContainer = document.getElementById('averagingDownResults');
-
-            if (isNaN(entryPrice) || isNaN(avgDownPercent) || isNaN(avgLevels)) {
-                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
-                return;
-            }
-
-            let resultsHtml = '<ul class="space-y-2 list-disc list-inside">';
-            let currentPrice = entryPrice;
-
-            for (let i = 1; i <= avgLevels; i++) {
-                currentPrice = currentPrice * (1 - (avgDownPercent / 100));
-                resultsHtml += `<li>Level ${i}: <strong>Rp ${currentPrice.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></li>`;
-            }
-            resultsHtml += '</ul>';
-            resultContainer.innerHTML = resultsHtml;
-        }
-
-        function calculateDividendYield() {
-            const entryPrice = parseFloat(document.getElementById('divEntryPrice').value);
-            const dividendPerShare = parseFloat(document.getElementById('dividendPerShare').value);
-            const resultContainer = document.getElementById('dividendYieldResult');
-
-            if (isNaN(entryPrice) || isNaN(dividendPerShare) || entryPrice <= 0) {
-                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
-                return;
-            }
-            
-            const yieldPercent = (dividendPerShare / entryPrice) * 100;
-            resultContainer.innerHTML = `<p>Estimasi Yield: <strong class="text-green-600">${yieldPercent.toFixed(2)}%</strong></p>`;
-        }
-
-        function calculateTakeProfit() {
-            const entryPrice = parseFloat(document.getElementById('tpEntryPrice').value);
-            const lots = parseFloat(document.getElementById('tpLots').value);
-            const targetProfit = parseFloat(document.getElementById('tpTargetProfit').value);
-            const resultContainer = document.getElementById('takeProfitResult');
-
-            if (isNaN(entryPrice) || isNaN(lots) || isNaN(targetProfit)) {
-                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
-                return;
-            }
-
-            const totalShares = lots * 100; // Assuming 1 lot = 100 shares for stocks
-            const requiredPrice = entryPrice + (targetProfit / totalShares);
-            
-            resultContainer.innerHTML = `<p>Harga Jual per Lembar: <strong class="text-green-600">Rp ${requiredPrice.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></p>`;
-        }
-
-        // --- Helper functions ---
-        async function handleAddCustomOption(inputElement, customArray) {
-            if (!userId) {
-                displayMessage("Anda harus masuk untuk menambahkan opsi kustom.", "error");
-                return;
-            }
-            const newItem = inputElement.value.trim();
-            if (newItem && !customArray.includes(newItem)) {
-                customArray.push(newItem);
-                await saveCustomDropdownOptionsToFirestore();
-                displayMessage(`${newItem} berhasil ditambahkan!`, "success");
-                inputElement.value = '';
-                updateAllDropdowns();
-            } else if (customArray.includes(newItem)) {
-                displayMessage(`"${newItem}" sudah ada.`, "error");
-            } else {
-                displayMessage("Harap masukkan nama opsi.", "error");
-            }
-        }
-
-        async function handleDeleteCustomOption(event, customArray) {
-            if (!userId) {
-                displayMessage("Anda harus masuk untuk menghapus opsi kustom.", "error");
-                return;
-            }
-            const itemToDelete = event.target.dataset.value;
-            displayConfirmation(`Apakah Anda yakin ingin menghapus "${itemToDelete}"?`, async () => {
-                const index = customArray.indexOf(itemToDelete);
-                if (index > -1) {
-                    customArray.splice(index, 1);
-                    await saveCustomDropdownOptionsToFirestore();
-                    displayMessage(`"${itemToDelete}" berhasil dihapus.`, "success");
-                    updateAllDropdowns();
-                }
-            });
-        }
-
-        function showLoading(message = "Memuat...") {
-            loadingOverlay.querySelector('span').textContent = message;
-            loadingOverlay.classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            loadingOverlay.classList.add('hidden');
-        }
-
-        function displayConfirmation(message, onConfirm) {
-            confirmMessage.textContent = message;
-            confirmModal.classList.remove('hidden');
-
-            const handleYes = () => {
-                confirmModal.classList.add('hidden');
-                onConfirm();
-            };
-
-            const handleNo = () => {
-                confirmModal.classList.add('hidden');
-            };
-
-            confirmYesBtn.addEventListener('click', handleYes, { once: true });
-            confirmNoBtn.addEventListener('click', handleNo, { once: true });
-        }
-
-        function displayMessage(message, type = 'info') {
-            messageText.textContent = message;
-            messageModal.classList.remove('hidden');
-            let iconHtml = '';
-            if (type === 'success') {
-                iconHtml = '<i class="fas fa-check-circle text-green-500 text-3xl"></i>';
-            } else if (type === 'error') {
-                iconHtml = '<i class="fas fa-times-circle text-red-500 text-3xl"></i>';
-            } else {
-                iconHtml = '<i class="fas fa-info-circle text-blue-500 text-3xl"></i>';
-            }
-            messageModalIcon.innerHTML = iconHtml;
-        }
-
-        // --- Event Listeners Setup ---
-        function setupEventListeners() {
-            // Static element listeners
-            mobileMenuButton.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
-            mainContent.addEventListener('click', () => {
-                if (!sidebar.classList.contains('-translate-x-full')) {
-                    sidebar.classList.add('-translate-x-full');
-                }
-            });
-            openAddInvestmentModalButton.addEventListener('click', () => {
-                investmentFormModal.classList.remove('hidden');
-                formTitle.textContent = 'Tambah Investasi Baru';
-                submitButton.textContent = 'Tambah Investasi';
-                investmentForm.reset();
-                document.getElementById('tipeAsetManual').classList.add('hidden');
-                editingInvestmentId = null;
-            });
-            closeModalButton.addEventListener('click', () => investmentFormModal.classList.add('hidden'));
-            investmentFormModal.addEventListener('click', (e) => {
-                if (e.target === investmentFormModal) {
-                    investmentFormModal.classList.add('hidden');
-                }
-            });
-            investmentForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const tipeAset = document.getElementById('tipeAset').value;
-                const tipeAsetManual = document.getElementById('tipeAsetManual').value.trim();
-
-                const investmentData = {
-                    namaAset: document.getElementById('namaAset').value.trim(),
-                    tipeAset: tipeAset === 'manual' ? tipeAsetManual : tipeAset,
-                    jumlahUnit: document.getElementById('jumlahUnit').value,
-                    hargaBeli: document.getElementById('hargaBeli').value,
-                    tanggalBeli: document.getElementById('tanggalBeli').value,
-                    id: editingInvestmentId
-                };
-
-                if (investmentData.namaAset && investmentData.tipeAset && investmentData.jumlahUnit && investmentData.hargaBeli && investmentData.tanggalBeli) {
-                    const saved = await saveInvestmentToFirestore(investmentData);
-                    if (saved) {
-                        displayMessage(`Investasi berhasil ${editingInvestmentId ? 'diperbarui' : 'ditambahkan'}.`, "success");
-                        investmentFormModal.classList.add('hidden');
-                    }
-                } else {
-                    displayMessage("Harap isi semua field.", "error");
-                }
-            });
-            document.getElementById('tipeAset').addEventListener('change', (e) => {
-                const manualInput = document.getElementById('tipeAsetManual');
-                if (e.target.value === 'manual') {
-                    manualInput.classList.remove('hidden');
-                } else {
-                    manualInput.classList.add('hidden');
-                }
-            });
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    tabButtons.forEach(btn => btn.classList.replace('bg-indigo-700', 'hover:bg-indigo-600'));
-                    Object.values(tabContents).forEach(content => content.classList.add('hidden'));
-                    button.classList.replace('hover:bg-indigo-600', 'bg-indigo-700');
-                    const tabId = button.dataset.tab;
-                    if (tabContents[tabId]) {
-                        tabContents[tabId].classList.remove('hidden');
-                    }
-                    if (tabId === 'dashboard' && isAuthReady) {
-                        renderCharts();
-                    }
-                });
-            });
-            addAssetTypeOptionButton.addEventListener('click', () => handleAddCustomOption(assetTypeOptionInput, customAssetTypes));
-            assetTypeOptionInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCustomOption(assetTypeOptionInput, customAssetTypes);
-                }
-            });
-            currentAssetTypeOptionsList.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-custom-option-button')) {
-                    handleDeleteCustomOption(e, customAssetTypes);
-                }
-            });
-            loginButton.addEventListener('click', handleGoogleLogin);
-            logoutButton.addEventListener('click', handleLogout);
-            document.getElementById('calculateAvgDown').addEventListener('click', calculateAveragingDown);
-            document.getElementById('calculateDividendYield').addEventListener('click', calculateDividendYield);
-            document.getElementById('calculateTakeProfit').addEventListener('click', calculateTakeProfit);
-            messageCloseBtn.addEventListener('click', () => {
-                messageModal.classList.add('hidden');
-            });
-
-            // Delegated listener for dynamic content in the portfolio table
-            portfolioTableBody.addEventListener('click', (e) => {
-                const button = e.target.closest('button');
-                if (!button) return;
-
-                const investmentId = button.dataset.id;
-                if (!investmentId) return;
-
-                if (button.classList.contains('edit-button')) {
-                    const investmentToEdit = investments.find(inv => inv.id === investmentId);
-                    if (investmentToEdit) {
-                        editingInvestmentId = investmentId;
-                        formTitle.textContent = 'Edit Investasi';
-                        submitButton.textContent = 'Simpan Perubahan';
-                        document.getElementById('namaAset').value = investmentToEdit.namaAset;
-                        document.getElementById('jumlahUnit').value = investmentToEdit.jumlahUnit;
-                        document.getElementById('hargaBeli').value = investmentToEdit.hargaBeli;
-                        document.getElementById('tanggalBeli').value = investmentToEdit.tanggalBeli;
-
-                        const tipeAsetSelect = document.getElementById('tipeAset');
-                        const tipeAsetManualInput = document.getElementById('tipeAsetManual');
-                        const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])];
-                        if (allAssetTypes.includes(investmentToEdit.tipeAset)) {
-                            tipeAsetSelect.value = investmentToEdit.tipeAset;
-                            tipeAsetManualInput.classList.add('hidden');
-                        } else {
-                            tipeAsetSelect.value = 'manual';
-                            tipeAsetManualInput.value = investmentToEdit.tipeAset;
-                            tipeAsetManualInput.classList.remove('hidden');
-                        }
-                        
-                        investmentFormModal.classList.remove('hidden');
-                    }
-                } else if (button.classList.contains('delete-button')) {
-                    displayConfirmation("Apakah Anda yakin ingin menghapus investasi ini?", () => deleteInvestmentFromFirestore(investmentId));
-                }
-            });
-        }
-
-        // --- App Initialization ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            setupEventListeners(); // Setup all listeners once the DOM is ready
-
-            // Then, handle authentication
-            if (initialAuthToken) {
-                try {
-                    showLoading("Masuk secara otomatis...");
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } catch (error) {
-                    console.error("Error signing in with custom token:", error);
-                    await signInAnonymously(auth);
-                }
-            } else {
-                await signInAnonymously(auth);
-            }
-        });
-
-    </script>
-</head>
-
-<body class="bg-gray-100 font-sans antialiased">
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-indigo-800 text-indigo-100 p-6 space-y-6 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50">
-            <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-white flex items-center"><i class="fas fa-chart-line mr-2"></i>Portofolio</h1>
-            </div>
-            <nav class="space-y-2">
-                <button data-tab="dashboard" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg bg-indigo-700 text-white transition-colors duration-200">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </button>
-                <button data-tab="kalkulator" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg hover:bg-indigo-600 text-indigo-200 transition-colors duration-200">
-                    <i class="fas fa-calculator"></i>
-                    <span>Analisis & Kalkulator</span>
-                </button>
-                <button data-tab="data-management" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg hover:bg-indigo-600 text-indigo-200 transition-colors duration-200">
-                    <i class="fas fa-database"></i>
-                    <span>Manajemen Data</span>
-                </button>
-            </nav>
-
-            <div class="absolute bottom-6 left-6 right-6">
-                <div id="authStatus" class="text-sm text-indigo-300 mb-2">Belum masuk</div>
-                <div id="userIdDisplay" class="text-xs text-indigo-400 break-all mb-4"></div>
-                <button id="loginButton" class="w-full flex items-center justify-center space-x-2 p-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200">
-                    <i class="fab fa-google"></i>
-                    <span>Masuk dengan Google</span>
-                </button>
-                <button id="logoutButton" class="w-full flex items-center justify-center space-x-2 p-3 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors duration-200 hidden">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Keluar</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <div id="mainContent" class="flex-1 flex flex-col hidden">
-            <header class="md:hidden flex items-center justify-between p-4 bg-indigo-800 text-white">
-                <button id="mobileMenuButton" class="text-white">
-                    <i class="fas fa-bars text-xl"></i>
-                </button>
-                <h1 class="text-xl font-bold">Manajemen Portofolio</h1>
-                <div></div>
-            </header>
-
-            <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
-                <!-- Dashboard Tab -->
-                <div id="dashboard" class="tab-content">
-                    <!-- Metrics -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-sm font-medium text-gray-500">Total Nilai Portofolio (Ekuitas)</h3>
-                            <p id="totalPortfolioValue" class="text-2xl font-bold text-indigo-600 mt-1">Rp 0.00</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-sm font-medium text-gray-500">Total Keuntungan/Kerugian</h3>
-                            <p id="totalProfitLoss" class="text-2xl font-bold text-gray-600 mt-1">Rp 0.00</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-sm font-medium text-gray-500">Aset Teratas (Nilai)</h3>
-                            <p id="topAsset" class="text-2xl font-bold text-gray-800 mt-1">-</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Portfolio List -->
-                        <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-xl font-bold text-gray-900">Portofolio Investasi</h2>
-                                <button id="openAddInvestmentModalButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
-                                    <i class="fas fa-plus mr-2"></i>Tambah Aset
-                                </button>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm text-left text-gray-500">
-                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                        <tr>
-                                            <th scope="col" class="py-3 px-6">Nama Aset</th>
-                                            <th scope="col" class="py-3 px-6">Tipe</th>
-                                            <th scope="col" class="py-3 px-6">Unit/Saham</th>
-                                            <th scope="col" class="py-3 px-6">Harga Beli Rata-rata</th>
-                                            <th scope="col" class="py-3 px-6">Total Investasi</th>
-                                            <th scope="col" class="py-3 px-6">P/L</th>
-                                            <th scope="col" class="py-3 px-6">Tanggal</th>
-                                            <th scope="col" class="py-3 px-6">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="portfolioTableBody">
-                                        <!-- Rows will be inserted here -->
-                                    </tbody>
-                                </table>
-                                <div id="noInvestmentsMessage" class="hidden text-center text-gray-500 py-12">
-                                    <i class="fas fa-folder-open text-5xl mb-4"></i>
-                                    <p class="text-xl">Portofolio Anda masih kosong.</p>
-                                    <p class="mt-2 text-md">Klik "Tambah Aset" untuk memulai.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Asset Allocation Chart -->
-                        <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-                             <div class="w-full h-64 relative">
-                                <canvas id="portfolioChart"></canvas>
-                            </div>
-                            <div id="portfolioLegend" class="mt-4 grid grid-cols-2 gap-2 w-full"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Calculators Tab -->
-                <div id="kalkulator" class="tab-content hidden">
-                     <h2 class="text-2xl font-bold text-gray-900 mb-6">Analisis & Kalkulator</h2>
-                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Averaging Down Calculator -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold mb-4">Kalkulator Averaging Down</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="avgEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri Awal (Rp)</label>
-                                    <input type="number" id="avgEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 1000">
-                                </div>
-                                <div>
-                                    <label for="avgDownPercent" class="block text-sm font-medium text-gray-700">Penurunan untuk Averaging (%)</label>
-                                    <input type="number" id="avgDownPercent" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 10">
-                                </div>
-                                <div>
-                                    <label for="avgLevels" class="block text-sm font-medium text-gray-700">Jumlah Tingkat Averaging</label>
-                                    <input type="number" id="avgLevels" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 5">
-                                </div>
-                                <button id="calculateAvgDown" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
-                                <div id="averagingDownResults" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
-                            </div>
-                        </div>
-                        <!-- Dividend Yield Calculator -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold mb-4">Kalkulator Yield Dividen</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="divEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri per Lembar (Rp)</label>
-                                    <input type="number" id="divEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 1000">
-                                </div>
-                                 <div>
-                                    <label for="dividendPerShare" class="block text-sm font-medium text-gray-700">Dividen per Lembar (Rp)</label>
-                                    <input type="number" id="dividendPerShare" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 50">
-                                </div>
-                                <button id="calculateDividendYield" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
-                                <div id="dividendYieldResult" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
-                            </div>
-                        </div>
-                        <!-- Take Profit Calculator -->
-                         <div class="bg-white p-6 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold mb-4">Kalkulator Take Profit</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="tpEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri per Lembar (Rp)</label>
-                                    <input type="number" id="tpEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 1000">
-                                </div>
-                                 <div>
-                                    <label for="tpLots" class="block text-sm font-medium text-gray-700">Jumlah Lot</label>
-                                    <input type="number" id="tpLots" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 10">
-                                </div>
-                                <div>
-                                    <label for="tpTargetProfit" class="block text-sm font-medium text-gray-700">Target Profit (Rp)</label>
-                                    <input type="number" id="tpTargetProfit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 500000">
-                                </div>
-                                <button id="calculateTakeProfit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
-                                <div id="takeProfitResult" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
-                            </div>
-                        </div>
-                     </div>
-                </div>
-
-                <!-- Data Management Tab -->
-                <div id="data-management" class="tab-content hidden">
-                    <div class="bg-white rounded-lg shadow p-6">
-                         <h2 class="text-2xl font-bold text-gray-900 mb-6">Manajemen Data & Opsi</h2>
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="p-4 bg-gray-50 rounded-lg shadow-inner">
-                                <h4 class="text-xl font-semibold text-gray-800 mb-2">Tipe Aset Kustom</h4>
-                                <div class="flex flex-col sm:flex-row gap-2 mb-2">
-                                    <input type="text" id="assetTypeOptionInput" placeholder="Nama Tipe Aset Baru" class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
-                                    <button id="addAssetTypeOptionButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Tambah</button>
-                                </div>
-                                <div class="mt-4">
-                                    <h4 class="text-md font-semibold text-gray-700 mb-2">Opsi kustom aktif:</h4>
-                                    <ul id="currentAssetTypeOptionsList" class="list-disc list-inside text-sm text-gray-600 space-y-1"></ul>
-                                </div>
-                            </div>
-                         </div>
-                    </div>
-                </div>
-            </main>
-            <footer class="bg-gray-800 text-white text-center py-4 text-sm">
-                <p>&copy; 2024 RichD. All rights reserved.</p>
-            </footer>
-        </div>
-    </div>
-
-    <!-- Modal for adding/editing investments -->
-    <div id="investmentFormModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
-            <div class="flex justify-between items-center pb-3">
-                <h3 id="formTitle" class="text-2xl font-bold text-gray-900">Tambah Investasi</h3>
-                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <form id="investmentForm" class="space-y-4 mt-4">
-                <div>
-                    <label for="namaAset" class="block text-sm font-medium text-gray-700">Nama Aset/Saham</label>
-                    <input type="text" id="namaAset" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: BBCA">
-                </div>
-                <div>
-                    <label for="tipeAset" class="block text-sm font-medium text-gray-700">Tipe Aset</label>
-                    <select id="tipeAset" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></select>
-                    <input type="text" id="tipeAsetManual" placeholder="Input Tipe Aset Manual" class="mt-2 hidden w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                 <div>
-                    <label for="jumlahUnit" class="block text-sm font-medium text-gray-700">Jumlah Unit/Saham</label>
-                    <input type="number" step="any" id="jumlahUnit" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: 100">
-                </div>
-                 <div>
-                    <label for="hargaBeli" class="block text-sm font-medium text-gray-700">Harga Beli Rata-rata (per unit/saham)</label>
-                    <input type="number" step="any" id="hargaBeli" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: 9500">
-                </div>
-                 <div>
-                    <label for="tanggalBeli" class="block text-sm font-medium text-gray-700">Tanggal Beli</label>
-                    <input type="date" id="tanggalBeli" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div class="flex justify-end pt-4">
-                    <button type="submit" id="submitButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-md">Tambah</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modals (Loading, Confirm, Message) -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-[100] flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-xl flex items-center space-x-4">
-            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
-            <span class="text-lg font-semibold text-gray-700">Memuat...</span>
-        </div>
-    </div>
-    <div id="confirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50 flex items-center justify-center">
-        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
-            <h3 class="text-xl font-bold text-gray-900">Konfirmasi</h3>
-            <p id="confirmMessage" class="text-md text-gray-500 my-4"></p>
-            <button id="confirmYes" class="px-4 py-2 bg-red-500 text-white rounded-md w-24 shadow-sm hover:bg-red-700">Ya</button>
-            <button id="confirmNo" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md w-24 ml-4 shadow-sm hover:bg-gray-300">Tidak</button>
-        </div>
-    </div>
-    <div id="messageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50 flex items-center justify-center">
-        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
-            <div id="messageModalIcon" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full"></div>
-            <p id="messageText" class="text-md text-gray-500 my-4"></p>
-            <button id="messageClose" class="px-4 py-2 bg-indigo-600 text-white rounded-md w-24 shadow-sm hover:bg-indigo-700">Tutup</button>
-        </div>
-    </div>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <style>
-        .loader { border-top-color: #4f46e5; animation: spinner 1.5s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; }
+        .card { background-color: #1F2937; border-radius: 0.75rem; padding: 1.5rem; border: 1px solid #374151; }
+        .table-wrapper { overflow-x: auto; }
+        input[type="number"] { -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .tab-button { transition: all 0.3s ease; border-bottom: 3px solid transparent; }
+        .tab-button.active { border-bottom-color: #22D3EE; color: #E5E7EB; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { background-color: #1F2937; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 600px; }
     </style>
+</head>
+<body class="bg-gray-900 text-white">
 
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <div class="text-left">
+                     <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">Dasbor Manajemen Portofolio</h1>
+                     <p class="text-gray-400 mt-2">Simulasikan strategi, catat transaksi, dan analisis portofolio Anda.</p>
+                </div>
+                <div id="auth-container" class="text-right">
+                    </div>
+            </div>
+        </header>
+
+        <div class="mb-8 border-b border-gray-700">
+            <nav class="flex flex-wrap -mb-px space-x-2 md:space-x-4" aria-label="Tabs">
+                <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
+                <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
+                <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
+                <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
+                <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Backup (JSON)</button>
+            </nav>
+        </div>
+
+        <div>
+            <div id="tab-content-simulator" class="tab-content active">
+                <div class="card mb-8">
+                    <div class="flex justify-between items-center">
+                         <h2 class="text-2xl font-semibold">Parameter Simulasi Aktif</h2>
+                         <button id="open-sim-params-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Ubah Parameter</button>
+                    </div>
+                    <div id="active-sim-params-display" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700 pt-4"></div>
+                </div>
+                <div class="card mb-8"><h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-3">Ringkasan Portofolio (Equitas)</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center"><div><h3 class="text-gray-400 text-sm font-medium">Total Investasi</h3><p id="summary-total-investment" class="text-2xl font-bold text-green-400">IDR 0</p></div><div><h3 class="text-gray-400 text-sm font-medium">Total Lot</h3><p id="summary-total-lot" class="text-2xl font-bold">0</p></div><div><h3 class="text-gray-400 text-sm font-medium">Harga Rata-rata (NAV per Lembar)</h3><p id="summary-avg-price" class="text-2xl font-bold text-yellow-400">IDR 0</p></div></div></div>
+                <div class="card mb-8"><h2 class="text-2xl font-semibold mb-4">Tabel Skenario Averaging</h2><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Level</th><th scope="col" class="px-6 py-3">Harga Beli (Rp)</th><th scope="col" class="px-6 py-3">Lot Beli</th><th scope="col" class="px-6 py-3">Total Beli (Rp)</th><th scope="col" class="px-6 py-3">Yield Dividen</th><th scope="col" class="px-6 py-3">Harga Rata-rata (Rp)</th><th scope="col" class="px-6 py-3">TP 1 (Rp)</th><th scope="col" class="px-6 py-3">TP 2 (Rp)</th></tr></thead><tbody id="scenario-table-body"></tbody></table></div></div>
+                <div class="card"><h2 class="text-2xl font-semibold mb-6 border-b border-gray-700 pb-3">Kalkulator Target Profit</h2><div id="profit-calc-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end"><div><label for="target-profit-rp" class="block text-sm font-medium text-gray-300 mb-1">Target Profit (Rp)</label><input type="number" id="target-profit-rp" value="5000000" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="target-profit-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label><input type="number" id="target-profit-lot" value="20" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="target-profit-percent" class="block text-sm font-medium text-gray-300 mb-1">Keuntungan (%)</label><input type="number" id="target-profit-percent" value="25" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div></div><div class="mt-6 text-center bg-gray-700/50 p-4 rounded-lg"><h3 class="text-gray-400 text-md font-medium">Estimasi Harga Entry Maksimal</h3><p id="entry-price-result" class="text-2xl md:text-3xl font-bold text-cyan-400 mt-2">IDR 0</p></div></div>
+            </div>
+
+            <div id="tab-content-log" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="card"><div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">Riwayat Transaksi</h2><button id="open-add-log-modal-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Tambah Transaksi</button></div><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Tgl Beli</th><th scope="col" class="px-6 py-3">Kode</th><th scope="col" class="px-6 py-3">Harga Beli</th><th scope="col" class="px-6 py-3">Lot</th><th scope="col" class="px-6 py-3">Status</th><th scope="col" class="px-6 py-3">Tgl Jual</th><th scope="col" class="px-6 py-3">Realisasi P/L</th><th scope="col" class="px-6 py-3">Aksi</th></tr></thead><tbody id="log-table-body"></tbody></table></div></div>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <div class="card sticky top-8">
+                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-3">Ringkasan Portofolio</h2>
+                            <div id="equity-monitoring" class="mb-4">
+                                <div class="mb-2">
+                                    <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
+                                    <input type="number" id="initial-equity" value="100000000" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-2.5">
+                                </div>
+                                <div class="p-4 bg-gray-600 rounded-lg text-center">
+                                    <h4 class="text-gray-300 font-medium">Equitas / Cash Tersedia</h4>
+                                    <p id="current-equity-display" class="text-2xl font-bold text-cyan-400 mt-1">IDR 0</p>
+                                </div>
+                            </div>
+                            <div id="portfolio-grand-total" class="mb-4"></div>
+                            <div id="realized-pl-summary" class="mb-4"></div>
+                            <div id="floating-pl-summary" class="mb-4"></div>
+                            <div id="portfolio-summary-by-stock" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-content-saved" class="tab-content">
+                <div class="card"><h2 class="text-2xl font-semibold mb-4">Daftar Simulasi Tersimpan</h2><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Kode Saham</th><th scope="col" class="px-6 py-3">Harga Awal</th><th scope="col" class="px-6 py-3">Lot Awal</th><th scope="col" class="px-6 py-3">Avg. Down (%)</th><th scope="col" class="px-6 py-3">Jml. Level</th><th scope="col" class="px-6 py-3">Aksi</th></tr></thead><tbody id="saved-simulations-table-body"></tbody></table></div></div>
+            </div>
+
+            <div id="tab-content-performance" class="tab-content">
+                 <div class="card">
+                    <h2 class="text-2xl font-semibold mb-4">Performa Portofolio vs IHSG</h2>
+                    <p class="text-sm text-gray-400 mb-6">Performa "All Time" dihitung secara otomatis berdasarkan modal awal, transaksi, dan nilai floating P/L. Performa IHSG dapat diisi manual untuk perbandingan.</p>
+                    <div class="mb-8 p-4 bg-gray-800/50 rounded-lg"><canvas id="performanceChart"></canvas></div>
+                    <div class="table-wrapper">
+                        <table class="w-full text-sm text-left text-gray-300">
+                            <thead class="text-xs text-cyan-300 uppercase bg-gray-700">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Periode</th>
+                                    <th scope="col" class="px-6 py-3">Performa Portofolio</th>
+                                    <th scope="col" class="px-6 py-3">Performa IHSG (%)</th>
+                                    <th scope="col" class="px-6 py-3">Selisih (Alpha)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performance-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab-content-backup" class="tab-content">
+                <div class="card">
+                    <h2 class="text-2xl font-semibold mb-4">Manajemen Data Cadangan (Backup)</h2>
+                    <p class="text-sm text-gray-400 mb-6">Gunakan fitur ini untuk menyimpan salinan data portofolio Anda ke sebuah file di komputer Anda, atau memuat data dari file cadangan yang sudah ada. Ini berguna sebagai backup tambahan selain penyimpanan cloud otomatis.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+                        <div class="bg-gray-800 p-6 rounded-lg">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-3">Unduh Data ke File JSON</h3>
+                            <p class="text-gray-300 mb-4 text-sm">Simpan semua data (transaksi, simulasi, modal, dll) ke dalam satu file JSON.</p>
+                            <button id="download-json-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Unduh Backup</button>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-lg">
+                            <h3 class="text-lg font-semibold text-yellow-400 mb-3">Muat Data dari File JSON</h3>
+                            <p class="text-gray-300 mb-4 text-sm">Pilih file backup JSON untuk memulihkan data. <strong class="text-red-400">Perhatian:</strong> Ini akan menimpa semua data yang ada saat ini.</p>
+                            <input type="file" id="upload-json-input" class="hidden" accept=".json">
+                            <button id="upload-json-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Pilih & Muat File</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="sim-params-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-6">Parameter Simulasi</h3><form id="sim-params-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" id="stock-code" value="BBCA" class="hidden"><input type="number" id="initial-price" value="9500" class="hidden"><input type="number" id="initial-lot" value="10" class="hidden"><input type="number" id="dividend" value="227" class="hidden"><input type="number" id="avg-down-percent" value="15" class="hidden"><input type="number" id="avg-levels" value="5" class="hidden"><input type="number" id="tp1-percent" value="20" class="hidden"><input type="number" id="tp2-percent" value="50" class="hidden"><div><label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label><input type="text" id="modal-stock-code" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label><input type="number" id="modal-initial-price" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label><input type="number" id="modal-initial-lot" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label><input type="number" id="modal-dividend" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label><input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label><input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label><input type="number" id="modal-tp1-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label><input type="number" id="modal-tp2-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div></div><div class="mt-8 flex justify-end space-x-4"><button type="button" id="cancel-sim-params-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="button" id="save-simulation-from-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button><button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">Terapkan</button></div></form></div></div>
+    <div id="add-log-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-6">Tambah Catatan Transaksi</h3><form id="log-form" class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="log-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label><input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="log-buy-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Beli</label><input type="date" id="log-buy-date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-gray-400"></div><div><label for="log-buy-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Beli (per lembar)</label><input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="log-buy-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label><input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div class="md:col-span-2"><label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label><textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></textarea></div><div class="md:col-span-2 flex justify-end space-x-4"><button type="button" id="cancel-add-log-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">Tambah</button></div></form></div></div>
+    <div id="sell-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-4">Realisasi Posisi</h3><form id="sell-form"><input type="hidden" id="sell-log-index"><div class="mb-4"><label for="sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label><input type="number" id="sell-price" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div class="mb-6"><label for="sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label><input type="date" id="sell-date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-gray-400"></div><div class="flex justify-end space-x-4"><button type="button" id="cancel-sell-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Konfirmasi Jual</button></div></form></div></div>
+    <div id="notification-modal" class="modal-overlay"><div class="modal-content max-w-sm"><h3 id="notification-title" class="text-2xl font-semibold mb-4 text-yellow-300">Peringatan</h3><p id="notification-message" class="text-gray-300 mb-6"></p><div class="flex justify-end"><button type="button" id="notification-ok-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">OK</button></div></div></div>
+
+    <script>
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDXXt1ZI9WjZhJ0zoKsfInsjWfECK4dWoI",
+            authDomain: "richdporto.firebaseapp.com",
+            projectId: "richdporto",
+            storageBucket: "richdporto.appspot.com",
+            messagingSenderId: "720478988067",
+            appId: "1:720478988067:web:a21abb0396f99872a38e96",
+            measurementId: "G-S793S8TH7V"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        // --- DATA STORAGE (LOCAL STATE) ---
+        let portfolioLog = [];
+        let savedSimulations = [];
+        let performanceChart;
+        let currentMarketPrices = {};
+        let currentUser = null;
+
+        // --- DOM Elements ---
+        const tabButtons = { 
+            simulator: document.getElementById('tab-btn-simulator'), 
+            log: document.getElementById('tab-btn-log'), 
+            saved: document.getElementById('tab-btn-saved'), 
+            performance: document.getElementById('tab-btn-performance'),
+            backup: document.getElementById('tab-btn-backup')
+        };
+        const tabContents = { 
+            simulator: document.getElementById('tab-content-simulator'), 
+            log: document.getElementById('tab-content-log'), 
+            saved: document.getElementById('tab-content-saved'), 
+            performance: document.getElementById('tab-content-performance'),
+            backup: document.getElementById('tab-content-backup')
+        };
+        
+        // --- (Existing DOM elements are the same) ---
+        const simParamsModal = document.getElementById('sim-params-modal');
+        const addLogModal = document.getElementById('add-log-modal');
+        const sellModal = document.getElementById('sell-modal');
+        const notificationModal = document.getElementById('notification-modal');
+        const simParamsForm = document.getElementById('sim-params-form');
+        const logForm = document.getElementById('log-form');
+        const sellForm = document.getElementById('sell-form');
+        
+        // --- FIREBASE & DATA SYNC FUNCTIONS ---
+        async function saveDataToFirestore() {
+            if (!currentUser) return;
+            const uid = currentUser.uid;
+            const dataToSave = {
+                portfolioLog,
+                savedSimulations,
+                currentMarketPrices,
+                initialEquity: parseFloat(document.getElementById('initial-equity').value) || 0,
+                // Save IHSG performance inputs
+                performanceIHSG: Array.from(document.querySelectorAll('.performance-ihsg-input')).reduce((acc, input) => {
+                    acc[input.dataset.period] = input.value;
+                    return acc;
+                }, {}),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await db.collection('portfolios').doc(uid).set(dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Error saving data to Firestore: ", error);
+                showNotification("Gagal menyimpan data ke cloud. Periksa koneksi internet Anda.", "Error");
+            }
+        }
+
+        async function loadDataFromFirestore(uid) {
+            try {
+                const doc = await db.collection('portfolios').doc(uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    portfolioLog = data.portfolioLog || [];
+                    savedSimulations = data.savedSimulations || [];
+                    currentMarketPrices = data.currentMarketPrices || {};
+                    document.getElementById('initial-equity').value = data.initialEquity || 100000000;
+                    
+                    // Restore IHSG performance inputs
+                    if (data.performanceIHSG) {
+                        Object.entries(data.performanceIHSG).forEach(([period, value]) => {
+                            const input = document.querySelector(`.performance-ihsg-input[data-period="${period}"]`);
+                            if (input) input.value = value;
+                        });
+                    }
+
+                    showNotification(`Selamat datang kembali, ${currentUser.displayName}! Data Anda telah berhasil dimuat.`, "Login Berhasil");
+                } else {
+                     showNotification(`Selamat datang, ${currentUser.displayName}! Ini adalah pertama kalinya Anda login. Mulai kelola portofolio Anda.`, "Login Berhasil");
+                }
+                updateAllApplicationViews();
+            } catch (error) {
+                console.error("Error loading data from Firestore: ", error);
+                showNotification("Gagal memuat data dari cloud. Data lokal akan digunakan.", "Error");
+                updateAllApplicationViews();
+            }
+        }
+        
+        function resetLocalData() {
+            portfolioLog = [];
+            savedSimulations = [];
+            currentMarketPrices = {};
+            document.getElementById('initial-equity').value = 100000000;
+            document.querySelectorAll('.performance-ihsg-input').forEach(input => input.value = '');
+            updateAllApplicationViews();
+        }
+        
+        // --- AUTHENTICATION FUNCTIONS ---
+        function signInWithGoogle() {
+            auth.signInWithPopup(googleProvider).catch(error => {
+                console.error("Google Sign-In Error: ", error);
+                showNotification(`Login Gagal: ${error.message}`, "Error");
+            });
+        }
+
+        function signOut() {
+            auth.signOut().catch(error => {
+                console.error("Sign-Out Error: ", error);
+            });
+        }
+
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            renderAuthState();
+            if (user) {
+                loadDataFromFirestore(user.uid);
+            } else {
+                resetLocalData();
+            }
+        });
+        
+        function renderAuthState() {
+            const authContainer = document.getElementById('auth-container');
+            if (currentUser) {
+                authContainer.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                           <p class="text-sm text-gray-300">Login sebagai</p>
+                           <p class="font-semibold text-cyan-300">${currentUser.displayName}</p>
+                        </div>
+                        <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Logout</button>
+                    </div>
+                `;
+                document.getElementById('logout-btn').addEventListener('click', signOut);
+            } else {
+                authContainer.innerHTML = `
+                    <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Login dengan Google
+                    </button>
+                `;
+                 document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
+            }
+        }
+
+
+        // --- HELPER FUNCTIONS ---
+        function formatCurrency(value, withSign = false) { /* ... same as before ... */  const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(value)); if (!withSign) return formatted; if (value > 0) return `+${formatted}`; if (value < 0) return `-${formatted}`; return formatted; }
+
+        // --- TAB MANAGEMENT ---
+        function switchTab(tabName) {
+            Object.values(tabButtons).forEach(btn => btn.classList.remove('active'));
+            Object.values(tabContents).forEach(content => content.classList.remove('active'));
+            tabButtons[tabName].classList.add('active');
+            tabContents[tabName].classList.add('active');
+        }
+
+        // --- SIMULATOR FUNCTIONS (UNCHANGED) ---
+        function updateActiveSimDisplay() { /* ... same as before ... */ const displayContainer = document.getElementById('active-sim-params-display'); displayContainer.innerHTML = `<div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div><div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(document.getElementById('initial-price').value)}</div><div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div><div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>`; }
+        function calculateDashboard() { /* ... same as before ... */ const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0; const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0; const dividend = parseFloat(document.getElementById('dividend').value) || 0; const avgDownPercent = parseFloat(document.getElementById('avg-down-percent').value) || 0; const avgLevels = parseInt(document.getElementById('avg-levels').value) || 0; const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0; const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0; const tableBody = document.getElementById('scenario-table-body'); tableBody.innerHTML = ''; let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice; for (let i = 0; i <= avgLevels; i++) { let entryPrice, lotsToBuy; if (i === 0) { entryPrice = initialPrice; lotsToBuy = initialLot; } else { entryPrice = currentPrice * (1 - avgDownPercent / 100); lotsToBuy = initialLot; } if (lotsToBuy <= 0 || entryPrice <= 0) continue; const sharesToBuy = lotsToBuy * 100; const totalBuy = entryPrice * sharesToBuy; cumulativeCost += totalBuy; cumulativeShares += sharesToBuy; const avgPrice = cumulativeCost / cumulativeShares; const dividendYield = dividend > 0 && entryPrice > 0 ? (dividend / entryPrice) * 100 : 0; const tp1Price = avgPrice * (1 + tp1Percent / 100); const tp2Price = avgPrice * (1 + tp2Percent / 100); const row = document.createElement('tr'); row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600'; row.innerHTML = `<td class="px-6 py-4 font-medium whitespace-nowrap">${i === 0 ? 'Entry Awal' : `AVG ${i}`}</td><td class="px-6 py-4 font-semibold text-yellow-300">${formatCurrency(entryPrice)}</td><td class="px-6 py-4">${lotsToBuy}</td><td class="px-6 py-4">${formatCurrency(totalBuy)}</td><td class="px-6 py-4 ${dividendYield > 5 ? 'text-green-400' : 'text-gray-300'}">${dividendYield.toFixed(2)}%</td><td class="px-6 py-4 font-semibold text-blue-300">${formatCurrency(avgPrice)}</td><td class="px-6 py-4 text-green-400">${formatCurrency(tp1Price)}</td><td class="px-6 py-4 text-green-500">${formatCurrency(tp2Price)}</td>`; tableBody.appendChild(row); currentPrice = entryPrice; } const totalInvestment = cumulativeCost; const totalLots = cumulativeShares / 100; const finalAvgPrice = totalInvestment / (totalLots * 100) || 0; document.getElementById('summary-total-investment').textContent = formatCurrency(totalInvestment); document.getElementById('summary-total-lot').textContent = totalLots; document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice); }
+        function calculateEntryForProfit() { /* ... same as before ... */ const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0; const targetProfitLot = parseFloat(document.getElementById('target-profit-lot').value) || 0; const targetProfitPercent = parseFloat(document.getElementById('target-profit-percent').value) || 0; if (targetProfitLot <= 0 || targetProfitPercent <= 0) { document.getElementById('entry-price-result').textContent = 'Input tidak valid'; return; } const entryPrice = targetProfitRp / (targetProfitLot * 100 * (targetProfitPercent / 100)); document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice); }
+
+        // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
+        function updateAllApplicationViews() {
+            renderLogTable();
+            renderFinancialSummaries();
+            renderSavedSimulationsTable();
+            // Call other render functions if they depend on the core data
+            calculatePerformanceDifference();
+        }
+
+        function renderLogTable() { /* ... same as before ... */ const logTableBody = document.getElementById('log-table-body'); logTableBody.innerHTML = ''; if (portfolioLog.length === 0) { logTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-500">Belum ada catatan transaksi.</td></tr>`; return; } portfolioLog.forEach((log, index) => { const row = document.createElement('tr'); row.className = 'bg-gray-800 border-b border-gray-700'; let plHtml, statusHtml, actionHtml, sellDateHtml; if (log.sellPrice) { const profitLoss = (log.sellPrice - log.price) * log.lot * 100; const plColor = profitLoss >= 0 ? 'text-green-400' : 'text-red-500'; plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`; statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`; actionHtml = `<td class="px-6 py-4"><button class="delete-log-btn text-red-500 hover:text-red-400" data-index="${index}">Hapus</button></td>`; sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`; } else { plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`; statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`; actionHtml = `<td class="px-6 py-4 space-x-2"><button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Jual</button><button class="delete-log-btn text-gray-500 hover:text-red-400" data-index="${index}">Hapus</button></td>`; sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`; } row.innerHTML = `<td class="px-6 py-4">${log.date}</td><td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td><td class="px-6 py-4">${formatCurrency(log.price)}</td><td class="px-6 py-4">${log.lot}</td>${statusHtml}${sellDateHtml}${plHtml}${actionHtml}`; logTableBody.appendChild(row); }); }
+        
+        function renderFinancialSummaries() { /* ... same as before ... */ const summaryContainer = document.getElementById('portfolio-summary-by-stock'); const grandTotalContainer = document.getElementById('portfolio-grand-total'); const realizedPlContainer = document.getElementById('realized-pl-summary'); const currentEquityDisplay = document.getElementById('current-equity-display'); summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = ''; const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0; let totalBuyCost = 0; let totalSellValue = 0; portfolioLog.forEach(log => { totalBuyCost += log.price * log.lot * 100; if(log.sellPrice) { totalSellValue += log.sellPrice * log.lot * 100; } }); const currentEquity = initialEquity - totalBuyCost + totalSellValue; currentEquityDisplay.textContent = formatCurrency(currentEquity); const openPositions = portfolioLog.filter(log => !log.sellPrice); const closedPositions = portfolioLog.filter(log => log.sellPrice); if (openPositions.length === 0) { summaryContainer.innerHTML = `<p class="text-gray-500 text-center">Tidak ada posisi terbuka.</p>`; grandTotalContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(0)}</p></div>`; } else { const summary = openPositions.reduce((acc, log) => { const code = log.code.toUpperCase(); if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; } acc[code].totalLots += log.lot; acc[code].totalCost += log.price * log.lot * 100; return acc; }, {}); let grandTotalCost = 0; Object.entries(summary).forEach(([code, data]) => { grandTotalCost += data.totalCost; const avgPrice = data.totalCost / (data.totalLots * 100); const priceValue = currentMarketPrices[code] || ''; const summaryCard = document.createElement('div'); summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg'; summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPrice)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`; summaryContainer.appendChild(summaryCard); }); const grandTotalCard = document.createElement('div'); grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center'; grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p>`; grandTotalContainer.appendChild(grandTotalCard); } const totalRealizedPL = closedPositions.reduce((acc, log) => acc + ((log.sellPrice - log.price) * log.lot * 100), 0); const realizedPlCard = document.createElement('div'); realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center'; const plColor = totalRealizedPL >= 0 ? 'text-green-400' : 'text-red-500'; realizedPlCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Realisasi P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalRealizedPL, true)}</p>`; realizedPlContainer.appendChild(realizedPlCard); calculateAndRenderFloatingPL(); renderPerformanceTab(); }
+
+        function calculateAndRenderFloatingPL() { /* ... same as before ... */ const openPositions = portfolioLog.filter(log => !log.sellPrice); const floatingPlContainer = document.getElementById('floating-pl-summary'); if (openPositions.length === 0) { floatingPlContainer.innerHTML = ''; renderPerformanceTab(); return; } const summary = openPositions.reduce((acc, log) => { const code = log.code.toUpperCase(); if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; } acc[code].totalLots += log.lot; acc[code].totalCost += log.price * log.lot * 100; return acc; }, {}); let totalFloatingPL = 0; Object.entries(summary).forEach(([code, data]) => { const currentPriceInput = document.getElementById(`current-price-${code}`); if (!currentPriceInput) return; const currentPrice = parseFloat(currentPriceInput.value) || 0; const floatingPlElement = document.getElementById(`floating-pl-${code}`); if (currentPrice > 0) { const avgPrice = data.totalCost / (data.totalLots * 100); const floatingPL = (currentPrice - avgPrice) * data.totalLots * 100; totalFloatingPL += floatingPL; const plColor = floatingPL >= 0 ? 'text-green-400' : 'text-red-500'; floatingPlElement.className = `font-semibold ${plColor}`; floatingPlElement.textContent = formatCurrency(floatingPL, true); } else { floatingPlElement.textContent = '-'; } }); const plColor = totalFloatingPL >= 0 ? 'text-green-400' : 'text-red-500'; floatingPlContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Floating P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalFloatingPL, true)}</p></div>`; renderPerformanceTab(); }
+
+        // --- PERFORMANCE TAB MANAGEMENT (UNCHANGED) ---
+        function renderPerformanceTab() { /* ... same as before ... */ const tableBody = document.getElementById('performance-table-body'); tableBody.innerHTML = ''; const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0; if (initialEquity <= 0) { tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-500">Masukkan modal awal untuk menghitung performa.</td></tr>`; if (performanceChart) performanceChart.destroy(); return; } let totalBuyCost = 0, totalSellValue = 0; portfolioLog.forEach(log => { totalBuyCost += log.price * log.lot * 100; if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100; }); const currentEquity = initialEquity - totalBuyCost + totalSellValue; const openPositions = portfolioLog.filter(log => !log.sellPrice); let valueOfOpenPositions = 0; const summary = openPositions.reduce((acc, log) => { const code = log.code.toUpperCase(); if (!acc[code]) acc[code] = { totalLots: 0 }; acc[code].totalLots += log.lot; return acc; }, {}); Object.entries(summary).forEach(([code, data]) => { const currentPriceInput = document.getElementById(`current-price-${code}`); if (currentPriceInput) { const currentPrice = parseFloat(currentPriceInput.value) || 0; if (currentPrice > 0) valueOfOpenPositions += currentPrice * data.totalLots * 100; } }); const currentTotalValue = currentEquity + valueOfOpenPositions; const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100; const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time']; periods.forEach(period => { const row = document.createElement('tr'); row.className = 'bg-gray-800 border-b border-gray-700'; const isAllTime = period === 'All Time'; const portfolioPerformance = isAllTime ? allTimeReturn : NaN; const performanceCell = isAllTime ? `<td class="px-6 py-4 font-semibold ${portfolioPerformance >= 0 ? 'text-green-400' : 'text-red-500'}">${portfolioPerformance.toFixed(2)}%</td>` : `<td class="px-6 py-4 text-gray-500">N/A</td>`; row.innerHTML = `<td class="px-6 py-4 font-medium">${period}</td>${performanceCell}<td class="px-6 py-4"><input type="number" class="performance-ihsg-input w-24 bg-gray-700 border border-gray-600 rounded p-1 text-right" data-period="${period}" placeholder="0.00"></td><td class="px-6 py-4 font-semibold" id="performance-diff-${period.replace(/\s+/g, '')}">-</td>`; tableBody.appendChild(row); }); renderPerformanceChart(); }
+        function renderPerformanceChart() { /* ... same as before ... */ const ctx = document.getElementById('performanceChart').getContext('2d'); const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time']; let allTimeReturn = NaN; const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0; if (initialEquity > 0) { let totalBuyCost = 0, totalSellValue = 0; portfolioLog.forEach(log => { totalBuyCost += log.price * log.lot * 100; if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100; }); const currentEquity = initialEquity - totalBuyCost + totalSellValue; const openPositions = portfolioLog.filter(log => !log.sellPrice); let valueOfOpenPositions = 0; const summary = openPositions.reduce((acc, log) => { const code = log.code.toUpperCase(); if (!acc[code]) acc[code] = { totalLots: 0 }; acc[code].totalLots += log.lot; return acc; }, {}); Object.entries(summary).forEach(([code, data]) => { const currentPriceInput = document.getElementById(`current-price-${code}`); if (currentPriceInput) { const currentPrice = parseFloat(currentPriceInput.value) || 0; if (currentPrice > 0) valueOfOpenPositions += currentPrice * data.totalLots * 100; } }); const currentTotalValue = currentEquity + valueOfOpenPositions; allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100; } const portfolioData = periods.map(p => p === 'All Time' ? allTimeReturn : null); const ihsgData = periods.map(p => { const input = document.querySelector(`.performance-ihsg-input[data-period="${p}"]`); return input ? (parseFloat(input.value) || null) : null; }); if (performanceChart) { performanceChart.destroy(); } performanceChart = new Chart(ctx, { type: 'bar', data: { labels: periods, datasets: [ { label: 'Performa Portofolio (%)', data: portfolioData, backgroundColor: 'rgba(34, 211, 238, 0.6)', borderColor: 'rgba(34, 211, 238, 1)', borderWidth: 1 }, { label: 'Performa IHSG (%)', data: ihsgData, backgroundColor: 'rgba(74, 85, 104, 0.6)', borderColor: 'rgba(74, 85, 104, 1)', borderWidth: 1 } ] }, options: { scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }, x: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } } }, plugins: { legend: { labels: { color: '#D1D5DB' } } } } }); }
+        function calculatePerformanceDifference() { /* ... same as before ... */ const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0; if (initialEquity <= 0) return; let totalBuyCost = 0, totalSellValue = 0; portfolioLog.forEach(log => { totalBuyCost += log.price * log.lot * 100; if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100; }); const currentEquity = initialEquity - totalBuyCost + totalSellValue; const openPositions = portfolioLog.filter(log => !log.sellPrice); let valueOfOpenPositions = 0; const summary = openPositions.reduce((acc, log) => { const code = log.code.toUpperCase(); if (!acc[code]) acc[code] = { totalLots: 0 }; acc[code].totalLots += log.lot; return acc; }, {}); Object.entries(summary).forEach(([code, data]) => { const currentPriceInput = document.getElementById(`current-price-${code}`); if (currentPriceInput) { const currentPrice = parseFloat(currentPriceInput.value) || 0; if (currentPrice > 0) valueOfOpenPositions += currentPrice * data.totalLots * 100; } }); const currentTotalValue = currentEquity + valueOfOpenPositions; const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100; document.querySelectorAll('.performance-ihsg-input').forEach(input => { const period = input.dataset.period; const diffCell = document.getElementById(`performance-diff-${period.replace(/\s+/g, '')}`); const ihsgPerf = parseFloat(input.value); if (!isNaN(ihsgPerf) && period === 'All Time' && isFinite(allTimeReturn)) { const difference = allTimeReturn - ihsgPerf; diffCell.className = `px-6 py-4 font-semibold ${difference >= 0 ? 'text-green-400' : 'text-red-500'}`; diffCell.textContent = `${difference.toFixed(2)}%`; } else { diffCell.textContent = '-'; } }); renderPerformanceChart(); }
+        
+        // --- MODAL MANAGEMENT ---
+        function openModal(modal) { /* ... same as before ... */ modal.classList.add('active'); }
+        function closeModal(modal) { /* ... same as before ... */ modal.classList.remove('active'); }
+        function showNotification(message, title = 'Peringatan') { /* ... same as before ... */ document.getElementById('notification-title').textContent = title; document.getElementById('notification-message').textContent = message; openModal(notificationModal); }
+
+        // --- EVENT HANDLERS ---
+        function handleAddLog(event) {
+            event.preventDefault();
+            const newLog = { id: Date.now(), code: document.getElementById('log-stock-code').value, date: document.getElementById('log-buy-date').value, price: parseFloat(document.getElementById('log-buy-price').value), lot: parseInt(document.getElementById('log-buy-lot').value), reason: document.getElementById('log-reason').value, sellPrice: null, sellDate: null, };
+            if (!newLog.code || !newLog.date || !newLog.price || !newLog.lot) { showNotification('Harap isi semua kolom yang wajib diisi.'); return; }
+            const transactionCost = newLog.price * newLog.lot * 100; const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0; let totalBuyCost = 0, totalSellValue = 0; portfolioLog.forEach(log => { totalBuyCost += log.price * log.lot * 100; if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100; }); const currentEquity = initialEquity - totalBuyCost + totalSellValue;
+            if (transactionCost > currentEquity) { showNotification(`Transaksi gagal. Total pembelian (${formatCurrency(transactionCost)}) melebihi ekuitas yang tersedia (${formatCurrency(currentEquity)}).`); return; }
+            portfolioLog.push(newLog);
+            updateAllApplicationViews();
+            saveDataToFirestore(); // <-- SAVE TO FIREBASE
+            logForm.reset();
+            closeModal(addLogModal);
+        }
+        function handleDeleteLog(index) {
+            portfolioLog.splice(index, 1);
+            updateAllApplicationViews();
+            saveDataToFirestore(); // <-- SAVE TO FIREBASE
+        }
+        function handleSellSubmit(event) {
+            event.preventDefault();
+            const index = parseInt(document.getElementById('sell-log-index').value);
+            const sellPrice = parseFloat(document.getElementById('sell-price').value);
+            const sellDate = document.getElementById('sell-date').value;
+            if (!isNaN(index) && sellPrice > 0 && sellDate) {
+                portfolioLog[index].sellPrice = sellPrice;
+                portfolioLog[index].sellDate = sellDate;
+                updateAllApplicationViews();
+                saveDataToFirestore(); // <-- SAVE TO FIREBASE
+                closeModal(sellModal);
+            } else {
+                showNotification('Harga jual dan tanggal tidak valid.');
+            }
+        }
+        function handleSimParamsSubmit(event) {
+            event.preventDefault();
+            document.getElementById('stock-code').value = document.getElementById('modal-stock-code').value;
+            document.getElementById('initial-price').value = document.getElementById('modal-initial-price').value;
+            document.getElementById('initial-lot').value = document.getElementById('modal-initial-lot').value;
+            document.getElementById('dividend').value = document.getElementById('modal-dividend').value;
+            document.getElementById('avg-down-percent').value = document.getElementById('modal-avg-down-percent').value;
+            document.getElementById('avg-levels').value = document.getElementById('modal-avg-levels').value;
+            document.getElementById('tp1-percent').value = document.getElementById('modal-tp1-percent').value;
+            document.getElementById('tp2-percent').value = document.getElementById('modal-tp2-percent').value;
+            calculateDashboard();
+            updateActiveSimDisplay();
+            closeModal(simParamsModal);
+        }
+        function handleSaveSimulation(isFromModal = false) {
+            const simulation = { id: Date.now(), stockCode: document.getElementById(isFromModal ? 'modal-stock-code' : 'stock-code').value, initialPrice: parseFloat(document.getElementById(isFromModal ? 'modal-initial-price' : 'initial-price').value), initialLot: parseFloat(document.getElementById(isFromModal ? 'modal-initial-lot' : 'initial-lot').value), dividend: parseFloat(document.getElementById(isFromModal ? 'modal-dividend' : 'dividend').value), avgDownPercent: parseFloat(document.getElementById(isFromModal ? 'modal-avg-down-percent' : 'avg-down-percent').value), avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value), tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value), tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value), };
+            if (!simulation.stockCode) { showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); return; }
+            savedSimulations.push(simulation);
+            renderSavedSimulationsTable();
+            saveDataToFirestore(); // <-- SAVE TO FIREBASE
+            if (isFromModal) closeModal(simParamsModal);
+            switchTab('saved');
+        }
+        function handleLoadOrDeleteSimulation(event) {
+            const target = event.target;
+            const simId = parseInt(target.dataset.id);
+            if (isNaN(simId)) return;
+            if (target.classList.contains('load-sim-btn')) {
+                const simToLoad = savedSimulations.find(s => s.id === simId);
+                if (simToLoad) {
+                    document.getElementById('stock-code').value = simToLoad.stockCode;
+                    document.getElementById('initial-price').value = simToLoad.initialPrice;
+                    document.getElementById('initial-lot').value = simToLoad.initialLot;
+                    document.getElementById('dividend').value = simToLoad.dividend;
+                    document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
+                    document.getElementById('avg-levels').value = simToLoad.avgLevels;
+                    document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
+                    document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
+                    calculateDashboard();
+                    updateActiveSimDisplay();
+                    switchTab('simulator');
+                }
+            } else if (target.classList.contains('delete-sim-btn')) {
+                savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                renderSavedSimulationsTable();
+                saveDataToFirestore(); // <-- SAVE TO FIREBASE
+            }
+        }
+        function renderSavedSimulationsTable() { /* ... same as before ... */ const tableBody = document.getElementById('saved-simulations-table-body'); tableBody.innerHTML = ''; if (savedSimulations.length === 0) { tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">Belum ada simulasi yang disimpan.</td></tr>`; return; } savedSimulations.forEach(sim => { const row = document.createElement('tr'); row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600'; row.innerHTML = `<td class="px-6 py-4 font-medium text-cyan-300">${sim.stockCode.toUpperCase()}</td><td class="px-6 py-4">${formatCurrency(sim.initialPrice)}</td><td class="px-6 py-4">${sim.initialLot}</td><td class="px-6 py-4">${sim.avgDownPercent}%</td><td class="px-6 py-4">${sim.avgLevels}</td><td class="px-6 py-4 space-x-2"><button class="load-sim-btn text-green-400 hover:text-green-300" data-id="${sim.id}">Muat</button><button class="delete-sim-btn text-red-500 hover:text-red-400" data-id="${sim.id}">Hapus</button></td>`; tableBody.appendChild(row); }); }
+
+        // --- JSON BACKUP/RESTORE FUNCTIONS ---
+        function handleDownloadJson() {
+            const dataToBackup = {
+                portfolioLog,
+                savedSimulations,
+                currentMarketPrices,
+                initialEquity: document.getElementById('initial-equity').value,
+                performanceIHSG: Array.from(document.querySelectorAll('.performance-ihsg-input')).reduce((acc, input) => {
+                    acc[input.dataset.period] = input.value;
+                    return acc;
+                }, {}),
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToBackup, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "portfolio_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showNotification("File backup JSON telah diunduh.", "Sukses");
+        }
+
+        function handleUploadJson(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    // Basic validation
+                    if (data.portfolioLog && data.savedSimulations && data.initialEquity) {
+                        portfolioLog = data.portfolioLog;
+                        savedSimulations = data.savedSimulations;
+                        currentMarketPrices = data.currentMarketPrices || {};
+                        document.getElementById('initial-equity').value = data.initialEquity;
+
+                        if (data.performanceIHSG) {
+                           Object.entries(data.performanceIHSG).forEach(([period, value]) => {
+                                const input = document.querySelector(`.performance-ihsg-input[data-period="${period}"]`);
+                                if (input) input.value = value;
+                            });
+                        }
+
+                        updateAllApplicationViews();
+                        saveDataToFirestore(); // Sync to cloud after loading
+                        showNotification("Data berhasil dimuat dari file JSON.", "Sukses");
+                    } else {
+                        throw new Error("Struktur file JSON tidak valid.");
+                    }
+                } catch (error) {
+                    showNotification(`Gagal memuat file: ${error.message}`, "Error");
+                }
+            };
+            reader.readAsText(file);
+            // Reset input value to allow uploading the same file again
+            event.target.value = null;
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
+        logForm.addEventListener('submit', handleAddLog);
+        simParamsForm.addEventListener('submit', handleSimParamsSubmit);
+        sellForm.addEventListener('submit', handleSellSubmit);
+        document.getElementById('initial-equity').addEventListener('input', () => {
+            updateAllApplicationViews();
+            saveDataToFirestore(); // <-- SAVE TO FIREBASE
+        });
+        
+        // Modal buttons
+        document.getElementById('open-add-log-modal-btn').addEventListener('click', () => openModal(addLogModal));
+        document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
+        document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => { /* ... same as before ... */ document.getElementById('modal-stock-code').value = document.getElementById('stock-code').value; document.getElementById('modal-initial-price').value = document.getElementById('initial-price').value; document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot').value; document.getElementById('modal-dividend').value = document.getElementById('dividend').value; document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent').value; document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels').value; document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent').value; document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent').value; openModal(simParamsModal); });
+        document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(simParamsModal));
+        document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => handleSaveSimulation(true));
+        document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
+        
+        // Action buttons in tables
+        document.getElementById('log-table-body').addEventListener('click', (event) => { if (event.target.classList.contains('delete-log-btn')) { const index = parseInt(event.target.dataset.index); if (confirm('Apakah Anda yakin ingin menghapus catatan ini?')) { handleDeleteLog(index); } } else if (event.target.classList.contains('sell-log-btn')) { const index = parseInt(event.target.dataset.index); document.getElementById('sell-log-index').value = index; document.getElementById('sell-date').value = new Date().toISOString().split('T')[0]; openModal(sellModal); } });
+        document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
+        document.getElementById('saved-simulations-table-body').addEventListener('click', handleLoadOrDeleteSimulation);
+        
+        // Tab switching
+        Object.keys(tabButtons).forEach(key => {
+            tabButtons[key].addEventListener('click', () => switchTab(key));
+        });
+        
+        // Live inputs
+        document.getElementById('portfolio-summary-by-stock').addEventListener('input', (event) => {
+            if (event.target.classList.contains('current-price-input')) {
+                const code = event.target.dataset.code;
+                currentMarketPrices[code] = event.target.value;
+                calculateAndRenderFloatingPL();
+                saveDataToFirestore(); // <-- SAVE TO FIREBASE
+            }
+        });
+        document.getElementById('tab-content-performance').addEventListener('input', (event) => {
+             if (event.target.classList.contains('performance-ihsg-input')) {
+                calculatePerformanceDifference();
+                saveDataToFirestore(); // <-- SAVE TO FIREBASE
+            }
+        });
+
+        // JSON Backup/Restore buttons
+        document.getElementById('download-json-btn').addEventListener('click', handleDownloadJson);
+        document.getElementById('upload-json-btn').addEventListener('click', () => document.getElementById('upload-json-input').click());
+        document.getElementById('upload-json-input').addEventListener('change', handleUploadJson);
+        
+        // --- INITIALIZATION ---
+        window.addEventListener('load', () => {
+            document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
+            updateActiveSimDisplay();
+            calculateDashboard();
+            calculateEntryForProfit();
+            // Initial render is handled by onAuthStateChanged
+        });
+    </script>
 </body>
 </html>
