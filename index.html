@@ -465,150 +465,6 @@
             resultContainer.innerHTML = `<p>Harga Jual per Lembar: <strong class="text-green-600">Rp ${requiredPrice.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></p>`;
         }
 
-
-        // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (initialAuthToken) {
-                try {
-                    showLoading("Masuk secara otomatis...");
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } catch (error) {
-                    console.error("Error signing in with custom token:", error);
-                    await signInAnonymously(auth);
-                }
-            } else {
-                await signInAnonymously(auth);
-            }
-            document.getElementById('calculateAvgDown').addEventListener('click', calculateAveragingDown);
-            document.getElementById('calculateDividendYield').addEventListener('click', calculateDividendYield);
-            document.getElementById('calculateTakeProfit').addEventListener('click', calculateTakeProfit);
-
-            // Listener untuk tombol edit dan hapus di tabel portofolio
-            portfolioTableBody.addEventListener('click', (e) => {
-                const button = e.target.closest('button');
-                if (!button) return;
-
-                const investmentId = button.dataset.id;
-                if (button.classList.contains('edit-button')) {
-                    const investmentToEdit = investments.find(inv => inv.id === investmentId);
-                    if (investmentToEdit) {
-                        editingInvestmentId = investmentId;
-                        formTitle.textContent = 'Edit Investasi';
-                        submitButton.textContent = 'Simpan Perubahan';
-                        document.getElementById('namaAset').value = investmentToEdit.namaAset;
-                        document.getElementById('jumlahUnit').value = investmentToEdit.jumlahUnit;
-                        document.getElementById('hargaBeli').value = investmentToEdit.hargaBeli;
-                        document.getElementById('tanggalBeli').value = investmentToEdit.tanggalBeli;
-
-                        const tipeAsetSelect = document.getElementById('tipeAset');
-                        const tipeAsetManualInput = document.getElementById('tipeAsetManual');
-                        const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])];
-                        if (allAssetTypes.includes(investmentToEdit.tipeAset)) {
-                            tipeAsetSelect.value = investmentToEdit.tipeAset;
-                            tipeAsetManualInput.classList.add('hidden');
-                        } else {
-                            tipeAsetSelect.value = 'manual';
-                            tipeAsetManualInput.value = investmentToEdit.tipeAset;
-                            tipeAsetManualInput.classList.remove('hidden');
-                        }
-                        
-                        investmentFormModal.classList.remove('hidden');
-                    }
-                } else if (button.classList.contains('delete-button')) {
-                    displayConfirmation("Apakah Anda yakin ingin menghapus investasi ini?", () => deleteInvestmentFromFirestore(investmentId));
-                }
-            });
-        });
-
-        mobileMenuButton.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
-        mainContent.addEventListener('click', () => {
-            if (!sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.add('-translate-x-full');
-            }
-        });
-
-        openAddInvestmentModalButton.addEventListener('click', () => {
-            investmentFormModal.classList.remove('hidden');
-            formTitle.textContent = 'Tambah Investasi Baru';
-            submitButton.textContent = 'Tambah Investasi';
-            investmentForm.reset();
-            document.getElementById('tipeAsetManual').classList.add('hidden');
-            editingInvestmentId = null;
-        });
-
-        closeModalButton.addEventListener('click', () => investmentFormModal.classList.add('hidden'));
-        investmentFormModal.addEventListener('click', (e) => {
-            if (e.target === investmentFormModal) {
-                investmentFormModal.classList.add('hidden');
-            }
-        });
-
-        investmentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const tipeAset = document.getElementById('tipeAset').value;
-            const tipeAsetManual = document.getElementById('tipeAsetManual').value.trim();
-
-            const investmentData = {
-                namaAset: document.getElementById('namaAset').value.trim(),
-                tipeAset: tipeAset === 'manual' ? tipeAsetManual : tipeAset,
-                jumlahUnit: document.getElementById('jumlahUnit').value,
-                hargaBeli: document.getElementById('hargaBeli').value,
-                tanggalBeli: document.getElementById('tanggalBeli').value,
-                id: editingInvestmentId
-            };
-
-            if (investmentData.namaAset && investmentData.tipeAset && investmentData.jumlahUnit && investmentData.hargaBeli && investmentData.tanggalBeli) {
-                const saved = await saveInvestmentToFirestore(investmentData);
-                if (saved) {
-                    displayMessage(`Investasi berhasil ${editingInvestmentId ? 'diperbarui' : 'ditambahkan'}.`, "success");
-                    investmentFormModal.classList.add('hidden');
-                }
-            } else {
-                displayMessage("Harap isi semua field.", "error");
-            }
-        });
-        
-        document.getElementById('tipeAset').addEventListener('change', (e) => {
-            const manualInput = document.getElementById('tipeAsetManual');
-            if (e.target.value === 'manual') {
-                manualInput.classList.remove('hidden');
-            } else {
-                manualInput.classList.add('hidden');
-            }
-        });
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.replace('bg-indigo-700', 'hover:bg-indigo-600'));
-                Object.values(tabContents).forEach(content => content.classList.add('hidden'));
-                button.classList.replace('hover:bg-indigo-600', 'bg-indigo-700');
-                const tabId = button.dataset.tab;
-                if (tabContents[tabId]) {
-                    tabContents[tabId].classList.remove('hidden');
-                }
-                if (tabId === 'dashboard' && isAuthReady) {
-                    renderCharts();
-                }
-            });
-        });
-
-        addAssetTypeOptionButton.addEventListener('click', () => handleAddCustomOption(assetTypeOptionInput, customAssetTypes));
-        assetTypeOptionInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddCustomOption(assetTypeOptionInput, customAssetTypes);
-            }
-        });
-
-        currentAssetTypeOptionsList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-custom-option-button')) {
-                handleDeleteCustomOption(e, customAssetTypes);
-            }
-        });
-
-        loginButton.addEventListener('click', handleGoogleLogin);
-        logoutButton.addEventListener('click', handleLogout);
-
         // --- Helper functions ---
         async function handleAddCustomOption(inputElement, customArray) {
             if (!userId) {
@@ -662,14 +518,10 @@
             const handleYes = () => {
                 confirmModal.classList.add('hidden');
                 onConfirm();
-                confirmYesBtn.removeEventListener('click', handleYes);
-                confirmNoBtn.removeEventListener('click', handleNo);
             };
 
             const handleNo = () => {
                 confirmModal.classList.add('hidden');
-                confirmYesBtn.removeEventListener('click', handleYes);
-                confirmNoBtn.removeEventListener('click', handleNo);
             };
 
             confirmYesBtn.addEventListener('click', handleYes, { once: true });
@@ -690,8 +542,151 @@
             messageModalIcon.innerHTML = iconHtml;
         }
 
-        messageCloseBtn.addEventListener('click', () => {
-            messageModal.classList.add('hidden');
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            // Static element listeners
+            mobileMenuButton.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
+            mainContent.addEventListener('click', () => {
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                }
+            });
+            openAddInvestmentModalButton.addEventListener('click', () => {
+                investmentFormModal.classList.remove('hidden');
+                formTitle.textContent = 'Tambah Investasi Baru';
+                submitButton.textContent = 'Tambah Investasi';
+                investmentForm.reset();
+                document.getElementById('tipeAsetManual').classList.add('hidden');
+                editingInvestmentId = null;
+            });
+            closeModalButton.addEventListener('click', () => investmentFormModal.classList.add('hidden'));
+            investmentFormModal.addEventListener('click', (e) => {
+                if (e.target === investmentFormModal) {
+                    investmentFormModal.classList.add('hidden');
+                }
+            });
+            investmentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const tipeAset = document.getElementById('tipeAset').value;
+                const tipeAsetManual = document.getElementById('tipeAsetManual').value.trim();
+
+                const investmentData = {
+                    namaAset: document.getElementById('namaAset').value.trim(),
+                    tipeAset: tipeAset === 'manual' ? tipeAsetManual : tipeAset,
+                    jumlahUnit: document.getElementById('jumlahUnit').value,
+                    hargaBeli: document.getElementById('hargaBeli').value,
+                    tanggalBeli: document.getElementById('tanggalBeli').value,
+                    id: editingInvestmentId
+                };
+
+                if (investmentData.namaAset && investmentData.tipeAset && investmentData.jumlahUnit && investmentData.hargaBeli && investmentData.tanggalBeli) {
+                    const saved = await saveInvestmentToFirestore(investmentData);
+                    if (saved) {
+                        displayMessage(`Investasi berhasil ${editingInvestmentId ? 'diperbarui' : 'ditambahkan'}.`, "success");
+                        investmentFormModal.classList.add('hidden');
+                    }
+                } else {
+                    displayMessage("Harap isi semua field.", "error");
+                }
+            });
+            document.getElementById('tipeAset').addEventListener('change', (e) => {
+                const manualInput = document.getElementById('tipeAsetManual');
+                if (e.target.value === 'manual') {
+                    manualInput.classList.remove('hidden');
+                } else {
+                    manualInput.classList.add('hidden');
+                }
+            });
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.replace('bg-indigo-700', 'hover:bg-indigo-600'));
+                    Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+                    button.classList.replace('hover:bg-indigo-600', 'bg-indigo-700');
+                    const tabId = button.dataset.tab;
+                    if (tabContents[tabId]) {
+                        tabContents[tabId].classList.remove('hidden');
+                    }
+                    if (tabId === 'dashboard' && isAuthReady) {
+                        renderCharts();
+                    }
+                });
+            });
+            addAssetTypeOptionButton.addEventListener('click', () => handleAddCustomOption(assetTypeOptionInput, customAssetTypes));
+            assetTypeOptionInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomOption(assetTypeOptionInput, customAssetTypes);
+                }
+            });
+            currentAssetTypeOptionsList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-custom-option-button')) {
+                    handleDeleteCustomOption(e, customAssetTypes);
+                }
+            });
+            loginButton.addEventListener('click', handleGoogleLogin);
+            logoutButton.addEventListener('click', handleLogout);
+            document.getElementById('calculateAvgDown').addEventListener('click', calculateAveragingDown);
+            document.getElementById('calculateDividendYield').addEventListener('click', calculateDividendYield);
+            document.getElementById('calculateTakeProfit').addEventListener('click', calculateTakeProfit);
+            messageCloseBtn.addEventListener('click', () => {
+                messageModal.classList.add('hidden');
+            });
+
+            // Delegated listener for dynamic content in the portfolio table
+            portfolioTableBody.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const investmentId = button.dataset.id;
+                if (!investmentId) return;
+
+                if (button.classList.contains('edit-button')) {
+                    const investmentToEdit = investments.find(inv => inv.id === investmentId);
+                    if (investmentToEdit) {
+                        editingInvestmentId = investmentId;
+                        formTitle.textContent = 'Edit Investasi';
+                        submitButton.textContent = 'Simpan Perubahan';
+                        document.getElementById('namaAset').value = investmentToEdit.namaAset;
+                        document.getElementById('jumlahUnit').value = investmentToEdit.jumlahUnit;
+                        document.getElementById('hargaBeli').value = investmentToEdit.hargaBeli;
+                        document.getElementById('tanggalBeli').value = investmentToEdit.tanggalBeli;
+
+                        const tipeAsetSelect = document.getElementById('tipeAset');
+                        const tipeAsetManualInput = document.getElementById('tipeAsetManual');
+                        const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])];
+                        if (allAssetTypes.includes(investmentToEdit.tipeAset)) {
+                            tipeAsetSelect.value = investmentToEdit.tipeAset;
+                            tipeAsetManualInput.classList.add('hidden');
+                        } else {
+                            tipeAsetSelect.value = 'manual';
+                            tipeAsetManualInput.value = investmentToEdit.tipeAset;
+                            tipeAsetManualInput.classList.remove('hidden');
+                        }
+                        
+                        investmentFormModal.classList.remove('hidden');
+                    }
+                } else if (button.classList.contains('delete-button')) {
+                    displayConfirmation("Apakah Anda yakin ingin menghapus investasi ini?", () => deleteInvestmentFromFirestore(investmentId));
+                }
+            });
+        }
+
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupEventListeners(); // Setup all listeners once the DOM is ready
+
+            // Then, handle authentication
+            if (initialAuthToken) {
+                try {
+                    showLoading("Masuk secara otomatis...");
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } catch (error) {
+                    console.error("Error signing in with custom token:", error);
+                    await signInAnonymously(auth);
+                }
+            } else {
+                await signInAnonymously(auth);
+            }
         });
 
     </script>
