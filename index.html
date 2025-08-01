@@ -159,25 +159,48 @@
         <div>
             <!-- Simulator Tab -->
             <div id="tab-content-simulator" class="tab-content active">
-                <!-- Konten Simulator ada di sini -->
                  <div class="card mb-8">
                     <div class="flex justify-between items-center">
                          <h2 class="text-2xl font-semibold">Parameter Simulasi Aktif</h2>
                          <button id="open-sim-params-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Ubah Parameter</button>
                     </div>
                     <div id="active-sim-params-display" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700 pt-4">
-                        <!-- Active parameters will be displayed here -->
                     </div>
                 </div>
 
                 <div class="card mb-8"><h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-3">Ringkasan Portofolio (Equitas)</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center"><div><h3 class="text-gray-400 text-sm font-medium">Total Investasi</h3><p id="summary-total-investment" class="text-2xl font-bold text-green-400">IDR 0</p></div><div><h3 class="text-gray-400 text-sm font-medium">Total Lot</h3><p id="summary-total-lot" class="text-2xl font-bold">0</p></div><div><h3 class="text-gray-400 text-sm font-medium">Harga Rata-rata (NAV per Lembar)</h3><p id="summary-avg-price" class="text-2xl font-bold text-yellow-400">IDR 0</p></div></div></div>
-                <div class="card mb-8"><h2 class="text-2xl font-semibold mb-4">Tabel Skenario Averaging</h2><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Level</th><th scope="col" class="px-6 py-3">Harga Beli (Rp)</th><th scope="col" class="px-6 py-3">Lot Beli</th><th scope="col" class="px-6 py-3">Total Beli (Rp)</th><th scope="col" class="px-6 py-3">Yield Dividen</th><th scope="col" class="px-6 py-3">Harga Rata-rata (Rp)</th><th scope="col" class="px-6 py-3">TP 1 (Rp)</th><th scope="col" class="px-6 py-3">TP 2 (Rp)</th></tr></thead><tbody id="scenario-table-body"></tbody></table></div></div>
+                
+                <div class="card mb-8">
+                    <h2 class="text-2xl font-semibold mb-4">Tabel Skenario Averaging</h2>
+                    <div class="table-wrapper">
+                        <table class="w-full text-sm text-left text-gray-300">
+                            <thead class="text-xs text-cyan-300 uppercase bg-gray-700">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Level</th>
+                                    <th scope="col" class="px-6 py-3">Harga Beli (Rp)</th>
+                                    <th scope="col" class="px-6 py-3">Lot Beli</th>
+                                    <th scope="col" class="px-6 py-3">Total Beli (Rp)</th>
+                                    <th scope="col" class="px-6 py-3">Yield Dividen</th>
+                                    <th scope="col" class="px-6 py-3">Harga Rata-rata (Rp)</th>
+                                    <th scope="col" class="px-6 py-3">TP 1 (Rp)</th>
+                                    <th scope="col" class="px-6 py-3">TP 2 (Rp)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scenario-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="simulation-reason-card" class="card mb-8 hidden">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-3">Alasan Simulasi</h2>
+                    <p id="simulation-reason-display" class="text-gray-300 whitespace-pre-wrap"></p>
+                </div>
+
                 <div class="card"><h2 class="text-2xl font-semibold mb-6 border-b border-gray-700 pb-3">Kalkulator Target Profit</h2><div id="profit-calc-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end"><div><label for="target-profit-rp" class="block text-sm font-medium text-gray-300 mb-1">Target Profit (Rp)</label><input type="number" id="target-profit-rp" value="5000000" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="target-profit-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label><input type="number" id="target-profit-lot" value="20" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="target-profit-percent" class="block text-sm font-medium text-gray-300 mb-1">Keuntungan (%)</label><input type="number" id="target-profit-percent" value="25" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500"></div></div><div class="mt-6 text-center bg-gray-700/50 p-4 rounded-lg"><h3 class="text-gray-400 text-md font-medium">Estimasi Harga Entry Maksimal</h3><p id="entry-price-result" class="text-2xl md:text-3xl font-bold text-cyan-400 mt-2">IDR 0</p></div></div>
             </div>
 
             <!-- Portfolio Log Tab -->
             <div id="tab-content-log" class="tab-content">
-                <!-- Konten Portfolio Log ada di sini -->
                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="lg:col-span-2">
                         <div class="card"><div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">Riwayat Transaksi</h2><button id="open-add-log-modal-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Tambah Transaksi</button></div><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Tgl Beli</th><th scope="col" class="px-6 py-3">Kode</th><th scope="col" class="px-6 py-3">Harga Beli</th><th scope="col" class="px-6 py-3">Lot</th><th scope="col" class="px-6 py-3">Status</th><th scope="col" class="px-6 py-3">Tgl Jual</th><th scope="col" class="px-6 py-3">Realisasi P/L</th><th scope="col" class="px-6 py-3">Aksi</th></tr></thead><tbody id="log-table-body"></tbody></table></div></div>
@@ -206,13 +229,11 @@
 
             <!-- Saved Simulations Tab -->
             <div id="tab-content-saved" class="tab-content">
-                <!-- Konten Saved Simulations ada di sini -->
                 <div class="card"><h2 class="text-2xl font-semibold mb-4">Daftar Simulasi Tersimpan</h2><div class="table-wrapper"><table class="w-full text-sm text-left text-gray-300"><thead class="text-xs text-cyan-300 uppercase bg-gray-700"><tr><th scope="col" class="px-6 py-3">Kode Saham</th><th scope="col" class="px-6 py-3">Harga Awal</th><th scope="col" class="px-6 py-3">Lot Awal</th><th scope="col" class="px-6 py-3">Avg. Down (%)</th><th scope="col" class="px-6 py-3">Jml. Level</th><th scope="col" class="px-6 py-3">Aksi</th></tr></thead><tbody id="saved-simulations-table-body"></tbody></table></div></div>
             </div>
 
             <!-- Performance Tab -->
             <div id="tab-content-performance" class="tab-content">
-                <!-- Konten Performance ada di sini -->
                  <div class="card">
                     <h2 class="text-2xl font-semibold mb-4">Performa Portofolio vs IHSG</h2>
                     <p class="text-sm text-gray-400 mb-6">Performa "All Time" dihitung secara otomatis berdasarkan modal awal, transaksi, dan nilai floating P/L. Performa IHSG dapat diisi manual untuk perbandingan.</p>
@@ -232,7 +253,6 @@
                                 </tr>
                             </thead>
                             <tbody id="performance-table-body">
-                                <!-- Performance rows will be generated by JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -263,7 +283,7 @@
     </div>
 
     <!-- Modals -->
-    <div id="sim-params-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-6">Parameter Simulasi</h3><form id="sim-params-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" id="stock-code" value="BBCA" class="hidden"><input type="number" id="initial-price" value="9500" class="hidden"><input type="number" id="initial-lot" value="10" class="hidden"><input type="number" id="dividend" value="227" class="hidden"><input type="number" id="avg-down-percent" value="15" class="hidden"><input type="number" id="avg-levels" value="5" class="hidden"><input type="number" id="tp1-percent" value="20" class="hidden"><input type="number" id="tp2-percent" value="50" class="hidden"><div><label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label><input type="text" id="modal-stock-code" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label><input type="number" id="modal-initial-price" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label><input type="number" id="modal-initial-lot" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label><input type="number" id="modal-dividend" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label><input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label><input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label><input type="number" id="modal-tp1-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label><input type="number" id="modal-tp2-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div></div><div class="mt-8 flex justify-end space-x-4"><button type="button" id="cancel-sim-params-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="button" id="save-simulation-from-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button><button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">Terapkan</button></div></form></div></div>
+    <div id="sim-params-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-6">Parameter Simulasi</h3><form id="sim-params-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" id="stock-code" value="BBCA" class="hidden"><input type="number" id="initial-price" value="9500" class="hidden"><input type="number" id="initial-lot" value="10" class="hidden"><input type="number" id="dividend" value="227" class="hidden"><input type="number" id="avg-down-percent" value="15" class="hidden"><input type="number" id="avg-levels" value="5" class="hidden"><input type="number" id="tp1-percent" value="20" class="hidden"><input type="number" id="tp2-percent" value="50" class="hidden"><textarea id="sim-reason" class="hidden"></textarea><div><label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label><input type="text" id="modal-stock-code" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label><input type="number" id="modal-initial-price" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label><input type="number" id="modal-initial-lot" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label><input type="number" id="modal-dividend" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label><input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label><input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label><input type="number" id="modal-tp1-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label><input type="number" id="modal-tp2-percent" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div class="md:col-span-2"><label for="modal-sim-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Simulasi / Pembelian</label><textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></textarea></div></div><div class="mt-8 flex justify-end space-x-4"><button type="button" id="cancel-sim-params-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="button" id="save-simulation-from-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button><button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">Terapkan</button></div></form></div></div>
     <div id="add-log-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-6">Tambah Catatan Transaksi</h3><form id="log-form" class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="log-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label><input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="log-buy-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Beli</label><input type="date" id="log-buy-date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-gray-400"></div><div><label for="log-buy-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Beli (per lembar)</label><input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div><label for="log-buy-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label><input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div class="md:col-span-2"><label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label><textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></textarea></div><div class="md:col-span-2 flex justify-end space-x-4"><button type="button" id="cancel-add-log-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">Tambah</button></div></form></div></div>
     <div id="sell-modal" class="modal-overlay"><div class="modal-content"><h3 class="text-2xl font-semibold mb-4">Realisasi Posisi</h3><form id="sell-form"><input type="hidden" id="sell-log-index"><div class="mb-4"><label for="sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label><input type="number" id="sell-price" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5"></div><div class="mb-6"><label for="sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label><input type="date" id="sell-date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-gray-400"></div><div class="flex justify-end space-x-4"><button type="button" id="cancel-sell-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg">Batal</button><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Konfirmasi Jual</button></div></form></div></div>
     <div id="notification-modal" class="modal-overlay"><div class="modal-content max-w-sm"><h3 id="notification-title" class="text-2xl font-semibold mb-4 text-yellow-300">Pemberitahuan</h3><p id="notification-message" class="text-gray-300 mb-6"></p><div class="flex justify-end"><button type="button" id="notification-ok-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg">OK</button></div></div></div>
@@ -337,7 +357,6 @@
         async function handleGoogleLogin() {
             try {
                 await window.firebase.signInWithPopup(window.firebase.auth, window.firebase.provider);
-                // Notification will be shown by onAuthStateChanged
             } catch (error) {
                 console.error("Error during login:", error);
                 showNotification(`Login gagal: ${error.message}`, 'Error');
@@ -376,12 +395,11 @@
 
         // --- FIREBASE DATA SYNC (AUTOMATED) ---
         function triggerAutoSave() {
-            if (!currentUser) return; // Don't save if not logged in
+            if (!currentUser) return;
             
             syncStatusSpan.textContent = 'Menyimpan...';
             syncStatusSpan.classList.remove('opacity-0');
 
-            // Debounce mechanism
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(async () => {
                 const dataToSave = {
@@ -389,6 +407,7 @@
                     savedSimulations: savedSimulations,
                     initialEquity: document.getElementById('initial-equity').value,
                     currentMarketPrices: currentMarketPrices,
+                    simulationReason: document.getElementById('sim-reason').value,
                     updatedAt: new Date().toISOString()
                 };
 
@@ -396,13 +415,13 @@
                     const userDocRef = window.firebase.doc(window.firebase.db, "portfolios", currentUser.uid);
                     await window.firebase.setDoc(userDocRef, dataToSave);
                     syncStatusSpan.textContent = 'Tersimpan ✓';
-                    setTimeout(() => syncStatusSpan.classList.add('opacity-0'), 2000); // Hide after 2 seconds
+                    setTimeout(() => syncStatusSpan.classList.add('opacity-0'), 2000);
                 } catch (error) {
                     console.error("Error auto-saving data to Firestore: ", error);
                     syncStatusSpan.textContent = 'Gagal menyimpan';
                     syncStatusSpan.classList.add('text-red-500');
                 }
-            }, 1500); // Wait 1.5 seconds after the last change to save
+            }, 1500);
         }
         
         async function loadDataFromFirebase() {
@@ -418,6 +437,7 @@
                     savedSimulations = data.savedSimulations || [];
                     document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                     currentMarketPrices = data.currentMarketPrices || {};
+                    document.getElementById('sim-reason').value = data.simulationReason || '';
                     
                     refreshAllApplicationData();
                     showNotification('Data berhasil dimuat dari cloud!', 'Sukses');
@@ -438,6 +458,7 @@
                 savedSimulations: savedSimulations,
                 initialEquity: document.getElementById('initial-equity').value,
                 currentMarketPrices: currentMarketPrices,
+                simulationReason: document.getElementById('sim-reason').value,
             };
             const dataStr = JSON.stringify(dataToSave, null, 2);
             const dataBlob = new Blob([dataStr], {type: "application/json"});
@@ -453,9 +474,8 @@
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (!file) {
-                return;
-            }
+            if (!file) return;
+            
             if (!confirm('Ini akan menimpa data Anda saat ini. Lanjutkan?')) {
                 event.target.value = '';
                 return;
@@ -470,6 +490,7 @@
                         savedSimulations = data.savedSimulations || [];
                         document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                         currentMarketPrices = data.currentMarketPrices || {};
+                        document.getElementById('sim-reason').value = data.simulationReason || '';
 
                         refreshAllApplicationData();
                         showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
@@ -491,6 +512,7 @@
             savedSimulations = [];
             currentMarketPrices = {};
             document.getElementById('initial-equity').value = "100000000";
+            document.getElementById('sim-reason').value = "";
             refreshAllApplicationData();
         }
 
@@ -500,6 +522,7 @@
             renderSavedSimulationsTable();
             calculateDashboard();
             calculateEntryForProfit();
+            updateSimulationReasonDisplay();
             triggerAutoSave();
         }
 
@@ -513,6 +536,19 @@
                 <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div>
                 <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>
             `;
+        }
+        
+        function updateSimulationReasonDisplay() {
+            const reasonCard = document.getElementById('simulation-reason-card');
+            const reasonDisplay = document.getElementById('simulation-reason-display');
+            const reasonText = document.getElementById('sim-reason').value;
+
+            if (reasonText && reasonText.trim() !== '') {
+                reasonDisplay.textContent = reasonText;
+                reasonCard.classList.remove('hidden');
+            } else {
+                reasonCard.classList.add('hidden');
+            }
         }
 
         function calculateDashboard() {
@@ -597,16 +633,13 @@
         }
         
         function renderFinancialSummaries() {
-            // Get containers
             const summaryContainer = document.getElementById('portfolio-summary-by-stock');
             const grandTotalContainer = document.getElementById('portfolio-grand-total');
             const realizedPlContainer = document.getElementById('realized-pl-summary');
             const currentEquityDisplay = document.getElementById('current-equity-display');
             
-            // Clear previous content
             summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = '';
 
-            // --- Calculations ---
             const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
             let totalBuyCost = 0;
             let totalSellValue = 0;
@@ -624,7 +657,6 @@
             const openPositions = portfolioLog.filter(log => !log.sellPrice);
             const closedPositions = portfolioLog.filter(log => log.sellPrice);
             
-            // Render summary for open positions
             if (openPositions.length === 0) {
                 summaryContainer.innerHTML = `<p class="text-gray-500 text-center">Tidak ada posisi terbuka.</p>`;
                 grandTotalContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(0)}</p></div>`;
@@ -652,7 +684,6 @@
                 grandTotalContainer.appendChild(grandTotalCard);
             }
 
-            // Render realized P/L summary
             const totalRealizedPL = closedPositions.reduce((acc, log) => acc + ((log.sellPrice - log.price) * log.lot * 100), 0);
             const realizedPlCard = document.createElement('div');
             realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
@@ -797,14 +828,14 @@
                         {
                             label: 'Performa Portofolio (%)',
                             data: portfolioData,
-                            backgroundColor: 'rgba(34, 211, 238, 0.6)', // cyan-400
+                            backgroundColor: 'rgba(34, 211, 238, 0.6)',
                             borderColor: 'rgba(34, 211, 238, 1)',
                             borderWidth: 1
                         },
                         {
                             label: 'Performa IHSG (%)',
                             data: ihsgData,
-                            backgroundColor: 'rgba(74, 85, 104, 0.6)', // gray-600
+                            backgroundColor: 'rgba(74, 85, 104, 0.6)',
                             borderColor: 'rgba(74, 85, 104, 1)',
                             borderWidth: 1
                         }
@@ -814,17 +845,17 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { color: '#9CA3AF' }, // gray-400
-                            grid: { color: '#374151' } // gray-700
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
                         },
                         x: {
-                            ticks: { color: '#9CA3AF' }, // gray-400
-                            grid: { color: '#374151' } // gray-700
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
                         }
                     },
                     plugins: {
                         legend: {
-                            labels: { color: '#D1D5DB' } // gray-300
+                            labels: { color: '#D1D5DB' }
                         }
                     }
                 }
@@ -941,8 +972,11 @@
             document.getElementById('avg-levels').value = document.getElementById('modal-avg-levels').value;
             document.getElementById('tp1-percent').value = document.getElementById('modal-tp1-percent').value;
             document.getElementById('tp2-percent').value = document.getElementById('modal-tp2-percent').value;
+            document.getElementById('sim-reason').value = document.getElementById('modal-sim-reason').value;
+            
             calculateDashboard();
             updateActiveSimDisplay();
+            updateSimulationReasonDisplay();
             closeModal(simParamsModal);
             triggerAutoSave();
         }
@@ -957,6 +991,7 @@
                 avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
                 tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
                 tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
+                reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
             };
             if (!simulation.stockCode) { showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); return; }
             savedSimulations.push(simulation);
@@ -969,6 +1004,7 @@
             const target = event.target;
             const simId = parseInt(target.dataset.id);
             if (isNaN(simId)) return;
+
             if (target.classList.contains('load-sim-btn')) {
                 const simToLoad = savedSimulations.find(s => s.id === simId);
                 if (simToLoad) {
@@ -980,8 +1016,11 @@
                     document.getElementById('avg-levels').value = simToLoad.avgLevels;
                     document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
                     document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
+                    document.getElementById('sim-reason').value = simToLoad.reason || '';
+                    
                     calculateDashboard();
                     updateActiveSimDisplay();
+                    updateSimulationReasonDisplay();
                     switchTab('simulator');
                     triggerAutoSave();
                 }
@@ -1025,6 +1064,7 @@
             document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels').value;
             document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent').value;
             document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent').value;
+            document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason').value;
             openModal(simParamsModal);
         });
         document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(simParamsModal));
@@ -1075,12 +1115,10 @@
         window.addEventListener('load', () => {
             document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
             
-            // Listen for auth state changes
             window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
                 const wasNotLoggedIn = !currentUser;
                 updateUIForAuthState(user);
                 if (user && wasNotLoggedIn) {
-                    // Automatically load data on initial login
                     loadDataFromFirebase();
                 }
             });
