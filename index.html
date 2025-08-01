@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Portofolio</title>
+    <!-- Memuat Tailwind CSS dari CDN untuk styling yang cepat dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Chart.js untuk diagram -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Memuat Font Awesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Memuat Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, writeBatch, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase (MANDATORY)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Fallback Firebase configuration
+        const fallbackFirebaseConfig = {
+            apiKey: "AIzaSyAzJTL179V9bT-DfefZq9gcG8Tz88VzLmQ",
+            authDomain: "koleksi-game.firebaseapp.com",
+            projectId: "koleksi-game",
+            storageBucket: "koleksi-game.firebasestorage.app",
+            messagingSenderId: "222959670551",
+            appId: "1:222959670551:web:048b1e2c4ef16b7bd31352",
+            measurementId: "G-BYYCM7R4M8"
+        };
+        // Use provided firebase config or fallback if not defined/empty
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' && __firebase_config !== '{}' ? __firebase_config : JSON.stringify(fallbackFirebaseConfig));
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // Global variables for portfolio data and UI elements
+        let investments = [];
+        let customAssetTypes = [];
+        let editingInvestmentId = null;
+        let portfolioChart = null;
+        let userId = null;
+        let isAuthReady = false;
+
+        // Default options for dropdowns
+        const defaultAssetTypes = ['Saham', 'Reksadana', 'Kripto', 'Properti'];
+
+        const elegantColors = ['#4A90E2', '#50E3C2', '#F5A623', '#BD10E0', '#FF2D55', '#00A79D', '#FF7E6B', '#A2416D'];
+
+        // DOM element references
+        const investmentFormModal = document.getElementById('investmentFormModal');
+        const openAddInvestmentModalButton = document.getElementById('openAddInvestmentModalButton');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const investmentForm = document.getElementById('investmentForm');
+        const formTitle = document.getElementById('formTitle');
+        const submitButton = document.getElementById('submitButton');
+        const portfolioTableBody = document.getElementById('portfolioTableBody');
+        const noInvestmentsMessage = document.getElementById('noInvestmentsMessage');
+        const portfolioChartCanvas = document.getElementById('portfolioChart');
+        const portfolioLegend = document.getElementById('portfolioLegend');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = {
+            'dashboard': document.getElementById('dashboard'),
+            'kalkulator': document.getElementById('kalkulator'),
+            'data-management': document.getElementById('data-management')
+        };
+        const assetTypeOptionInput = document.getElementById('assetTypeOptionInput');
+        const addAssetTypeOptionButton = document.getElementById('addAssetTypeOptionButton');
+        const currentAssetTypeOptionsList = document.getElementById('currentAssetTypeOptionsList');
+        const loginButton = document.getElementById('loginButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const authStatusDiv = document.getElementById('authStatus');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const mainContent = document.getElementById('mainContent');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmYesBtn = document.getElementById('confirmYes');
+        const confirmNoBtn = document.getElementById('confirmNo');
+        const messageModal = document.getElementById('messageModal');
+        const messageText = document.getElementById('messageText');
+        const messageCloseBtn = document.getElementById('messageClose');
+        const messageModalIcon = document.getElementById('messageModalIcon');
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const sidebar = document.getElementById('sidebar');
+
+        // --- Firebase Authentication ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                authStatusDiv.textContent = `Masuk sebagai: ${user.displayName || user.email || 'Pengguna Anonim'}`;
+                userIdDisplay.textContent = `ID Pengguna: ${userId}`;
+                loginButton.classList.add('hidden');
+                logoutButton.classList.remove('hidden');
+                mainContent.classList.remove('hidden');
+                displayMessage(`Berhasil masuk! ID Pengguna: ${userId}`, "success");
+                await loadDataFromFirestore();
+            } else {
+                userId = null;
+                authStatusDiv.textContent = 'Belum masuk';
+                userIdDisplay.textContent = '';
+                loginButton.classList.remove('hidden');
+                logoutButton.classList.add('hidden');
+                mainContent.classList.add('hidden');
+                investments = [];
+                customAssetTypes = [];
+                renderAll();
+                displayMessage("Anda telah keluar atau belum masuk. Data tidak akan disimpan.", "info");
+            }
+            isAuthReady = true;
+            hideLoading();
+        });
+
+        async function handleGoogleLogin() {
+            showLoading("Masuk dengan Google...");
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Error signing in with Google:", error);
+                displayMessage(`Gagal masuk dengan Google: ${error.message}`, "error");
+                hideLoading();
+            }
+        }
+
+        async function handleLogout() {
+            showLoading("Keluar...");
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Error signing out:", error);
+                displayMessage(`Gagal keluar: ${error.message}`, "error");
+                hideLoading();
+            }
+        }
+
+        // --- Firebase Firestore Data Operations ---
+        function getUserInvestmentsCollectionRef() {
+            if (!userId) return null;
+            return collection(db, `artifacts/${appId}/users/${userId}/investmentPortfolio`);
+        }
+
+        function getUserCustomOptionsDocRef() {
+            if (!userId) return null;
+            return doc(db, `artifacts/${appId}/users/${userId}/settings/customOptions`);
+        }
+
+        async function loadDataFromFirestore() {
+            if (!userId) return;
+            showLoading("Memuat data portofolio...");
+            try {
+                const investmentsColRef = getUserInvestmentsCollectionRef();
+                if (investmentsColRef) {
+                    onSnapshot(investmentsColRef, (snapshot) => {
+                        investments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderAll();
+                        hideLoading();
+                    }, (error) => {
+                        console.error("Error listening to investments collection:", error);
+                        displayMessage(`Gagal memuat portofolio: ${error.message}`, "error");
+                        hideLoading();
+                    });
+                }
+
+                const customOptionsDocRef = getUserCustomOptionsDocRef();
+                if (customOptionsDocRef) {
+                    onSnapshot(customOptionsDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            customAssetTypes = data.assetTypes || [];
+                        } else {
+                            customAssetTypes = [];
+                        }
+                        updateAllDropdowns();
+                        hideLoading();
+                    }, (error) => {
+                        console.error("Error listening to custom options:", error);
+                        displayMessage(`Gagal memuat opsi kustom: ${error.message}`, "error");
+                        hideLoading();
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading data from Firestore:", error);
+                displayMessage(`Gagal memuat data dari Firebase: ${error.message}`, "error");
+                hideLoading();
+            }
+        }
+
+        async function saveInvestmentToFirestore(investmentData) {
+            if (!userId) {
+                displayMessage("Anda harus masuk untuk menyimpan investasi.", "error");
+                return false;
+            }
+            showLoading("Menyimpan investasi...");
+            try {
+                const investmentsColRef = getUserInvestmentsCollectionRef();
+                if (!investmentsColRef) return false;
+
+                if (investmentData.id) {
+                    const investmentDocRef = doc(investmentsColRef, investmentData.id);
+                    await setDoc(investmentDocRef, investmentData, { merge: true });
+                } else {
+                    await addDoc(investmentsColRef, investmentData);
+                }
+                hideLoading();
+                return true;
+            } catch (error) {
+                console.error("Error saving investment to Firestore:", error);
+                displayMessage(`Gagal menyimpan investasi: ${error.message}`, "error");
+                hideLoading();
+                return false;
+            }
+        }
+
+        async function deleteInvestmentFromFirestore(investmentId) {
+            if (!userId) {
+                displayMessage("Anda harus masuk untuk menghapus investasi.", "error");
+                return false;
+            }
+            showLoading("Menghapus investasi...");
+            try {
+                const investmentsColRef = getUserInvestmentsCollectionRef();
+                if (!investmentsColRef) return false;
+
+                const investmentDocRef = doc(investmentsColRef, investmentId);
+                await deleteDoc(investmentDocRef);
+                displayMessage("Investasi berhasil dihapus!", "success");
+                hideLoading();
+                return true;
+            } catch (error) {
+                console.error("Error deleting investment from Firestore:", error);
+                displayMessage(`Gagal menghapus investasi: ${error.message}`, "error");
+                hideLoading();
+                return false;
+            }
+        }
+
+        async function saveCustomDropdownOptionsToFirestore() {
+            if (!userId) {
+                displayMessage("Anda harus masuk untuk menyimpan opsi kustom.", "error");
+                return false;
+            }
+            showLoading("Menyimpan opsi kustom...");
+            try {
+                const customOptionsDocRef = getUserCustomOptionsDocRef();
+                if (!customOptionsDocRef) return false;
+
+                await setDoc(customOptionsDocRef, { assetTypes: customAssetTypes });
+                displayMessage("Opsi kustom berhasil disimpan!", "success");
+                hideLoading();
+                return true;
+            } catch (error) {
+                console.error("Error saving custom options to Firestore:", error);
+                displayMessage(`Gagal menyimpan opsi kustom: ${error.message}`, "error");
+                hideLoading();
+                return false;
+            }
+        }
+
+        // --- UI and Data Rendering ---
+        function populateSelect(selectElement, optionsArray, includeManual = true) {
+            selectElement.innerHTML = '';
+            optionsArray.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                selectElement.appendChild(opt);
+            });
+            if (includeManual) {
+                const manualOpt = document.createElement('option');
+                manualOpt.value = 'manual';
+                manualOpt.textContent = 'Lainnya (input manual)';
+                selectElement.appendChild(manualOpt);
+            }
+        }
+
+        function renderCustomOptionsList(optionsArray, listElement) {
+            listElement.innerHTML = '';
+            if (optionsArray.length === 0) {
+                listElement.innerHTML = '<li class="text-gray-500">Belum ada opsi kustom.</li>';
+                return;
+            }
+            optionsArray.forEach(option => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center py-1';
+                li.innerHTML = `
+                    <span>${option}</span>
+                    <button data-value="${option}" class="delete-custom-option-button text-red-500 hover:text-red-700 text-sm font-bold ml-2">Hapus</button>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+        function updateAllDropdowns() {
+            const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])].sort();
+            populateSelect(document.getElementById('tipeAset'), allAssetTypes, true);
+            renderCustomOptionsList(customAssetTypes, currentAssetTypeOptionsList);
+        }
+
+        function renderPortfolio() {
+            portfolioTableBody.innerHTML = '';
+
+            if (investments.length === 0) {
+                noInvestmentsMessage.classList.remove('hidden');
+                portfolioTableBody.classList.add('hidden');
+            } else {
+                noInvestmentsMessage.classList.add('hidden');
+                portfolioTableBody.classList.remove('hidden');
+                investments.forEach(inv => {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white border-b hover:bg-gray-50';
+                    const totalInvestasi = parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli);
+                    // Placeholder for current value and P/L
+                    const nilaiSaatIni = totalInvestasi; // Replace with real-time data if available
+                    const pnl = nilaiSaatIni - totalInvestasi;
+                    const pnlPercentage = totalInvestasi > 0 ? (pnl / totalInvestasi) * 100 : 0;
+                    const pnlColor = pnl >= 0 ? 'text-green-600' : 'text-red-600';
+
+                    row.innerHTML = `
+                        <td class="py-4 px-6 font-medium text-gray-900">${inv.namaAset}</td>
+                        <td class="py-4 px-6">${inv.tipeAset}</td>
+                        <td class="py-4 px-6">${parseFloat(inv.jumlahUnit).toLocaleString('id-ID')}</td>
+                        <td class="py-4 px-6">Rp ${parseFloat(inv.hargaBeli).toLocaleString('id-ID')}</td>
+                        <td class="py-4 px-6">Rp ${totalInvestasi.toLocaleString('id-ID')}</td>
+                        <td class="py-4 px-6 ${pnlColor}">Rp ${pnl.toLocaleString('id-ID')} (${pnlPercentage.toFixed(2)}%)</td>
+                        <td class="py-4 px-6">${new Date(inv.tanggalBeli).toLocaleDateString('id-ID')}</td>
+                        <td class="py-4 px-6 flex space-x-2">
+                            <button data-id="${inv.id}" class="edit-button text-yellow-500 hover:text-yellow-700"><i class="fas fa-edit"></i></button>
+                            <button data-id="${inv.id}" class="delete-button text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    portfolioTableBody.appendChild(row);
+                });
+            }
+            updateDashboardMetrics();
+        }
+        
+        function updateDashboardMetrics() {
+            const totalPortfolioValue = investments.reduce((acc, inv) => acc + (parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli)), 0);
+            document.getElementById('totalPortfolioValue').textContent = `Rp ${totalPortfolioValue.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            // Placeholder for total profit/loss
+            document.getElementById('totalProfitLoss').textContent = `Rp 0.00`;
+            document.getElementById('totalProfitLoss').className = 'text-2xl font-bold text-gray-600';
+        }
+
+        function renderAll() {
+            renderPortfolio();
+            updateAllDropdowns();
+            renderCharts();
+        }
+
+        // --- Chart.js Functions ---
+        function renderCharts() {
+            const data = investments.reduce((acc, inv) => {
+                const value = parseFloat(inv.jumlahUnit) * parseFloat(inv.hargaBeli);
+                if (acc[inv.tipeAset]) {
+                    acc[inv.tipeAset] += value;
+                } else {
+                    acc[inv.tipeAset] = value;
+                }
+                return acc;
+            }, {});
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+
+            if (labels.length > 0) {
+                 portfolioChart = new Chart(portfolioChartCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: elegantColors.slice(0, labels.length),
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: 'Alokasi Aset Portofolio', font: { size: 16 }, color: '#374151' }
+                        }
+                    }
+                });
+                renderChartLegend(portfolioLegend, labels, elegantColors.slice(0, labels.length));
+            } else {
+                 portfolioLegend.innerHTML = '<p class="text-center text-gray-500">Data tidak cukup untuk menampilkan chart.</p>';
+            }
+        }
+
+        function renderChartLegend(legendContainer, labels, colors) {
+            if (!legendContainer) return;
+            legendContainer.innerHTML = '';
+            labels.forEach((label, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center space-x-2';
+                legendItem.innerHTML = `
+                    <span class="w-3 h-3 rounded-full" style="background-color: ${colors[index]}"></span>
+                    <span class="text-sm text-gray-700">${label}</span>
+                `;
+                legendContainer.appendChild(legendItem);
+            });
+        }
+        
+        // --- Calculator Functions ---
+        function calculateAveragingDown() {
+            const entryPrice = parseFloat(document.getElementById('avgEntryPrice').value);
+            const avgDownPercent = parseFloat(document.getElementById('avgDownPercent').value);
+            const avgLevels = parseInt(document.getElementById('avgLevels').value);
+            const resultContainer = document.getElementById('averagingDownResults');
+
+            if (isNaN(entryPrice) || isNaN(avgDownPercent) || isNaN(avgLevels)) {
+                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
+                return;
+            }
+
+            let resultsHtml = '<ul class="space-y-2 list-disc list-inside">';
+            let currentPrice = entryPrice;
+
+            for (let i = 1; i <= avgLevels; i++) {
+                currentPrice = currentPrice * (1 - (avgDownPercent / 100));
+                resultsHtml += `<li>Level ${i}: <strong>Rp ${currentPrice.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></li>`;
+            }
+            resultsHtml += '</ul>';
+            resultContainer.innerHTML = resultsHtml;
+        }
+
+        function calculateDividendYield() {
+            const entryPrice = parseFloat(document.getElementById('divEntryPrice').value);
+            const dividendPerShare = parseFloat(document.getElementById('dividendPerShare').value);
+            const resultContainer = document.getElementById('dividendYieldResult');
+
+            if (isNaN(entryPrice) || isNaN(dividendPerShare) || entryPrice <= 0) {
+                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
+                return;
+            }
+            
+            const yieldPercent = (dividendPerShare / entryPrice) * 100;
+            resultContainer.innerHTML = `<p>Estimasi Yield: <strong class="text-green-600">${yieldPercent.toFixed(2)}%</strong></p>`;
+        }
+
+        function calculateTakeProfit() {
+            const entryPrice = parseFloat(document.getElementById('tpEntryPrice').value);
+            const lots = parseFloat(document.getElementById('tpLots').value);
+            const targetProfit = parseFloat(document.getElementById('tpTargetProfit').value);
+            const resultContainer = document.getElementById('takeProfitResult');
+
+            if (isNaN(entryPrice) || isNaN(lots) || isNaN(targetProfit)) {
+                resultContainer.innerHTML = '<p class="text-red-500">Harap isi semua field dengan angka yang valid.</p>';
+                return;
+            }
+
+            const totalShares = lots * 100; // Assuming 1 lot = 100 shares for stocks
+            const requiredPrice = entryPrice + (targetProfit / totalShares);
+            
+            resultContainer.innerHTML = `<p>Harga Jual per Lembar: <strong class="text-green-600">Rp ${requiredPrice.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></p>`;
+        }
+
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (initialAuthToken) {
+                try {
+                    showLoading("Masuk secara otomatis...");
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } catch (error) {
+                    console.error("Error signing in with custom token:", error);
+                    await signInAnonymously(auth);
+                }
+            } else {
+                await signInAnonymously(auth);
+            }
+            document.getElementById('calculateAvgDown').addEventListener('click', calculateAveragingDown);
+            document.getElementById('calculateDividendYield').addEventListener('click', calculateDividendYield);
+            document.getElementById('calculateTakeProfit').addEventListener('click', calculateTakeProfit);
+        });
+
+        mobileMenuButton.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
+        mainContent.addEventListener('click', () => {
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
+
+        openAddInvestmentModalButton.addEventListener('click', () => {
+            investmentFormModal.classList.remove('hidden');
+            formTitle.textContent = 'Tambah Investasi Baru';
+            submitButton.textContent = 'Tambah Investasi';
+            investmentForm.reset();
+            document.getElementById('tipeAsetManual').classList.add('hidden');
+            editingInvestmentId = null;
+        });
+
+        closeModalButton.addEventListener('click', () => investmentFormModal.classList.add('hidden'));
+        investmentFormModal.addEventListener('click', (e) => {
+            if (e.target === investmentFormModal) {
+                investmentFormModal.classList.add('hidden');
+            }
+        });
+
+        investmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tipeAset = document.getElementById('tipeAset').value;
+            const tipeAsetManual = document.getElementById('tipeAsetManual').value.trim();
+
+            const investmentData = {
+                namaAset: document.getElementById('namaAset').value.trim(),
+                tipeAset: tipeAset === 'manual' ? tipeAsetManual : tipeAset,
+                jumlahUnit: document.getElementById('jumlahUnit').value,
+                hargaBeli: document.getElementById('hargaBeli').value,
+                tanggalBeli: document.getElementById('tanggalBeli').value,
+                id: editingInvestmentId
+            };
+
+            if (investmentData.namaAset && investmentData.tipeAset && investmentData.jumlahUnit && investmentData.hargaBeli && investmentData.tanggalBeli) {
+                const saved = await saveInvestmentToFirestore(investmentData);
+                if (saved) {
+                    displayMessage(`Investasi berhasil ${editingInvestmentId ? 'diperbarui' : 'ditambahkan'}.`, "success");
+                    investmentFormModal.classList.add('hidden');
+                }
+            } else {
+                displayMessage("Harap isi semua field.", "error");
+            }
+        });
+        
+        document.getElementById('tipeAset').addEventListener('change', (e) => {
+            const manualInput = document.getElementById('tipeAsetManual');
+            if (e.target.value === 'manual') {
+                manualInput.classList.remove('hidden');
+            } else {
+                manualInput.classList.add('hidden');
+            }
+        });
+
+        portfolioTableBody.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const investmentId = button.dataset.id;
+            if (button.classList.contains('edit-button')) {
+                const investmentToEdit = investments.find(inv => inv.id === investmentId);
+                if (investmentToEdit) {
+                    editingInvestmentId = investmentId;
+                    formTitle.textContent = 'Edit Investasi';
+                    submitButton.textContent = 'Simpan Perubahan';
+                    document.getElementById('namaAset').value = investmentToEdit.namaAset;
+                    document.getElementById('jumlahUnit').value = investmentToEdit.jumlahUnit;
+                    document.getElementById('hargaBeli').value = investmentToEdit.hargaBeli;
+                    document.getElementById('tanggalBeli').value = investmentToEdit.tanggalBeli;
+
+                    const tipeAsetSelect = document.getElementById('tipeAset');
+                    const tipeAsetManualInput = document.getElementById('tipeAsetManual');
+                    const allAssetTypes = [...new Set([...defaultAssetTypes, ...customAssetTypes])];
+                    if (allAssetTypes.includes(investmentToEdit.tipeAset)) {
+                        tipeAsetSelect.value = investmentToEdit.tipeAset;
+                        tipeAsetManualInput.classList.add('hidden');
+                    } else {
+                        tipeAsetSelect.value = 'manual';
+                        tipeAsetManualInput.value = investmentToEdit.tipeAset;
+                        tipeAsetManualInput.classList.remove('hidden');
+                    }
+                    
+                    investmentFormModal.classList.remove('hidden');
+                }
+            } else if (button.classList.contains('delete-button')) {
+                displayConfirmation("Apakah Anda yakin ingin menghapus investasi ini?", () => deleteInvestmentFromFirestore(investmentId));
+            }
+        });
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.replace('bg-indigo-700', 'hover:bg-indigo-600'));
+                Object.values(tabContents).forEach(content => content.classList.add('hidden'));
+                button.classList.replace('hover:bg-indigo-600', 'bg-indigo-700');
+                const tabId = button.dataset.tab;
+                if (tabContents[tabId]) {
+                    tabContents[tabId].classList.remove('hidden');
+                }
+                if (tabId === 'dashboard' && isAuthReady) {
+                    renderCharts();
+                }
+            });
+        });
+
+        addAssetTypeOptionButton.addEventListener('click', () => handleAddCustomOption(assetTypeOptionInput, customAssetTypes));
+        assetTypeOptionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddCustomOption(assetTypeOptionInput, customAssetTypes);
+            }
+        });
+
+        currentAssetTypeOptionsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-custom-option-button')) {
+                handleDeleteCustomOption(e, customAssetTypes);
+            }
+        });
+
+        loginButton.addEventListener('click', handleGoogleLogin);
+        logoutButton.addEventListener('click', handleLogout);
+
+        // --- Helper functions ---
+        async function handleAddCustomOption(inputElement, customArray) {
+            if (!userId) {
+                displayMessage("Anda harus masuk untuk menambahkan opsi kustom.", "error");
+                return;
+            }
+            const newItem = inputElement.value.trim();
+            if (newItem && !customArray.includes(newItem)) {
+                customArray.push(newItem);
+                await saveCustomDropdownOptionsToFirestore();
+                displayMessage(`${newItem} berhasil ditambahkan!`, "success");
+                inputElement.value = '';
+                updateAllDropdowns();
+            } else if (customArray.includes(newItem)) {
+                displayMessage(`"${newItem}" sudah ada.`, "error");
+            } else {
+                displayMessage("Harap masukkan nama opsi.", "error");
+            }
+        }
+
+        async function handleDeleteCustomOption(event, customArray) {
+            if (!userId) {
+                displayMessage("Anda harus masuk untuk menghapus opsi kustom.", "error");
+                return;
+            }
+            const itemToDelete = event.target.dataset.value;
+            displayConfirmation(`Apakah Anda yakin ingin menghapus "${itemToDelete}"?`, async () => {
+                const index = customArray.indexOf(itemToDelete);
+                if (index > -1) {
+                    customArray.splice(index, 1);
+                    await saveCustomDropdownOptionsToFirestore();
+                    displayMessage(`"${itemToDelete}" berhasil dihapus.`, "success");
+                    updateAllDropdowns();
+                }
+            });
+        }
+
+        function showLoading(message = "Memuat...") {
+            loadingOverlay.querySelector('span').textContent = message;
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function displayConfirmation(message, onConfirm) {
+            confirmMessage.textContent = message;
+            confirmModal.classList.remove('hidden');
+
+            const handleYes = () => {
+                confirmModal.classList.add('hidden');
+                onConfirm();
+                confirmYesBtn.removeEventListener('click', handleYes);
+                confirmNoBtn.removeEventListener('click', handleNo);
+            };
+
+            const handleNo = () => {
+                confirmModal.classList.add('hidden');
+                confirmYesBtn.removeEventListener('click', handleYes);
+                confirmNoBtn.removeEventListener('click', handleNo);
+            };
+
+            confirmYesBtn.addEventListener('click', handleYes, { once: true });
+            confirmNoBtn.addEventListener('click', handleNo, { once: true });
+        }
+
+        function displayMessage(message, type = 'info') {
+            messageText.textContent = message;
+            messageModal.classList.remove('hidden');
+            let iconHtml = '';
+            if (type === 'success') {
+                iconHtml = '<i class="fas fa-check-circle text-green-500 text-3xl"></i>';
+            } else if (type === 'error') {
+                iconHtml = '<i class="fas fa-times-circle text-red-500 text-3xl"></i>';
+            } else {
+                iconHtml = '<i class="fas fa-info-circle text-blue-500 text-3xl"></i>';
+            }
+            messageModalIcon.innerHTML = iconHtml;
+        }
+
+        messageCloseBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+    </script>
+</head>
+
+<body class="bg-gray-100 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-indigo-800 text-indigo-100 p-6 space-y-6 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-white flex items-center"><i class="fas fa-chart-line mr-2"></i>Portofolio</h1>
+            </div>
+            <nav class="space-y-2">
+                <button data-tab="dashboard" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg bg-indigo-700 text-white transition-colors duration-200">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button data-tab="kalkulator" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg hover:bg-indigo-600 text-indigo-200 transition-colors duration-200">
+                    <i class="fas fa-calculator"></i>
+                    <span>Analisis & Kalkulator</span>
+                </button>
+                <button data-tab="data-management" class="tab-button w-full flex items-center space-x-2 p-3 rounded-lg hover:bg-indigo-600 text-indigo-200 transition-colors duration-200">
+                    <i class="fas fa-database"></i>
+                    <span>Manajemen Data</span>
+                </button>
+            </nav>
+
+            <div class="absolute bottom-6 left-6 right-6">
+                <div id="authStatus" class="text-sm text-indigo-300 mb-2">Belum masuk</div>
+                <div id="userIdDisplay" class="text-xs text-indigo-400 break-all mb-4"></div>
+                <button id="loginButton" class="w-full flex items-center justify-center space-x-2 p-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors duration-200">
+                    <i class="fab fa-google"></i>
+                    <span>Masuk dengan Google</span>
+                </button>
+                <button id="logoutButton" class="w-full flex items-center justify-center space-x-2 p-3 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors duration-200 hidden">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Keluar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div id="mainContent" class="flex-1 flex flex-col hidden">
+            <header class="md:hidden flex items-center justify-between p-4 bg-indigo-800 text-white">
+                <button id="mobileMenuButton" class="text-white">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h1 class="text-xl font-bold">Manajemen Portofolio</h1>
+                <div></div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
+                <!-- Dashboard Tab -->
+                <div id="dashboard" class="tab-content">
+                    <!-- Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Total Nilai Portofolio (Ekuitas)</h3>
+                            <p id="totalPortfolioValue" class="text-2xl font-bold text-indigo-600 mt-1">Rp 0.00</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Total Keuntungan/Kerugian</h3>
+                            <p id="totalProfitLoss" class="text-2xl font-bold text-gray-600 mt-1">Rp 0.00</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Aset Teratas (Nilai)</h3>
+                            <p id="topAsset" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Portfolio List -->
+                        <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-xl font-bold text-gray-900">Portofolio Investasi</h2>
+                                <button id="openAddInvestmentModalButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                                    <i class="fas fa-plus mr-2"></i>Tambah Aset
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3 px-6">Nama Aset</th>
+                                            <th scope="col" class="py-3 px-6">Tipe</th>
+                                            <th scope="col" class="py-3 px-6">Unit/Saham</th>
+                                            <th scope="col" class="py-3 px-6">Harga Beli Rata-rata</th>
+                                            <th scope="col" class="py-3 px-6">Total Investasi</th>
+                                            <th scope="col" class="py-3 px-6">P/L</th>
+                                            <th scope="col" class="py-3 px-6">Tanggal</th>
+                                            <th scope="col" class="py-3 px-6">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="portfolioTableBody">
+                                        <!-- Rows will be inserted here -->
+                                    </tbody>
+                                </table>
+                                <div id="noInvestmentsMessage" class="hidden text-center text-gray-500 py-12">
+                                    <i class="fas fa-folder-open text-5xl mb-4"></i>
+                                    <p class="text-xl">Portofolio Anda masih kosong.</p>
+                                    <p class="mt-2 text-md">Klik "Tambah Aset" untuk memulai.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Asset Allocation Chart -->
+                        <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+                             <div class="w-full h-64 relative">
+                                <canvas id="portfolioChart"></canvas>
+                            </div>
+                            <div id="portfolioLegend" class="mt-4 grid grid-cols-2 gap-2 w-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculators Tab -->
+                <div id="kalkulator" class="tab-content hidden">
+                     <h2 class="text-2xl font-bold text-gray-900 mb-6">Analisis & Kalkulator</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Averaging Down Calculator -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-4">Kalkulator Averaging Down</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="avgEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri Awal (Rp)</label>
+                                    <input type="number" id="avgEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 1000">
+                                </div>
+                                <div>
+                                    <label for="avgDownPercent" class="block text-sm font-medium text-gray-700">Penurunan untuk Averaging (%)</label>
+                                    <input type="number" id="avgDownPercent" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 10">
+                                </div>
+                                <div>
+                                    <label for="avgLevels" class="block text-sm font-medium text-gray-700">Jumlah Tingkat Averaging</label>
+                                    <input type="number" id="avgLevels" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 5">
+                                </div>
+                                <button id="calculateAvgDown" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
+                                <div id="averagingDownResults" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
+                            </div>
+                        </div>
+                        <!-- Dividend Yield Calculator -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-4">Kalkulator Yield Dividen</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="divEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri per Lembar (Rp)</label>
+                                    <input type="number" id="divEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 1000">
+                                </div>
+                                 <div>
+                                    <label for="dividendPerShare" class="block text-sm font-medium text-gray-700">Dividen per Lembar (Rp)</label>
+                                    <input type="number" id="dividendPerShare" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 50">
+                                </div>
+                                <button id="calculateDividendYield" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
+                                <div id="dividendYieldResult" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
+                            </div>
+                        </div>
+                        <!-- Take Profit Calculator -->
+                         <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-4">Kalkulator Take Profit</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="tpEntryPrice" class="block text-sm font-medium text-gray-700">Harga Entri per Lembar (Rp)</label>
+                                    <input type="number" id="tpEntryPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 1000">
+                                </div>
+                                 <div>
+                                    <label for="tpLots" class="block text-sm font-medium text-gray-700">Jumlah Lot</label>
+                                    <input type="number" id="tpLots" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 10">
+                                </div>
+                                <div>
+                                    <label for="tpTargetProfit" class="block text-sm font-medium text-gray-700">Target Profit (Rp)</label>
+                                    <input type="number" id="tpTargetProfit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="e.g., 500000">
+                                </div>
+                                <button id="calculateTakeProfit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Hitung</button>
+                                <div id="takeProfitResult" class="mt-4 p-4 bg-gray-50 rounded-md"></div>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+
+                <!-- Data Management Tab -->
+                <div id="data-management" class="tab-content hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                         <h2 class="text-2xl font-bold text-gray-900 mb-6">Manajemen Data & Opsi</h2>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="p-4 bg-gray-50 rounded-lg shadow-inner">
+                                <h4 class="text-xl font-semibold text-gray-800 mb-2">Tipe Aset Kustom</h4>
+                                <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                                    <input type="text" id="assetTypeOptionInput" placeholder="Nama Tipe Aset Baru" class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                                    <button id="addAssetTypeOptionButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Tambah</button>
+                                </div>
+                                <div class="mt-4">
+                                    <h4 class="text-md font-semibold text-gray-700 mb-2">Opsi kustom aktif:</h4>
+                                    <ul id="currentAssetTypeOptionsList" class="list-disc list-inside text-sm text-gray-600 space-y-1"></ul>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            </main>
+            <footer class="bg-gray-800 text-white text-center py-4 text-sm">
+                <p>&copy; 2024 RichD. All rights reserved.</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing investments -->
+    <div id="investmentFormModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3">
+                <h3 id="formTitle" class="text-2xl font-bold text-gray-900">Tambah Investasi</h3>
+                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="investmentForm" class="space-y-4 mt-4">
+                <div>
+                    <label for="namaAset" class="block text-sm font-medium text-gray-700">Nama Aset/Saham</label>
+                    <input type="text" id="namaAset" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: BBCA">
+                </div>
+                <div>
+                    <label for="tipeAset" class="block text-sm font-medium text-gray-700">Tipe Aset</label>
+                    <select id="tipeAset" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></select>
+                    <input type="text" id="tipeAsetManual" placeholder="Input Tipe Aset Manual" class="mt-2 hidden w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                 <div>
+                    <label for="jumlahUnit" class="block text-sm font-medium text-gray-700">Jumlah Unit/Saham</label>
+                    <input type="number" step="any" id="jumlahUnit" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: 100">
+                </div>
+                 <div>
+                    <label for="hargaBeli" class="block text-sm font-medium text-gray-700">Harga Beli Rata-rata (per unit/saham)</label>
+                    <input type="number" step="any" id="hargaBeli" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: 9500">
+                </div>
+                 <div>
+                    <label for="tanggalBeli" class="block text-sm font-medium text-gray-700">Tanggal Beli</label>
+                    <input type="date" id="tanggalBeli" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" id="submitButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-md">Tambah</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modals (Loading, Confirm, Message) -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-[100] flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex items-center space-x-4">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+            <span class="text-lg font-semibold text-gray-700">Memuat...</span>
+        </div>
+    </div>
+    <div id="confirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
+            <h3 class="text-xl font-bold text-gray-900">Konfirmasi</h3>
+            <p id="confirmMessage" class="text-md text-gray-500 my-4"></p>
+            <button id="confirmYes" class="px-4 py-2 bg-red-500 text-white rounded-md w-24 shadow-sm hover:bg-red-700">Ya</button>
+            <button id="confirmNo" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md w-24 ml-4 shadow-sm hover:bg-gray-300">Tidak</button>
+        </div>
+    </div>
+    <div id="messageModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-center">
+            <div id="messageModalIcon" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full"></div>
+            <p id="messageText" class="text-md text-gray-500 my-4"></p>
+            <button id="messageClose" class="px-4 py-2 bg-indigo-600 text-white rounded-md w-24 shadow-sm hover:bg-indigo-700">Tutup</button>
+        </div>
+    </div>
+
+    <style>
+        .loader { border-top-color: #4f46e5; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+
+</body>
+</html>
