@@ -41,6 +41,8 @@
         let currentUser = null;
         let autoSaveTimer = null;
         let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
+        let defaultFeeBeli = 0.11; // Default value for buy fee
+        let defaultFeeJual = 0.11; // Default value for sell fee
 
 
         // --- DOM Elements ---
@@ -49,14 +51,16 @@
             log: document.getElementById('tab-btn-log'), 
             saved: document.getElementById('tab-btn-saved'), 
             performance: document.getElementById('tab-btn-performance'),
-            backup: document.getElementById('tab-btn-backup') 
+            backup: document.getElementById('tab-btn-backup'),
+            settings: document.getElementById('tab-btn-settings') // New settings tab button
         };
         const tabContents = { 
             simulator: document.getElementById('tab-content-simulator'), 
             log: document.getElementById('tab-content-log'), 
             saved: document.getElementById('tab-content-saved'), 
             performance: document.getElementById('tab-content-performance'),
-            backup: document.getElementById('tab-content-backup')
+            backup: document.getElementById('tab-content-backup'),
+            settings: document.getElementById('tab-content-settings') // New settings tab content
         };
         
         // Modal Elements
@@ -91,6 +95,20 @@
         const logSellDateInput = document.getElementById('log-sell-date');
         const logFeeJualInput = document.getElementById('log-fee-jual');
         const sellFieldsContainer = document.getElementById('sell-fields-container');
+
+        // Settings Elements
+        const defaultFeeBeliInput = document.getElementById('default-fee-beli');
+        const defaultFeeJualInput = document.getElementById('default-fee-jual');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+        // Filter Elements
+        const filterDateFromInput = document.getElementById('filter-date-from');
+        const filterDateToInput = document.getElementById('filter-date-to');
+        const filterStockCodeInput = document.getElementById('filter-stock-code');
+        const filterReasonInput = document.getElementById('filter-reason');
+        const filterStatusSelect = document.getElementById('filter-status');
+        const filterApplyBtn = document.getElementById('filter-apply-btn');
+        const filterResetBtn = document.getElementById('filter-reset-btn');
 
 
         // Custom Confirmation Modal Elements
@@ -182,6 +200,8 @@
                     initialEquity: document.getElementById('initial-equity').value,
                     currentMarketPrices: currentMarketPrices,
                     simulationReason: document.getElementById('sim-reason').value,
+                    defaultFeeBeli: defaultFeeBeli, // Save default buy fee
+                    defaultFeeJual: defaultFeeJual, // Save default sell fee
                     updatedAt: new Date().toISOString()
                 };
 
@@ -212,7 +232,13 @@
                     document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                     currentMarketPrices = data.currentMarketPrices || {};
                     document.getElementById('sim-reason').value = data.simulationReason || '';
+                    defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
+                    defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
                     
+                    // Update settings inputs with loaded defaults
+                    defaultFeeBeliInput.value = defaultFeeBeli;
+                    defaultFeeJualInput.value = defaultFeeJual;
+
                     refreshAllApplicationData();
                     showNotification('Data berhasil dimuat dari cloud!', 'Sukses');
                 } else {
@@ -233,6 +259,8 @@
                 initialEquity: document.getElementById('initial-equity').value,
                 currentMarketPrices: currentMarketPrices,
                 simulationReason: document.getElementById('sim-reason').value,
+                defaultFeeBeli: defaultFeeBeli, // Include default fees in backup
+                defaultFeeJual: defaultFeeJual, // Include default fees in backup
             };
             const dataStr = JSON.stringify(dataToSave, null, 2);
             const dataBlob = new Blob([dataStr], {type: "application/json"});
@@ -267,6 +295,12 @@
                                 document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                                 currentMarketPrices = data.currentMarketPrices || {};
                                 document.getElementById('sim-reason').value = data.simulationReason || '';
+                                defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
+                                defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
+                                
+                                // Update settings inputs with loaded defaults
+                                defaultFeeBeliInput.value = defaultFeeBeli;
+                                defaultFeeJualInput.value = defaultFeeJual;
 
                                 refreshAllApplicationData();
                                 showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
@@ -296,18 +330,21 @@
             currentMarketPrices = {};
             document.getElementById('initial-equity').value = "100000000";
             document.getElementById('sim-reason').value = "";
+            defaultFeeBeli = 0.11; // Reset default fees
+            defaultFeeJual = 0.11; // Reset default fees
+            defaultFeeBeliInput.value = defaultFeeBeli;
+            defaultFeeJualInput.value = defaultFeeJual;
             refreshAllApplicationData();
         }
 
         function refreshAllApplicationData() {
-            renderLogTable();
+            applyLogFilters(); // Apply filters on refresh
             renderFinancialSummaries();
             renderSavedSimulationsTable();
             calculateDashboard();
             calculateEntryForProfit();
             updateSimulationReasonDisplay();
             renderPerformanceTab(); // Call renderPerformanceTab directly
-            // renderPerformanceChart(); // This is called inside renderPerformanceTab
             triggerAutoSave();
         }
 
@@ -381,15 +418,16 @@
         }
 
         // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
-        function renderLogTable() {
+        function renderLogTable(filteredLogs = portfolioLog) {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
-            // Update colspan for the new Fee Beli column
-            if (portfolioLog.length === 0) { logTableBody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-500">Belum ada catatan transaksi.</td></tr>`; return; }
-            portfolioLog.forEach((log, index) => {
+            // Update colspan for the new Fee Beli, Fee Jual, and Alasan Beli columns
+            if (filteredLogs.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
+            
+            filteredLogs.forEach((log, index) => {
                 const row = document.createElement('tr');
                 row.className = 'bg-gray-800 border-b border-gray-700';
-                let plHtml, statusHtml, actionHtml, sellDateHtml;
+                let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
 
                 // Calculate actual buy price including Fee Beli
                 const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
@@ -402,19 +440,21 @@
                     plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Hapus</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
+                    feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
                 } else {
                     plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Jual</button>
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Hapus</button>
+                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                    feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
                 }
                 row.innerHTML = `
                     <td class="px-6 py-4">${log.date}</td>
@@ -422,6 +462,8 @@
                     <td class="px-6 py-4">${formatCurrency(log.price)}</td>
                     <td class="px-6 py-4">${log.lot}</td>
                     <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
+                    ${feeJualDisplay}
+                    <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
                     ${statusHtml}
                     ${sellDateHtml}
                     ${plHtml}
@@ -832,7 +874,7 @@
                 document.getElementById('log-buy-date').value = logToEdit.date;
                 document.getElementById('log-buy-price').value = logToEdit.price;
                 document.getElementById('log-buy-lot').value = logToEdit.lot;
-                logFeeBeliInput.value = logToEdit.feeBeli || 0.11; // Default Fee Beli
+                logFeeBeliInput.value = logToEdit.feeBeli || defaultFeeBeli; // Default Fee Beli
 
                 document.getElementById('log-reason').value = logToEdit.reason;
 
@@ -841,12 +883,12 @@
                     sellFieldsContainer.classList.remove('hidden');
                     logSellPriceInput.value = logToEdit.sellPrice;
                     logSellDateInput.value = logToEdit.sellDate;
-                    logFeeJualInput.value = logToEdit.feeJual || 0.11; // Default Fee Jual
+                    logFeeJualInput.value = logToEdit.feeJual || defaultFeeJual; // Default Fee Jual
                 } else {
                     sellFieldsContainer.classList.add('hidden');
                     logSellPriceInput.value = '';
                     logSellDateInput.value = '';
-                    logFeeJualInput.value = 0.11;
+                    logFeeJualInput.value = defaultFeeJual; // Set default for new sell
                 }
                 openModal(addLogModal);
             }
@@ -962,6 +1004,57 @@
             });
         }
 
+        // --- SETTINGS MANAGEMENT ---
+        function saveSettings() {
+            defaultFeeBeli = parseFloat(defaultFeeBeliInput.value);
+            defaultFeeJual = parseFloat(defaultFeeJualInput.value);
+            showNotification('Pengaturan default berhasil disimpan!', 'Sukses');
+            triggerAutoSave(); // Save settings to Firebase
+        }
+
+        // --- FILTER LOGIC ---
+        function applyLogFilters() {
+            const dateFrom = filterDateFromInput.value;
+            const dateTo = filterDateToInput.value;
+            const stockCode = filterStockCodeInput.value.toLowerCase();
+            const reason = filterReasonInput.value.toLowerCase();
+            const status = filterStatusSelect.value;
+
+            const filteredLogs = portfolioLog.filter(log => {
+                const logDate = log.date;
+                const logCode = log.code.toLowerCase();
+                const logReason = log.reason ? log.reason.toLowerCase() : '';
+                const logStatus = log.sellPrice ? 'closed' : 'open';
+
+                // Date filter
+                if (dateFrom && logDate < dateFrom) return false;
+                if (dateTo && logDate > dateTo) return false;
+
+                // Stock Code filter
+                if (stockCode && !logCode.includes(stockCode)) return false;
+
+                // Reason filter
+                if (reason && !logReason.includes(reason)) return false;
+
+                // Status filter
+                if (status !== 'all' && logStatus !== status) return false;
+
+                return true;
+            });
+
+            renderLogTable(filteredLogs);
+        }
+
+        function resetLogFilters() {
+            filterDateFromInput.value = '';
+            filterDateToInput.value = '';
+            filterStockCodeInput.value = '';
+            filterReasonInput.value = '';
+            filterStatusSelect.value = 'all';
+            applyLogFilters(); // Re-render with all logs
+        }
+
+
         // --- EVENT LISTENERS ---
         document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
         logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
@@ -978,11 +1071,11 @@
             logEditIndexInput.value = ''; // Clear edit index
             logForm.reset(); // Clear form fields
             document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
-            logFeeBeliInput.value = 0.11; // Default Fee Beli
+            logFeeBeliInput.value = defaultFeeBeli; // Set default Fee Beli from settings
             sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
             logSellPriceInput.value = '';
             logSellDateInput.value = '';
-            logFeeJualInput.value = 0.11;
+            logFeeJualInput.value = defaultFeeJual; // Set default Fee Jual from settings
             openModal(addLogModal);
         });
         document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
@@ -1005,17 +1098,20 @@
 
         document.getElementById('log-table-body').addEventListener('click', (event) => {
             if (event.target.classList.contains('delete-log-btn')) {
-                deleteLogIndexToConfirm = parseInt(event.target.dataset.index); // Store index
-                handleDeleteLog(deleteLogIndexToConfirm); // Call the new handler
+                // Find the actual index in portfolioLog array
+                const logIndex = parseInt(event.target.dataset.index);
+                handleDeleteLog(logIndex); // Call the new handler
             } else if (event.target.classList.contains('sell-log-btn')) {
-                const index = parseInt(event.target.dataset.index);
-                document.getElementById('sell-log-index').value = index;
+                // Find the actual index in portfolioLog array
+                const logIndex = parseInt(event.target.dataset.index);
+                document.getElementById('sell-log-index').value = logIndex;
                 document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
-                document.getElementById('sell-fee-jual').value = portfolioLog[index].feeJual || 0.11; // Set default Fee Jual
+                document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default Fee Jual from settings
                 openModal(sellModal);
             } else if (event.target.classList.contains('edit-log-btn')) { // New event listener for edit button
-                const index = parseInt(event.target.dataset.index);
-                handleEditLog(index);
+                // Find the actual index in portfolioLog array
+                const logIndex = parseInt(event.target.dataset.index);
+                handleEditLog(logIndex);
             }
         });
         document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
@@ -1057,6 +1153,19 @@
                 calculatePerformanceDifference();
             }
         });
+
+        // Event listeners for Settings tab
+        saveSettingsBtn.addEventListener('click', saveSettings);
+
+        // Event listeners for Filter section
+        filterApplyBtn.addEventListener('click', applyLogFilters);
+        filterResetBtn.addEventListener('click', resetLogFilters);
+        filterDateFromInput.addEventListener('change', applyLogFilters);
+        filterDateToInput.addEventListener('change', applyLogFilters);
+        filterStockCodeInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
+        filterReasonInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
+        filterStatusSelect.addEventListener('change', applyLogFilters);
+
 
         // New listeners for Auth, Sync, and Backup
         loginBtn.addEventListener('click', handleGoogleLogin);
