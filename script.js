@@ -1,5 +1,5 @@
         // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { initializeApp } "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
       
@@ -86,6 +86,12 @@
         const logModalTitle = document.getElementById('log-modal-title');
         const logEditIndexInput = document.getElementById('log-edit-index');
         const submitLogBtn = document.getElementById('submit-log-btn');
+        const logFeeBeliInput = document.getElementById('log-fee-beli');
+        const logSellPriceInput = document.getElementById('log-sell-price');
+        const logSellDateInput = document.getElementById('log-sell-date');
+        const logFeeJualInput = document.getElementById('log-fee-jual');
+        const sellFieldsContainer = document.getElementById('sell-fields-container');
+
 
         // Custom Confirmation Modal Elements
         const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
@@ -376,14 +382,20 @@
         function renderLogTable() {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
-            if (portfolioLog.length === 0) { logTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-500">Belum ada catatan transaksi.</td></tr>`; return; }
+            // Update colspan for the new Fee Beli column
+            if (portfolioLog.length === 0) { logTableBody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-500">Belum ada catatan transaksi.</td></tr>`; return; }
             portfolioLog.forEach((log, index) => {
                 const row = document.createElement('tr');
                 row.className = 'bg-gray-800 border-b border-gray-700';
                 let plHtml, statusHtml, actionHtml, sellDateHtml;
 
+                // Calculate actual buy price including Fee Beli
+                const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
+
                 if (log.sellPrice) {
-                    const profitLoss = (log.sellPrice - log.price) * log.lot * 100;
+                    // Calculate actual sell value including Fee Jual
+                    const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+                    const profitLoss = (actualSellPrice - actualBuyPrice) * log.lot * 100;
                     const plColor = profitLoss >= 0 ? 'text-green-400' : 'text-red-500';
                     plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
@@ -407,6 +419,7 @@
                     <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
                     <td class="px-6 py-4">${formatCurrency(log.price)}</td>
                     <td class="px-6 py-4">${log.lot}</td>
+                    <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
                     ${statusHtml}
                     ${sellDateHtml}
                     ${plHtml}
@@ -425,17 +438,20 @@
             summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = '';
 
             const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-            let totalBuyCost = 0;
-            let totalSellValue = 0;
+            let totalBuyCostWithFee = 0;
+            let totalSellValueWithFee = 0;
             
             portfolioLog.forEach(log => {
-                totalBuyCost += log.price * log.lot * 100;
+                const buyCost = log.price * log.lot * 100;
+                totalBuyCostWithFee += buyCost * (1 + (log.feeBeli || 0) / 100);
                 if(log.sellPrice) {
-                    totalSellValue += log.sellPrice * log.lot * 100;
+                    const sellValue = log.sellPrice * log.lot * 100;
+                    totalSellValueWithFee += sellValue * (1 - (log.feeJual || 0) / 100);
                 }
             });
 
-            const currentEquity = initialEquity - totalBuyCost + totalSellValue;
+            // Equity calculation now considers Fee for both buy and sell
+            const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
             currentEquityDisplay.textContent = formatCurrency(currentEquity);
 
             const openPositions = portfolioLog.filter(log => !log.sellPrice);
@@ -449,17 +465,18 @@
                     const code = log.code.toUpperCase();
                     if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
                     acc[code].totalLots += log.lot;
-                    acc[code].totalCost += log.price * log.lot * 100;
+                    // Store total cost with Fee for open positions
+                    acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
                     return acc;
                 }, {});
                 let grandTotalCost = 0;
                 Object.entries(summary).forEach(([code, data]) => {
                     grandTotalCost += data.totalCost;
-                    const avgPrice = data.totalCost / (data.totalLots * 100);
+                    const avgPriceWithFee = data.totalCost / (data.totalLots * 100); // This avgPrice now includes Fee
                     const priceValue = currentMarketPrices[code] || '';
                     const summaryCard = document.createElement('div');
                     summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-                    summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPrice)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
+                    summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
                     summaryContainer.appendChild(summaryCard);
                 });
                 const grandTotalCard = document.createElement('div');
@@ -468,7 +485,11 @@
                 grandTotalContainer.appendChild(grandTotalCard);
             }
 
-            const totalRealizedPL = closedPositions.reduce((acc, log) => acc + ((log.sellPrice - log.price) * log.lot * 100), 0);
+            const totalRealizedPL = closedPositions.reduce((acc, log) => {
+                const buyCostPerShare = log.price * (1 + (log.feeBeli || 0) / 100);
+                const sellValuePerShare = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+                return acc + ((sellValuePerShare - buyCostPerShare) * log.lot * 100);
+            }, 0);
             const realizedPlCard = document.createElement('div');
             realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
             const plColor = totalRealizedPL >= 0 ? 'text-green-400' : 'text-red-500';
@@ -488,7 +509,8 @@
                 const code = log.code.toUpperCase();
                 if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
                 acc[code].totalLots += log.lot;
-                acc[code].totalCost += log.price * log.lot * 100;
+                // Use actual buy price (including Fee Beli) for floating P/L calculation
+                acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
                 return acc;
             }, {});
 
@@ -499,8 +521,9 @@
                 const currentPrice = parseFloat(currentPriceInput.value) || 0;
                 const floatingPlElement = document.getElementById(`floating-pl-${code}`);
                 if (currentPrice > 0) {
-                    const avgPrice = data.totalCost / (data.totalLots * 100);
-                    const floatingPL = (currentPrice - avgPrice) * data.totalLots * 100;
+                    const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
+                    // Floating P/L is (current market price - average buy price with Fee) * shares
+                    const floatingPL = (currentPrice - avgPriceWithFee) * data.totalLots * 100;
                     totalFloatingPL += floatingPL;
                     const plColor = floatingPL >= 0 ? 'text-green-400' : 'text-red-500';
                     floatingPlElement.className = `font-semibold ${plColor}`;
@@ -527,12 +550,12 @@
                 return;
             }
 
-            let totalBuyCost = 0, totalSellValue = 0;
+            let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
             portfolioLog.forEach(log => {
-                totalBuyCost += log.price * log.lot * 100;
-                if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100;
+                totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
+                if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
             });
-            const currentEquity = initialEquity - totalBuyCost + totalSellValue;
+            const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
             const openPositions = portfolioLog.filter(log => !log.sellPrice);
             let valueOfOpenPositions = 0;
@@ -565,97 +588,16 @@
             renderPerformanceChart();
         }
 
-        function renderPerformanceChart() {
-            const ctx = document.getElementById('performanceChart').getContext('2d');
-            const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time'];
-            
-            const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-            let allTimeReturn = NaN;
-            if (initialEquity > 0) {
-                let totalBuyCost = 0, totalSellValue = 0;
-                portfolioLog.forEach(log => {
-                    totalBuyCost += log.price * log.lot * 100;
-                    if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100;
-                });
-                const currentEquity = initialEquity - totalBuyCost + totalSellValue;
-                const openPositions = portfolioLog.filter(log => !log.sellPrice);
-                let valueOfOpenPositions = 0;
-                const summary = openPositions.reduce((acc, log) => {
-                    const code = log.code.toUpperCase();
-                    if (!acc[code]) acc[code] = { totalLots: 0 };
-                    acc[code].totalLots += log.lot;
-                    return acc;
-                }, {});
-                Object.entries(summary).forEach(([code, data]) => {
-                    const currentPrice = currentMarketPrices[code] || 0;
-                    if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
-                });
-                const currentTotalValue = currentEquity + valueOfOpenPositions;
-                allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
-            }
-
-            const portfolioData = periods.map(p => p === 'All Time' && isFinite(allTimeReturn) ? allTimeReturn : null);
-            const ihsgData = periods.map(p => {
-                const input = document.querySelector(`.performance-ihsg-input[data-period="${p}"]`);
-                return input ? (parseFloat(input.value) || null) : null;
-            });
-
-            if (performanceChart) {
-                performanceChart.destroy();
-            }
-
-            performanceChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: periods,
-                    datasets: [
-                        {
-                            label: 'Performa Portofolio (%)',
-                            data: portfolioData,
-                            backgroundColor: 'rgba(34, 211, 238, 0.6)',
-                            borderColor: 'rgba(34, 211, 238, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Performa IHSG (%)',
-                            data: ihsgData,
-                            backgroundColor: 'rgba(74, 85, 104, 0.6)',
-                            borderColor: 'rgba(74, 85, 104, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: '#9CA3AF' },
-                            grid: { color: '#374151' }
-                        },
-                        x: {
-                            ticks: { color: '#9CA3AF' },
-                            grid: { color: '#374151' }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: { color: '#D1D5DB' }
-                        }
-                    }
-                }
-            });
-        }
-
         function calculatePerformanceDifference() {
              const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
              if (initialEquity <= 0) return;
 
-             let totalBuyCost = 0, totalSellValue = 0;
+             let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
              portfolioLog.forEach(log => {
-                totalBuyCost += log.price * log.lot * 100;
-                if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100;
+                totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
+                if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
              });
-             const currentEquity = initialEquity - totalBuyCost + totalSellValue;
+             const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
              const openPositions = portfolioLog.filter(log => !log.sellPrice);
              let valueOfOpenPositions = 0;
@@ -725,23 +667,41 @@
                 date: document.getElementById('log-buy-date').value,
                 price: parseFloat(document.getElementById('log-buy-price').value), 
                 lot: parseInt(document.getElementById('log-buy-lot').value),
+                feeBeli: parseFloat(logFeeBeliInput.value), // Get Fee Beli
                 reason: document.getElementById('log-reason').value, 
-                sellPrice: isEdit ? portfolioLog[index].sellPrice : null, // Preserve sell data for edits
-                sellDate: isEdit ? portfolioLog[index].sellDate : null, // Preserve sell data for edits
+                sellPrice: null, 
+                sellDate: null,
+                feeJual: null // Initialize Fee Jual
             };
+
+            // If editing a sold transaction, get sell details from the modal
+            if (isEdit && portfolioLog[index].sellPrice !== null) {
+                newLog.sellPrice = parseFloat(logSellPriceInput.value);
+                newLog.sellDate = logSellDateInput.value;
+                newLog.feeJual = parseFloat(logFeeJualInput.value);
+            } else if (isEdit) { // If editing an open transaction, ensure sell details are cleared if they somehow exist
+                 newLog.sellPrice = null;
+                 newLog.sellDate = null;
+                 newLog.feeJual = null;
+            }
+
+
             if (!newLog.code || !newLog.date || !newLog.price || !newLog.lot) { showNotification('Harap isi semua kolom yang wajib diisi.'); return; }
             
-            const transactionCost = newLog.price * newLog.lot * 100;
+            // Calculate transaction cost including Fee Beli
+            const transactionCost = newLog.price * newLog.lot * 100 * (1 + (newLog.feeBeli || 0) / 100);
+            
             const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-            let totalBuyCost = 0, totalSellValue = 0;
+            let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
             portfolioLog.forEach((log, i) => {
                 if (isEdit && i === index) return; // Exclude current log being edited from calculation
-                totalBuyCost += log.price * log.lot * 100;
-                if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100;
+                totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
+                if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
             });
-            const currentEquity = initialEquity - totalBuyCost + totalSellValue;
+            const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
-            if (transactionCost > currentEquity) {
+            // Check if adding this new transaction would exceed available equity
+            if (!isEdit && transactionCost > currentEquity) {
                 showNotification(`Transaksi gagal. Total pembelian (${formatCurrency(transactionCost)}) melebihi ekuitas yang tersedia (${formatCurrency(currentEquity)}).`);
                 return;
             }
@@ -780,11 +740,28 @@
                 logModalTitle.textContent = 'Edit Catatan Transaksi';
                 submitLogBtn.textContent = 'Simpan Perubahan';
                 logEditIndexInput.value = index;
+
+                // Populate common fields
                 document.getElementById('log-stock-code').value = logToEdit.code;
                 document.getElementById('log-buy-date').value = logToEdit.date;
                 document.getElementById('log-buy-price').value = logToEdit.price;
                 document.getElementById('log-buy-lot').value = logToEdit.lot;
+                logFeeBeliInput.value = logToEdit.feeBeli || 0.11; // Default Fee Beli
+
                 document.getElementById('log-reason').value = logToEdit.reason;
+
+                // Handle sell-specific fields visibility and population
+                if (logToEdit.sellPrice !== null) {
+                    sellFieldsContainer.classList.remove('hidden');
+                    logSellPriceInput.value = logToEdit.sellPrice;
+                    logSellDateInput.value = logToEdit.sellDate;
+                    logFeeJualInput.value = logToEdit.feeJual || 0.11; // Default Fee Jual
+                } else {
+                    sellFieldsContainer.classList.add('hidden');
+                    logSellPriceInput.value = '';
+                    logSellDateInput.value = '';
+                    logFeeJualInput.value = 0.11;
+                }
                 openModal(addLogModal);
             }
         }
@@ -794,9 +771,12 @@
             const index = parseInt(document.getElementById('sell-log-index').value);
             const sellPrice = parseFloat(document.getElementById('sell-price').value);
             const sellDate = document.getElementById('sell-date').value;
+            const feeJual = parseFloat(document.getElementById('sell-fee-jual').value); // Get Fee Jual from sell modal
+
             if (!isNaN(index) && sellPrice > 0 && sellDate) {
                 portfolioLog[index].sellPrice = sellPrice;
                 portfolioLog[index].sellDate = sellDate;
+                portfolioLog[index].feeJual = feeJual; // Store Fee Jual
                 closeModal(sellModal);
                 refreshAllApplicationData();
             } else {
@@ -912,6 +892,11 @@
             logEditIndexInput.value = ''; // Clear edit index
             logForm.reset(); // Clear form fields
             document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
+            logFeeBeliInput.value = 0.11; // Default Fee Beli
+            sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
+            logSellPriceInput.value = '';
+            logSellDateInput.value = '';
+            logFeeJualInput.value = 0.11;
             openModal(addLogModal);
         });
         document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
@@ -921,10 +906,10 @@
             document.getElementById('modal-initial-price').value = document.getElementById('initial-price').value;
             document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot').value;
             document.getElementById('modal-dividend').value = document.getElementById('dividend').value;
-            document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent').value;
-            document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels').value;
-            document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent').value;
-            document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent').value;
+            document.getElementById('modal-avg-down-percent').value = document.getElementById('modal-avg-down-percent').value;
+            document.getElementById('modal-avg-levels').value = document.getElementById('modal-avg-levels').value;
+            document.getElementById('modal-tp1-percent').value = document.getElementById('modal-tp1-percent').value;
+            document.getElementById('modal-tp2-percent').value = document.getElementById('modal-tp2-percent').value;
             document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason').value;
             openModal(simParamsModal);
         });
@@ -940,6 +925,7 @@
                 const index = parseInt(event.target.dataset.index);
                 document.getElementById('sell-log-index').value = index;
                 document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('sell-fee-jual').value = portfolioLog[index].feeJual || 0.11; // Set default Fee Jual
                 openModal(sellModal);
             } else if (event.target.classList.contains('edit-log-btn')) { // New event listener for edit button
                 const index = parseInt(event.target.dataset.index);
