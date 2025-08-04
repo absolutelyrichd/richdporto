@@ -87,6 +87,12 @@
         const logEditIndexInput = document.getElementById('log-edit-index');
         const submitLogBtn = document.getElementById('submit-log-btn');
 
+        // Custom Confirmation Modal Elements
+        const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
+        const customConfirmMessage = document.getElementById('delete-confirm-modal').querySelector('p');
+        const customConfirmBtn = document.getElementById('confirm-delete-btn');
+        const customCancelBtn = document.getElementById('cancel-delete-btn');
+
 
         // --- HELPER FUNCTIONS ---
         function formatCurrency(value, withSign = false) {
@@ -117,16 +123,22 @@
 
         async function handleLogout() {
             // Use custom confirmation modal instead of browser's confirm()
-            showConfirmDeleteModal('Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.', async () => {
-                try {
-                    await window.firebase.signOut(window.firebase.auth);
-                    showNotification('Logout berhasil.', 'Sukses');
-                    resetAllData();
-                } catch (error) {
-                    console.error("Error during logout:", error);
-                    showNotification(`Logout gagal: ${error.message}`, 'Error');
+            showCustomConfirmModal(
+                'Konfirmasi Logout',
+                'Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.',
+                'Logout',
+                'Batal',
+                async () => {
+                    try {
+                        await window.firebase.signOut(window.firebase.auth);
+                        showNotification('Logout berhasil.', 'Sukses');
+                        resetAllData();
+                    } catch (error) {
+                        console.error("Error during logout:", error);
+                        showNotification(`Logout gagal: ${error.message}`, 'Error');
+                    }
                 }
-            });
+            );
         }
         
         function updateUIForAuthState(user) {
@@ -229,33 +241,40 @@
             if (!file) return;
             
             // Use custom confirmation modal instead of browser's confirm()
-            showConfirmDeleteModal('Ini akan menimpa data Anda saat ini. Lanjutkan?', () => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data && typeof data === 'object') {
-                            portfolioLog = data.portfolioLog || [];
-                            savedSimulations = data.savedSimulations || [];
-                            document.getElementById('initial-equity').value = data.initialEquity || "100000000";
-                            currentMarketPrices = data.currentMarketPrices || {};
-                            document.getElementById('sim-reason').value = data.simulationReason || '';
+            showCustomConfirmModal(
+                'Konfirmasi Pemulihan Data',
+                'Ini akan menimpa data Anda saat ini. Lanjutkan?',
+                'Lanjutkan',
+                'Batal',
+                () => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data && typeof data === 'object') {
+                                portfolioLog = data.portfolioLog || [];
+                                savedSimulations = data.savedSimulations || [];
+                                document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+                                currentMarketPrices = data.currentMarketPrices || {};
+                                document.getElementById('sim-reason').value = data.simulationReason || '';
 
-                            refreshAllApplicationData();
-                            showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
-                        } else {
-                            throw new Error('Invalid JSON structure');
+                                refreshAllApplicationData();
+                                showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
+                            } else {
+                                throw new Error('Invalid JSON structure');
+                            }
+                        } catch (error) {
+                            showNotification(`Gagal memuat file: ${error.message}`, 'Error');
+                        } finally {
+                            event.target.value = '';
                         }
-                    } catch (error) {
-                        showNotification(`Gagal memuat file: ${error.message}`, 'Error');
-                    } finally {
-                        event.target.value = '';
-                    }
-                };
-                reader.readAsText(file);
-            }, () => {
-                event.target.value = ''; // Clear the file input if cancelled
-            });
+                    };
+                    reader.readAsText(file);
+                }, 
+                () => {
+                    event.target.value = ''; // Clear the file input if cancelled
+                }
+            );
         }
         
         // --- DATA MANAGEMENT ---
@@ -674,15 +693,18 @@
             openModal(notificationModal);
         }
 
-        // New custom confirmation modal function
+        // Custom confirmation modal function
         let confirmCallback = null;
         let cancelCallback = null;
 
-        function showConfirmDeleteModal(message, onConfirm, onCancel) {
-            document.getElementById('delete-confirm-modal').querySelector('p').textContent = message;
+        function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonText, onConfirm, onCancel) {
+            customConfirmTitle.textContent = title;
+            customConfirmMessage.textContent = message;
+            customConfirmBtn.textContent = confirmButtonText;
+            customCancelBtn.textContent = cancelButtonText;
             confirmCallback = onConfirm;
             cancelCallback = onCancel;
-            openModal(deleteConfirmModal);
+            openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
         }
 
         // --- EVENT HANDLERS ---
@@ -730,13 +752,20 @@
         }
 
         function handleDeleteLog(index) {
-            showConfirmDeleteModal('Apakah Anda yakin ingin menghapus catatan ini? Tindakan ini tidak dapat dibatalkan.', () => {
-                portfolioLog.splice(index, 1);
-                refreshAllApplicationData();
-                closeModal(deleteConfirmModal); // Close the confirmation modal after deletion
-            }, () => {
-                closeModal(deleteConfirmModal); // Close the confirmation modal if cancelled
-            });
+            showCustomConfirmModal(
+                'Konfirmasi Hapus',
+                'Apakah Anda yakin ingin menghapus catatan ini? Tindakan ini tidak dapat dibatalkan.',
+                'Hapus',
+                'Batal',
+                () => {
+                    portfolioLog.splice(index, 1);
+                    refreshAllApplicationData();
+                    closeModal(deleteConfirmModal); // Close the confirmation modal after deletion
+                }, 
+                () => {
+                    closeModal(deleteConfirmModal); // Close the confirmation modal if cancelled
+                }
+            );
         }
 
         function handleEditLog(index) {
@@ -832,14 +861,21 @@
                 }
             } else if (target.classList.contains('delete-sim-btn')) {
                 // Use custom confirmation modal for deleting simulations
-                showConfirmDeleteModal('Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.', () => {
-                    savedSimulations = savedSimulations.filter(s => s.id !== simId);
-                    renderSavedSimulationsTable();
-                    triggerAutoSave();
-                    closeModal(deleteConfirmModal);
-                }, () => {
-                    closeModal(deleteConfirmModal);
-                });
+                showCustomConfirmModal(
+                    'Konfirmasi Hapus Simulasi',
+                    'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
+                    'Hapus',
+                    'Batal',
+                    () => {
+                        savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                        renderSavedSimulationsTable();
+                        triggerAutoSave();
+                        closeModal(deleteConfirmModal);
+                    }, 
+                    () => {
+                        closeModal(deleteConfirmModal);
+                    }
+                );
             }
         }
         function renderSavedSimulationsTable() {
@@ -906,7 +942,7 @@
         });
         document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
         
-        // Event listeners for the new delete confirmation modal buttons
+        // Event listeners for the new custom confirmation modal buttons
         document.getElementById('confirm-delete-btn').addEventListener('click', () => {
             if (confirmCallback) {
                 confirmCallback();
