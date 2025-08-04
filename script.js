@@ -306,6 +306,8 @@
             calculateDashboard();
             calculateEntryForProfit();
             updateSimulationReasonDisplay();
+            renderPerformanceTab(); // Call renderPerformanceTab directly
+            // renderPerformanceChart(); // This is called inside renderPerformanceTab
             triggerAutoSave();
         }
 
@@ -497,6 +499,7 @@
             realizedPlContainer.appendChild(realizedPlCard);
             
             calculateAndRenderFloatingPL();
+            // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
             renderPerformanceTab();
         }
 
@@ -535,10 +538,93 @@
 
             const plColor = totalFloatingPL >= 0 ? 'text-green-400' : 'text-red-500';
             floatingPlContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Floating P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalFloatingPL, true)}</p></div>`;
+            // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
             renderPerformanceTab();
         }
 
         // --- PERFORMANCE TAB MANAGEMENT ---
+        // Moved renderPerformanceChart definition before its calls
+        function renderPerformanceChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time'];
+            
+            const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+            let allTimeReturn = NaN;
+            if (initialEquity > 0) {
+                let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
+                portfolioLog.forEach(log => {
+                    totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
+                    if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
+                });
+                const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
+                const openPositions = portfolioLog.filter(log => !log.sellPrice);
+                let valueOfOpenPositions = 0;
+                const summary = openPositions.reduce((acc, log) => {
+                    const code = log.code.toUpperCase();
+                    if (!acc[code]) acc[code] = { totalLots: 0 };
+                    acc[code].totalLots += log.lot;
+                    return acc;
+                }, {});
+                Object.entries(summary).forEach(([code, data]) => {
+                    const currentPrice = currentMarketPrices[code] || 0;
+                    if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
+                });
+                const currentTotalValue = currentEquity + valueOfOpenPositions;
+                allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
+            }
+
+            const portfolioData = periods.map(p => p === 'All Time' && isFinite(allTimeReturn) ? allTimeReturn : null);
+            const ihsgData = periods.map(p => {
+                const input = document.querySelector(`.performance-ihsg-input[data-period="${p}"]`);
+                return input ? (parseFloat(input.value) || null) : null;
+            });
+
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+
+            performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: periods,
+                    datasets: [
+                        {
+                            label: 'Performa Portofolio (%)',
+                            data: portfolioData,
+                            backgroundColor: 'rgba(34, 211, 238, 0.6)',
+                            borderColor: 'rgba(34, 211, 238, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Performa IHSG (%)',
+                            data: ihsgData,
+                            backgroundColor: 'rgba(74, 85, 104, 0.6)',
+                            borderColor: 'rgba(74, 85, 104, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        },
+                        x: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#D1D5DB' }
+                        }
+                    }
+                }
+            });
+        }
+
         function renderPerformanceTab() {
             const tableBody = document.getElementById('performance-table-body');
             tableBody.innerHTML = '';
