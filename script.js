@@ -128,15 +128,19 @@
                 'Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.',
                 'Logout',
                 'Batal',
-                async () => {
+                async () => { // onConfirm callback
                     try {
                         await window.firebase.signOut(window.firebase.auth);
                         showNotification('Logout berhasil.', 'Sukses');
                         resetAllData();
+                        closeModal(deleteConfirmModal); // Close the modal after successful logout
                     } catch (error) {
                         console.error("Error during logout:", error);
                         showNotification(`Logout gagal: ${error.message}`, 'Error');
                     }
+                },
+                () => { // onCancel callback
+                    closeModal(deleteConfirmModal); // Close the modal if cancelled
                 }
             );
         }
@@ -267,12 +271,14 @@
                             showNotification(`Gagal memuat file: ${error.message}`, 'Error');
                         } finally {
                             event.target.value = '';
+                            closeModal(deleteConfirmModal); // Ensure modal closes after file load attempt
                         }
                     };
                     reader.readAsText(file);
                 }, 
                 () => {
                     event.target.value = ''; // Clear the file input if cancelled
+                    closeModal(deleteConfirmModal); // Close the modal if cancelled
                 }
             );
         }
