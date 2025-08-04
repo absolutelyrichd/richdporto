@@ -40,6 +40,7 @@
         let currentMarketPrices = {};
         let currentUser = null;
         let autoSaveTimer = null;
+        let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
 
 
         // --- DOM Elements ---
@@ -63,6 +64,7 @@
         const addLogModal = document.getElementById('add-log-modal');
         const sellModal = document.getElementById('sell-modal');
         const notificationModal = document.getElementById('notification-modal');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal'); // New delete confirmation modal
 
         // Form Elements
         const simParamsForm = document.getElementById('sim-params-form');
@@ -79,6 +81,12 @@
         // Backup Elements
         const downloadJsonBtn = document.getElementById('download-json-btn');
         const uploadJsonInput = document.getElementById('upload-json-input');
+
+        // Log Modal specific elements for Edit feature
+        const logModalTitle = document.getElementById('log-modal-title');
+        const logEditIndexInput = document.getElementById('log-edit-index');
+        const submitLogBtn = document.getElementById('submit-log-btn');
+
 
         // --- HELPER FUNCTIONS ---
         function formatCurrency(value, withSign = false) {
@@ -108,17 +116,17 @@
         }
 
         async function handleLogout() {
-            if (!confirm('Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.')) {
-                return;
-            }
-            try {
-                await window.firebase.signOut(window.firebase.auth);
-                showNotification('Logout berhasil.', 'Sukses');
-                resetAllData();
-            } catch (error) {
-                console.error("Error during logout:", error);
-                showNotification(`Logout gagal: ${error.message}`, 'Error');
-            }
+            // Use custom confirmation modal instead of browser's confirm()
+            showConfirmDeleteModal('Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.', async () => {
+                try {
+                    await window.firebase.signOut(window.firebase.auth);
+                    showNotification('Logout berhasil.', 'Sukses');
+                    resetAllData();
+                } catch (error) {
+                    console.error("Error during logout:", error);
+                    showNotification(`Logout gagal: ${error.message}`, 'Error');
+                }
+            });
         }
         
         function updateUIForAuthState(user) {
@@ -220,34 +228,34 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            if (!confirm('Ini akan menimpa data Anda saat ini. Lanjutkan?')) {
-                event.target.value = '';
-                return;
-            }
+            // Use custom confirmation modal instead of browser's confirm()
+            showConfirmDeleteModal('Ini akan menimpa data Anda saat ini. Lanjutkan?', () => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data && typeof data === 'object') {
+                            portfolioLog = data.portfolioLog || [];
+                            savedSimulations = data.savedSimulations || [];
+                            document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+                            currentMarketPrices = data.currentMarketPrices || {};
+                            document.getElementById('sim-reason').value = data.simulationReason || '';
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data && typeof data === 'object') {
-                        portfolioLog = data.portfolioLog || [];
-                        savedSimulations = data.savedSimulations || [];
-                        document.getElementById('initial-equity').value = data.initialEquity || "100000000";
-                        currentMarketPrices = data.currentMarketPrices || {};
-                        document.getElementById('sim-reason').value = data.simulationReason || '';
-
-                        refreshAllApplicationData();
-                        showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
-                    } else {
-                        throw new Error('Invalid JSON structure');
+                            refreshAllApplicationData();
+                            showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
+                        } else {
+                            throw new Error('Invalid JSON structure');
+                        }
+                    } catch (error) {
+                        showNotification(`Gagal memuat file: ${error.message}`, 'Error');
+                    } finally {
+                        event.target.value = '';
                     }
-                } catch (error) {
-                    showNotification(`Gagal memuat file: ${error.message}`, 'Error');
-                } finally {
-                    event.target.value = '';
-                }
-            };
-            reader.readAsText(file);
+                };
+                reader.readAsText(file);
+            }, () => {
+                event.target.value = ''; // Clear the file input if cancelled
+            });
         }
         
         // --- DATA MANAGEMENT ---
@@ -354,12 +362,19 @@
                     const plColor = profitLoss >= 0 ? 'text-green-400' : 'text-red-500';
                     plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
-                    actionHtml = `<td class="px-6 py-4"><button class="delete-log-btn text-red-500 hover:text-red-400" data-index="${index}">Hapus</button></td>`;
+                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Hapus</button>
+                                  </td>`;
                     sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
                 } else {
                     plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
-                    actionHtml = `<td class="px-6 py-4 space-x-2"><button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Jual</button><button class="delete-log-btn text-gray-500 hover:text-red-400" data-index="${index}">Hapus</button></td>`;
+                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${index}">Hapus</button>
+                                  </td>`;
                     sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 }
                 row.innerHTML = `
@@ -659,20 +674,40 @@
             openModal(notificationModal);
         }
 
+        // New custom confirmation modal function
+        let confirmCallback = null;
+        let cancelCallback = null;
+
+        function showConfirmDeleteModal(message, onConfirm, onCancel) {
+            document.getElementById('delete-confirm-modal').querySelector('p').textContent = message;
+            confirmCallback = onConfirm;
+            cancelCallback = onCancel;
+            openModal(deleteConfirmModal);
+        }
+
         // --- EVENT HANDLERS ---
-        function handleAddLog(event) {
+        function handleAddOrEditLog(event) {
             event.preventDefault();
+            const isEdit = logEditIndexInput.value !== '';
+            const index = isEdit ? parseInt(logEditIndexInput.value) : -1;
+
             const newLog = {
-                id: Date.now(), code: document.getElementById('log-stock-code').value, date: document.getElementById('log-buy-date').value,
-                price: parseFloat(document.getElementById('log-buy-price').value), lot: parseInt(document.getElementById('log-buy-lot').value),
-                reason: document.getElementById('log-reason').value, sellPrice: null, sellDate: null,
+                id: isEdit ? portfolioLog[index].id : Date.now(), // Preserve ID for edits
+                code: document.getElementById('log-stock-code').value, 
+                date: document.getElementById('log-buy-date').value,
+                price: parseFloat(document.getElementById('log-buy-price').value), 
+                lot: parseInt(document.getElementById('log-buy-lot').value),
+                reason: document.getElementById('log-reason').value, 
+                sellPrice: isEdit ? portfolioLog[index].sellPrice : null, // Preserve sell data for edits
+                sellDate: isEdit ? portfolioLog[index].sellDate : null, // Preserve sell data for edits
             };
             if (!newLog.code || !newLog.date || !newLog.price || !newLog.lot) { showNotification('Harap isi semua kolom yang wajib diisi.'); return; }
             
             const transactionCost = newLog.price * newLog.lot * 100;
             const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
             let totalBuyCost = 0, totalSellValue = 0;
-            portfolioLog.forEach(log => {
+            portfolioLog.forEach((log, i) => {
+                if (isEdit && i === index) return; // Exclude current log being edited from calculation
                 totalBuyCost += log.price * log.lot * 100;
                 if (log.sellPrice) totalSellValue += log.sellPrice * log.lot * 100;
             });
@@ -683,15 +718,42 @@
                 return;
             }
 
-            portfolioLog.push(newLog);
+            if (isEdit) {
+                portfolioLog[index] = newLog;
+            } else {
+                portfolioLog.push(newLog);
+            }
+            
             logForm.reset();
             closeModal(addLogModal);
             refreshAllApplicationData();
         }
+
         function handleDeleteLog(index) {
-            portfolioLog.splice(index, 1);
-            refreshAllApplicationData();
+            showConfirmDeleteModal('Apakah Anda yakin ingin menghapus catatan ini? Tindakan ini tidak dapat dibatalkan.', () => {
+                portfolioLog.splice(index, 1);
+                refreshAllApplicationData();
+                closeModal(deleteConfirmModal); // Close the confirmation modal after deletion
+            }, () => {
+                closeModal(deleteConfirmModal); // Close the confirmation modal if cancelled
+            });
         }
+
+        function handleEditLog(index) {
+            const logToEdit = portfolioLog[index];
+            if (logToEdit) {
+                logModalTitle.textContent = 'Edit Catatan Transaksi';
+                submitLogBtn.textContent = 'Simpan Perubahan';
+                logEditIndexInput.value = index;
+                document.getElementById('log-stock-code').value = logToEdit.code;
+                document.getElementById('log-buy-date').value = logToEdit.date;
+                document.getElementById('log-buy-price').value = logToEdit.price;
+                document.getElementById('log-buy-lot').value = logToEdit.lot;
+                document.getElementById('log-reason').value = logToEdit.reason;
+                openModal(addLogModal);
+            }
+        }
+
         function handleSellSubmit(event) {
             event.preventDefault();
             const index = parseInt(document.getElementById('sell-log-index').value);
@@ -769,9 +831,15 @@
                     triggerAutoSave();
                 }
             } else if (target.classList.contains('delete-sim-btn')) {
-                savedSimulations = savedSimulations.filter(s => s.id !== simId);
-                renderSavedSimulationsTable();
-                triggerAutoSave();
+                // Use custom confirmation modal for deleting simulations
+                showConfirmDeleteModal('Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.', () => {
+                    savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                    renderSavedSimulationsTable();
+                    triggerAutoSave();
+                    closeModal(deleteConfirmModal);
+                }, () => {
+                    closeModal(deleteConfirmModal);
+                });
             }
         }
         function renderSavedSimulationsTable() {
@@ -788,7 +856,7 @@
 
         // --- EVENT LISTENERS ---
         document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
-        logForm.addEventListener('submit', handleAddLog);
+        logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
         simParamsForm.addEventListener('submit', handleSimParamsSubmit);
         sellForm.addEventListener('submit', handleSellSubmit);
         document.getElementById('initial-equity').addEventListener('input', () => {
@@ -796,7 +864,14 @@
             triggerAutoSave();
         });
         
-        document.getElementById('open-add-log-modal-btn').addEventListener('click', () => openModal(addLogModal));
+        document.getElementById('open-add-log-modal-btn').addEventListener('click', () => {
+            logModalTitle.textContent = 'Tambah Catatan Transaksi';
+            submitLogBtn.textContent = 'Tambah';
+            logEditIndexInput.value = ''; // Clear edit index
+            logForm.reset(); // Clear form fields
+            document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
+            openModal(addLogModal);
+        });
         document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
 
         document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => {
@@ -817,17 +892,37 @@
 
         document.getElementById('log-table-body').addEventListener('click', (event) => {
             if (event.target.classList.contains('delete-log-btn')) {
-                const index = parseInt(event.target.dataset.index);
-                if (confirm('Apakah Anda yakin ingin menghapus catatan ini?')) { handleDeleteLog(index); }
+                deleteLogIndexToConfirm = parseInt(event.target.dataset.index); // Store index
+                handleDeleteLog(deleteLogIndexToConfirm); // Call the new handler
             } else if (event.target.classList.contains('sell-log-btn')) {
                 const index = parseInt(event.target.dataset.index);
                 document.getElementById('sell-log-index').value = index;
                 document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
                 openModal(sellModal);
+            } else if (event.target.classList.contains('edit-log-btn')) { // New event listener for edit button
+                const index = parseInt(event.target.dataset.index);
+                handleEditLog(index);
             }
         });
         document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
         
+        // Event listeners for the new delete confirmation modal buttons
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback();
+                confirmCallback = null; // Reset callback
+                cancelCallback = null;
+            }
+        });
+
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+            if (cancelCallback) {
+                cancelCallback();
+                cancelCallback = null; // Reset callback
+                confirmCallback = null;
+            }
+        });
+
         document.getElementById('saved-simulations-table-body').addEventListener('click', handleLoadOrDeleteSimulation);
         
         Object.keys(tabButtons).forEach(key => {
