@@ -129,10 +129,33 @@
 
         // --- TAB MANAGEMENT ---
         function switchTab(tabName) {
-            Object.values(tabButtons).forEach(btn => btn.classList.remove('active'));
-            Object.values(tabContents).forEach(content => content.classList.remove('active'));
-            tabButtons[tabName].classList.add('active');
-            tabContents[tabName].classList.add('active');
+            console.log('Switching to tab:', tabName);
+            // Remove 'active' from all tab buttons
+            Object.values(tabButtons).forEach(btn => {
+                if (btn) { // Ensure the button element exists
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Remove 'active' from all tab content divs
+            Object.values(tabContents).forEach(content => {
+                if (content) { // Ensure the content element exists
+                    content.classList.remove('active');
+                }
+            });
+            
+            // Get the target button and content
+            const targetButton = tabButtons[tabName];
+            const targetContent = tabContents[tabName];
+
+            // Add 'active' to the selected tab button and content
+            if (targetButton && targetContent) {
+                targetButton.classList.add('active');
+                targetContent.classList.add('active');
+                console.log(`Successfully activated tab: ${tabName}`);
+            } else {
+                console.error(`Error: Tab button or content not found for tabName: ${tabName}. Check if the ID is correct in index.html and script.js.`);
+            }
         }
 
         // --- AUTHENTICATION ---
@@ -146,6 +169,7 @@
         }
 
         async function handleLogout() {
+            console.log('Logout button clicked.');
             // Use custom confirmation modal instead of browser's confirm()
             showCustomConfirmModal(
                 'Konfirmasi Logout',
@@ -153,17 +177,22 @@
                 'Logout',
                 'Batal',
                 async () => { // onConfirm callback
+                    console.log('Logout confirmed.');
                     try {
                         await window.firebase.signOut(window.firebase.auth);
                         showNotification('Logout berhasil.', 'Sukses');
                         resetAllData();
                         closeModal(deleteConfirmModal); // Close the modal after successful logout
+                        console.log('Logout successful, modal closed.');
                     } catch (error) {
                         console.error("Error during logout:", error);
                         showNotification(`Logout gagal: ${error.message}`, 'Error');
+                        closeModal(deleteConfirmModal); // Ensure modal closes even on error
+                        console.log('Logout error, modal closed.');
                     }
                 },
                 () => { // onCancel callback
+                    console.log('Logout cancelled.');
                     closeModal(deleteConfirmModal); // Close the modal if cancelled
                 }
             );
