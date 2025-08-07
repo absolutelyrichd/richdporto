@@ -826,6 +826,7 @@
             openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
         }
 
+
         // --- EVENT HANDLERS ---
         function handleAddOrEditLog(event) {
             event.preventDefault();
