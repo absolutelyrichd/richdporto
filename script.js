@@ -43,10 +43,8 @@
         let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
         let defaultFeeBeli = 0.11; // Default value for buy fee
         let defaultFeeJual = 0.11; // Default value for sell fee
-
-        // New sorting state variables
-        let currentSortKey = 'date';
-        let currentSortDirection = 'desc';
+        let currentSortColumn = 'date'; // Default sort column
+        let currentSortDirection = 'asc'; // Default sort direction
 
         // --- DOM Elements ---
         const tabButtons = { 
@@ -119,6 +117,9 @@
         const customConfirmMessage = document.getElementById('delete-confirm-modal').querySelector('p');
         const customConfirmBtn = document.getElementById('confirm-delete-btn');
         const customCancelBtn = document.getElementById('cancel-delete-btn');
+        
+        // Log Table Header for sorting
+        const logTableHeaders = document.querySelectorAll('#tab-content-log .table-wrapper th[data-sort]');
 
 
         // --- HELPER FUNCTIONS ---
@@ -128,13 +129,6 @@
             if (value > 0) return `+${formatted}`;
             if (value < 0) return `-${formatted}`;
             return formatted;
-        }
-        
-        function getRealizedPL(log) {
-            if (!log.sellPrice) return null;
-            const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
-            const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
-            return (actualSellPrice - actualBuyPrice) * log.lot * 100;
         }
 
         // --- TAB MANAGEMENT ---
@@ -460,11 +454,13 @@
         function renderLogTable(filteredLogs = portfolioLog) {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
-            
-            // Apply sorting before rendering
-            const sortedLogs = [...filteredLogs].sort(sortLogs);
-            updateSortIcons();
 
+            // Sort the filtered logs
+            const sortedLogs = [...filteredLogs].sort(getSortComparator(currentSortColumn, currentSortDirection));
+
+            // Update sort icons
+            updateSortIcons();
+        
             if (sortedLogs.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
             
             sortedLogs.forEach((log, index) => {
@@ -472,19 +468,23 @@
                 row.className = 'bg-gray-800 border-b border-gray-700';
                 let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
 
-                const originalIndex = portfolioLog.indexOf(log);
-
-                // Calculate actual buy price including Fee Beli
-                const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
-                const realizedPL = getRealizedPL(log);
+                // Calculate realized P/L for sorting purposes
+                let realizedPL = 0;
+                if (log.sellPrice) {
+                    const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
+                    const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+                    realizedPL = (actualSellPrice - actualBuyPrice) * log.lot * 100;
+                }
+                // Add the realizedPL to the log object for sorting
+                log.realizedPL = realizedPL;
 
                 if (log.sellPrice) {
                     const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
                     plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
                     feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
@@ -492,9 +492,9 @@
                     plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
@@ -573,7 +573,9 @@
             }
 
             const totalRealizedPL = closedPositions.reduce((acc, log) => {
-                return acc + getRealizedPL(log);
+                const buyCostPerShare = log.price * (1 + (log.feeBeli || 0) / 100);
+                const sellValuePerShare = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+                return acc + ((sellValuePerShare - buyCostPerShare) * log.lot * 100);
             }, 0);
             const realizedPlCard = document.createElement('div');
             realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
@@ -1054,79 +1056,6 @@
         }
 
         // --- FILTER & SORT LOGIC ---
-        function sortLogs(a, b) {
-            const key = currentSortKey;
-            const direction = currentSortDirection;
-            const isAsc = direction === 'asc';
-
-            let valA, valB;
-            
-            switch (key) {
-                case 'date':
-                case 'sellDate':
-                    valA = new Date(a[key]);
-                    valB = new Date(b[key]);
-                    // Handle null/empty dates by putting them last
-                    if (!a[key]) return isAsc ? 1 : -1;
-                    if (!b[key]) return isAsc ? -1 : 1;
-                    break;
-                case 'code':
-                case 'reason':
-                    valA = a[key] ? a[key].toLowerCase() : '';
-                    valB = b[key] ? b[key].toLowerCase() : '';
-                    break;
-                case 'price':
-                case 'lot':
-                case 'feeBeli':
-                case 'feeJual':
-                    valA = a[key] || 0;
-                    valB = b[key] || 0;
-                    break;
-                case 'status':
-                    valA = a.sellPrice ? 'closed' : 'open';
-                    valB = b.sellPrice ? 'closed' : 'open';
-                    break;
-                case 'realizedPL':
-                    valA = getRealizedPL(a) || 0;
-                    valB = getRealizedPL(b) || 0;
-                    break;
-                default:
-                    return 0;
-            }
-
-            if (valA < valB) return isAsc ? -1 : 1;
-            if (valA > valB) return isAsc ? 1 : -1;
-            return 0;
-        }
-
-        function handleSort(event) {
-            const sortKey = event.currentTarget.dataset.sortKey;
-            if (currentSortKey === sortKey) {
-                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortKey = sortKey;
-                currentSortDirection = 'asc';
-            }
-            applyLogFilters(); // Re-render the table with the new sort order
-        }
-        
-        function updateSortIcons() {
-            document.querySelectorAll('.sort-icon').forEach(icon => {
-                icon.innerHTML = '';
-                icon.classList.remove('asc', 'desc');
-                const key = icon.dataset.sortIcon;
-                if (key === currentSortKey) {
-                    if (currentSortDirection === 'asc') {
-                        icon.innerHTML = '&#x25B2;'; // up arrow
-                        icon.classList.add('asc');
-                    } else {
-                        icon.innerHTML = '&#x25BC;'; // down arrow
-                        icon.classList.add('desc');
-                    }
-                }
-            });
-        }
-
         function applyLogFilters() {
             const dateFrom = filterDateFromInput.value;
             const dateTo = filterDateToInput.value;
@@ -1166,6 +1095,106 @@
             filterReasonInput.value = '';
             filterStatusSelect.value = 'all';
             applyLogFilters(); // Re-render with all logs
+        }
+        
+        function handleSort(column, type) {
+            if (currentSortColumn === column) {
+                // If the same column is clicked, toggle sort direction
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // If a new column is clicked, set it as the sort column and reset to 'asc'
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+            applyLogFilters(); // Re-render with new sort order
+        }
+        
+        function updateSortIcons() {
+            logTableHeaders.forEach(header => {
+                const column = header.dataset.sort;
+                const sortIconUp = header.querySelector('.fa-sort-up');
+                const sortIconDown = header.querySelector('.fa-sort-down');
+
+                // Hide all icons first
+                if (sortIconUp) sortIconUp.classList.add('hidden');
+                if (sortIconDown) sortIconDown.classList.add('hidden');
+                
+                // Remove 'active' class from all sort buttons
+                const sortBtn = header.querySelector('.sort-btn');
+                if (sortBtn) sortBtn.classList.remove('active');
+
+                // Show the correct icon for the active column
+                if (currentSortColumn === column) {
+                    if (sortBtn) sortBtn.classList.add('active');
+                    if (currentSortDirection === 'asc' && sortIconUp) {
+                        sortIconUp.classList.remove('hidden');
+                    } else if (currentSortDirection === 'desc' && sortIconDown) {
+                        sortIconDown.classList.remove('hidden');
+                    }
+                }
+            });
+        }
+        
+        function getSortComparator(column, direction) {
+            const type = document.querySelector(`th[data-sort="${column}"]`).dataset.type;
+
+            return (a, b) => {
+                let valueA = a[column];
+                let valueB = b[column];
+
+                // Handle special cases
+                if (column === 'status') {
+                     valueA = a.sellPrice ? 'closed' : 'open';
+                     valueB = b.sellPrice ? 'closed' : 'open';
+                } else if (column === 'realizedPL') {
+                    // Use the realizedPL property that was calculated in renderLogTable
+                    valueA = a.realizedPL !== undefined ? a.realizedPL : (a.sellPrice ? -Infinity : Infinity);
+                    valueB = b.realizedPL !== undefined ? b.realizedPL : (b.sellPrice ? -Infinity : Infinity);
+                } else if (column === 'sellDate') {
+                    // Treat null/undefined sell dates as a specific value for sorting
+                    valueA = a.sellDate || (direction === 'asc' ? '9999-12-31' : '0000-01-01');
+                    valueB = b.sellDate || (direction === 'asc' ? '9999-12-31' : '0000-01-01');
+                } else {
+                    // Handle null/undefined values for generic sorting
+                    if (valueA === undefined || valueA === null) valueA = (type === 'number' ? (direction === 'asc' ? Infinity : -Infinity) : (direction === 'asc' ? 'zzzzzz' : ''));
+                    if (valueB === undefined || valueB === null) valueB = (type === 'number' ? (direction === 'asc' ? Infinity : -Infinity) : (direction === 'asc' ? 'zzzzzz' : ''));
+                }
+                
+                let comparison = 0;
+                if (type === 'number') {
+                    comparison = valueA - valueB;
+                } else if (type === 'date') {
+                    comparison = new Date(valueA) - new Date(valueB);
+                } else {
+                    comparison = String(valueA).localeCompare(String(valueB));
+                }
+
+                return direction === 'asc' ? comparison : -comparison;
+            };
+        }
+
+        // --- MODAL MANAGEMENT ---
+        function openModal(modal) { modal.classList.add('active'); }
+        function closeModal(modal) { modal.classList.remove('active'); }
+
+        function showNotification(message, title = 'Pemberitahuan') {
+            document.getElementById('notification-title').textContent = title;
+            document.getElementById('notification-message').textContent = message;
+            openModal(notificationModal);
+        }
+
+        // Custom confirmation modal function
+        let confirmCallback = null;
+        let cancelCallback = null;
+
+        function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonText, onConfirm, onCancel) {
+            customConfirmTitle.textContent = title;
+            customConfirmMessage.textContent = message;
+            customConfirmBtn.textContent = confirmButtonText;
+            customCancelBtn.textContent = cancelButtonText;
+            confirmCallback = onConfirm;
+            cancelCallback = onCancel;
+            openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
         }
 
 
@@ -1280,17 +1309,20 @@
         filterReasonInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
         filterStatusSelect.addEventListener('change', applyLogFilters);
 
-        // New event listener for sortable headers
-        document.querySelectorAll('.sortable-header').forEach(header => {
-            header.addEventListener('click', handleSort);
-        });
-
-
         // New listeners for Auth, Sync, and Backup
         loginBtn.addEventListener('click', handleGoogleLogin);
         logoutBtn.addEventListener('click', handleLogout);
         downloadJsonBtn.addEventListener('click', downloadJSON);
         uploadJsonInput.addEventListener('change', handleFileUpload);
+        
+        // Add event listeners to table headers for sorting
+        logTableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortColumn = header.dataset.sort;
+                const sortType = header.dataset.type;
+                handleSort(sortColumn, sortType);
+            });
+        });
         
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -1303,7 +1335,6 @@
                     loadDataFromFirebase();
                 }
             });
-
             refreshAllApplicationData();
             switchTab('simulator');
         });
