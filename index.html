@@ -141,11 +141,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: nowrap; /* Mencegah item pecah ke baris baru */
         }
         .sort-icon {
             margin-left: 4px;
             font-size: 0.8em;
             color: #6B7280; /* gray-500 */
+            flex-shrink: 0; /* Mencegah ikon menyusut */
         }
         .sort-icon.asc, .sort-icon.desc {
             color: #22D3EE; /* cyan-400 */
