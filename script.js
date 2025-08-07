@@ -44,7 +44,7 @@
         let defaultFeeBeli = 0.11; // Default value for buy fee
         let defaultFeeJual = 0.11; // Default value for sell fee
         let currentSortColumn = 'date'; // Default sort column
-        let currentSortDirection = 'asc'; // Default sort direction
+        let currentSortDirection = 'desc'; // Default sort direction
 
         // --- DOM Elements ---
         const tabButtons = { 
@@ -117,9 +117,6 @@
         const customConfirmMessage = document.getElementById('delete-confirm-modal').querySelector('p');
         const customConfirmBtn = document.getElementById('confirm-delete-btn');
         const customCancelBtn = document.getElementById('cancel-delete-btn');
-        
-        // Log Table Header for sorting
-        const logTableHeaders = document.querySelectorAll('#tab-content-log .table-wrapper th[data-sort]');
 
 
         // --- HELPER FUNCTIONS ---
@@ -371,6 +368,8 @@
         }
 
         function refreshAllApplicationData() {
+            // Urutkan data sebelum menerapkan filter dan me-render ulang tabel
+            sortPortfolioLogs();
             applyLogFilters(); // Apply filters on refresh
             renderFinancialSummaries();
             renderSavedSimulationsTable();
@@ -450,37 +449,105 @@
             document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
         }
 
+        // --- SORTING LOGIC ---
+        function sortPortfolioLogs() {
+            // Tambahkan Realisasi P/L dan Status ke data log untuk sorting
+            const logsWithCalculations = portfolioLog.map(log => {
+                const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
+                const status = log.sellPrice ? 'closed' : 'open';
+                const realizedPL = log.sellPrice ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - actualBuyPrice) * log.lot * 100 : null;
+                return { ...log, status, realizedPL };
+            });
+
+            // Urutkan data berdasarkan kolom dan arah yang sedang aktif
+            logsWithCalculations.sort((a, b) => {
+                let aValue = a[currentSortColumn];
+                let bValue = b[currentSortColumn];
+
+                // Handle string, numeric, and date comparisons
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    // Penanganan khusus untuk tanggal dan kode
+                    if (currentSortColumn === 'date' || currentSortColumn === 'sellDate') {
+                        aValue = aValue ? new Date(aValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
+                        bValue = bValue ? new Date(bValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
+                    } else if (currentSortColumn === 'code' || currentSortColumn === 'reason') {
+                        aValue = aValue.toLowerCase();
+                        bValue = bValue.toLowerCase();
+                    }
+                }
+
+                if (aValue < bValue) {
+                    return currentSortDirection === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return currentSortDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+            return logsWithCalculations;
+        }
+
+        function updateSortIndicators(column) {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.classList.remove('asc', 'desc');
+                if (header.dataset.sortBy === column) {
+                    header.classList.add(currentSortDirection);
+                }
+            });
+        }
+
+
         // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
         function renderLogTable(filteredLogs = portfolioLog) {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
-
-            // Sort the filtered logs
-            const sortedLogs = [...filteredLogs].sort(getSortComparator(currentSortColumn, currentSortDirection));
-
-            // Update sort icons
-            updateSortIcons();
-        
-            if (sortedLogs.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
             
-            sortedLogs.forEach((log, index) => {
+            // Urutkan data yang akan dirender ulang
+            const logsToRender = sortPortfolioLogs().filter(log => {
+                // Apply filters to the sorted data
+                const dateFrom = filterDateFromInput.value;
+                const dateTo = filterDateToInput.value;
+                const stockCode = filterStockCodeInput.value.toLowerCase();
+                const reason = filterReasonInput.value.toLowerCase();
+                const status = filterStatusSelect.value;
+            
+                const logDate = log.date;
+                const logCode = log.code.toLowerCase();
+                const logReason = log.reason ? log.reason.toLowerCase() : '';
+                const logStatus = log.sellPrice ? 'closed' : 'open';
+
+                // Date filter
+                if (dateFrom && logDate < dateFrom) return false;
+                if (dateTo && logDate > dateTo) return false;
+
+                // Stock Code filter
+                if (stockCode && !logCode.includes(stockCode)) return false;
+
+                // Reason filter
+                if (reason && !logReason.includes(reason)) return false;
+
+                // Status filter
+                if (status !== 'all' && logStatus !== status) return false;
+
+                return true;
+            });
+
+            if (logsToRender.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
+            
+            logsToRender.forEach((log, index) => {
                 const row = document.createElement('tr');
                 row.className = 'bg-gray-800 border-b border-gray-700';
                 let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
 
-                // Calculate realized P/L for sorting purposes
-                let realizedPL = 0;
-                if (log.sellPrice) {
-                    const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
-                    const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
-                    realizedPL = (actualSellPrice - actualBuyPrice) * log.lot * 100;
-                }
-                // Add the realizedPL to the log object for sorting
-                log.realizedPL = realizedPL;
+                // Calculate actual buy price including Fee Beli
+                const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
 
                 if (log.sellPrice) {
-                    const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
-                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
+                    // Calculate actual sell value including Fee Jual
+                    const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+                    const profitLoss = (actualSellPrice - actualBuyPrice) * log.lot * 100;
+                    const plColor = profitLoss >= 0 ? 'text-green-400' : 'text-red-500';
+                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
                                     <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
@@ -514,6 +581,9 @@
                 `;
                 logTableBody.appendChild(row);
             });
+
+            // Setelah me-render, perbarui indikator pengurutan
+            updateSortIndicators(currentSortColumn);
         }
         
         function renderFinancialSummaries() {
@@ -766,7 +836,7 @@
              let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
              portfolioLog.forEach(log => {
                 totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-                if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
+                if (log.sellPrice) totalSellValueWithFee += (log.price * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
              });
              const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
@@ -825,7 +895,6 @@
             cancelCallback = onCancel;
             openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
         }
-
 
         // --- EVENT HANDLERS ---
         function handleAddOrEditLog(event) {
@@ -1056,7 +1125,7 @@
             triggerAutoSave(); // Save settings to Firebase
         }
 
-        // --- FILTER & SORT LOGIC ---
+        // --- FILTER LOGIC ---
         function applyLogFilters() {
             const dateFrom = filterDateFromInput.value;
             const dateTo = filterDateToInput.value;
@@ -1064,7 +1133,7 @@
             const reason = filterReasonInput.value.toLowerCase();
             const status = filterStatusSelect.value;
 
-            const filteredLogs = portfolioLog.filter(log => {
+            const filteredLogs = sortPortfolioLogs().filter(log => {
                 const logDate = log.date;
                 const logCode = log.code.toLowerCase();
                 const logReason = log.reason ? log.reason.toLowerCase() : '';
@@ -1096,106 +1165,6 @@
             filterReasonInput.value = '';
             filterStatusSelect.value = 'all';
             applyLogFilters(); // Re-render with all logs
-        }
-        
-        function handleSort(column, type) {
-            if (currentSortColumn === column) {
-                // If the same column is clicked, toggle sort direction
-                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                // If a new column is clicked, set it as the sort column and reset to 'asc'
-                currentSortColumn = column;
-                currentSortDirection = 'asc';
-            }
-            applyLogFilters(); // Re-render with new sort order
-        }
-        
-        function updateSortIcons() {
-            logTableHeaders.forEach(header => {
-                const column = header.dataset.sort;
-                const sortIconUp = header.querySelector('.fa-sort-up');
-                const sortIconDown = header.querySelector('.fa-sort-down');
-
-                // Hide all icons first
-                if (sortIconUp) sortIconUp.classList.add('hidden');
-                if (sortIconDown) sortIconDown.classList.add('hidden');
-                
-                // Remove 'active' class from all sort buttons
-                const sortBtn = header.querySelector('.sort-btn');
-                if (sortBtn) sortBtn.classList.remove('active');
-
-                // Show the correct icon for the active column
-                if (currentSortColumn === column) {
-                    if (sortBtn) sortBtn.classList.add('active');
-                    if (currentSortDirection === 'asc' && sortIconUp) {
-                        sortIconUp.classList.remove('hidden');
-                    } else if (currentSortDirection === 'desc' && sortIconDown) {
-                        sortIconDown.classList.remove('hidden');
-                    }
-                }
-            });
-        }
-        
-        function getSortComparator(column, direction) {
-            const type = document.querySelector(`th[data-sort="${column}"]`).dataset.type;
-
-            return (a, b) => {
-                let valueA = a[column];
-                let valueB = b[column];
-
-                // Handle special cases
-                if (column === 'status') {
-                     valueA = a.sellPrice ? 'closed' : 'open';
-                     valueB = b.sellPrice ? 'closed' : 'open';
-                } else if (column === 'realizedPL') {
-                    // Use the realizedPL property that was calculated in renderLogTable
-                    valueA = a.realizedPL !== undefined ? a.realizedPL : (a.sellPrice ? -Infinity : Infinity);
-                    valueB = b.realizedPL !== undefined ? b.realizedPL : (b.sellPrice ? -Infinity : Infinity);
-                } else if (column === 'sellDate') {
-                    // Treat null/undefined sell dates as a specific value for sorting
-                    valueA = a.sellDate || (direction === 'asc' ? '9999-12-31' : '0000-01-01');
-                    valueB = b.sellDate || (direction === 'asc' ? '9999-12-31' : '0000-01-01');
-                } else {
-                    // Handle null/undefined values for generic sorting
-                    if (valueA === undefined || valueA === null) valueA = (type === 'number' ? (direction === 'asc' ? Infinity : -Infinity) : (direction === 'asc' ? 'zzzzzz' : ''));
-                    if (valueB === undefined || valueB === null) valueB = (type === 'number' ? (direction === 'asc' ? Infinity : -Infinity) : (direction === 'asc' ? 'zzzzzz' : ''));
-                }
-                
-                let comparison = 0;
-                if (type === 'number') {
-                    comparison = valueA - valueB;
-                } else if (type === 'date') {
-                    comparison = new Date(valueA) - new Date(valueB);
-                } else {
-                    comparison = String(valueA).localeCompare(String(valueB));
-                }
-
-                return direction === 'asc' ? comparison : -comparison;
-            };
-        }
-
-        // --- MODAL MANAGEMENT ---
-        function openModal(modal) { modal.classList.add('active'); }
-        function closeModal(modal) { modal.classList.remove('active'); }
-
-        function showNotification(message, title = 'Pemberitahuan') {
-            document.getElementById('notification-title').textContent = title;
-            document.getElementById('notification-message').textContent = message;
-            openModal(notificationModal);
-        }
-
-        // Custom confirmation modal function
-        let confirmCallback = null;
-        let cancelCallback = null;
-
-        function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonText, onConfirm, onCancel) {
-            customConfirmTitle.textContent = title;
-            customConfirmMessage.textContent = message;
-            customConfirmBtn.textContent = confirmButtonText;
-            customCancelBtn.textContent = cancelButtonText;
-            confirmCallback = onConfirm;
-            cancelCallback = onCancel;
-            openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
         }
 
 
@@ -1277,6 +1246,24 @@
             }
         });
 
+        // New event listener for sorting table headers
+        document.getElementById('log-table-body').previousElementSibling.addEventListener('click', (event) => {
+            const header = event.target.closest('.sortable-header');
+            if (header) {
+                const sortBy = header.dataset.sortBy;
+                if (sortBy === currentSortColumn) {
+                    // Toggle sort direction
+                    currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // New column, reset to default sort direction (descending for date)
+                    currentSortColumn = sortBy;
+                    currentSortDirection = (sortBy === 'date' || sortBy === 'sellDate') ? 'desc' : 'asc';
+                }
+                refreshAllApplicationData();
+            }
+        });
+
+
         document.getElementById('saved-simulations-table-body').addEventListener('click', handleLoadOrDeleteSimulation);
         
         Object.keys(tabButtons).forEach(key => {
@@ -1310,20 +1297,12 @@
         filterReasonInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
         filterStatusSelect.addEventListener('change', applyLogFilters);
 
+
         // New listeners for Auth, Sync, and Backup
         loginBtn.addEventListener('click', handleGoogleLogin);
         logoutBtn.addEventListener('click', handleLogout);
         downloadJsonBtn.addEventListener('click', downloadJSON);
         uploadJsonInput.addEventListener('change', handleFileUpload);
-        
-        // Add event listeners to table headers for sorting
-        logTableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const sortColumn = header.dataset.sort;
-                const sortType = header.dataset.type;
-                handleSort(sortColumn, sortType);
-            });
-        });
         
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -1336,6 +1315,8 @@
                     loadDataFromFirebase();
                 }
             });
+            
+            // Panggil refreshAllApplicationData() untuk pertama kalinya
             refreshAllApplicationData();
             switchTab('simulator');
         });
