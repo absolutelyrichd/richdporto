@@ -10,7 +10,7 @@
             projectId: "richdporto",
             storageBucket: "richdporto.appspot.com",
             messagingSenderId: "720478988067",
-            appId: "1:720478988067:web:a21abb0396f99872a38e96",
+            appId: "1:720478988067:web:a21abb0396f9987a38e96",
             measurementId: "G-S793S8TH7V"
         };
 
@@ -368,15 +368,14 @@
         }
 
         function refreshAllApplicationData() {
-            // Urutkan data sebelum menerapkan filter dan me-render ulang tabel
-            sortPortfolioLogs();
-            applyLogFilters(); // Apply filters on refresh
+            // Memanggil renderLogTable untuk mengurutkan, memfilter, dan menampilkan log
+            renderLogTable(); 
             renderFinancialSummaries();
             renderSavedSimulationsTable();
             calculateDashboard();
             calculateEntryForProfit();
             updateSimulationReasonDisplay();
-            renderPerformanceTab(); // Call renderPerformanceTab directly
+            renderPerformanceTab(); 
             triggerAutoSave();
         }
 
@@ -450,43 +449,6 @@
         }
 
         // --- SORTING LOGIC ---
-        function sortPortfolioLogs() {
-            // Tambahkan Realisasi P/L dan Status ke data log untuk sorting
-            const logsWithCalculations = portfolioLog.map(log => {
-                const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
-                const status = log.sellPrice ? 'closed' : 'open';
-                const realizedPL = log.sellPrice ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - actualBuyPrice) * log.lot * 100 : null;
-                return { ...log, status, realizedPL };
-            });
-
-            // Urutkan data berdasarkan kolom dan arah yang sedang aktif
-            logsWithCalculations.sort((a, b) => {
-                let aValue = a[currentSortColumn];
-                let bValue = b[currentSortColumn];
-
-                // Handle string, numeric, and date comparisons
-                if (typeof aValue === 'string' && typeof bValue === 'string') {
-                    // Penanganan khusus untuk tanggal dan kode
-                    if (currentSortColumn === 'date' || currentSortColumn === 'sellDate') {
-                        aValue = aValue ? new Date(aValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
-                        bValue = bValue ? new Date(bValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
-                    } else if (currentSortColumn === 'code' || currentSortColumn === 'reason') {
-                        aValue = aValue.toLowerCase();
-                        bValue = bValue.toLowerCase();
-                    }
-                }
-
-                if (aValue < bValue) {
-                    return currentSortDirection === 'asc' ? -1 : 1;
-                }
-                if (aValue > bValue) {
-                    return currentSortDirection === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-            return logsWithCalculations;
-        }
-
         function updateSortIndicators(column) {
             document.querySelectorAll('.sortable-header').forEach(header => {
                 header.classList.remove('asc', 'desc');
@@ -498,19 +460,21 @@
 
 
         // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
-        function renderLogTable(filteredLogs = portfolioLog) {
+        function renderLogTable() {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
             
-            // Urutkan data yang akan dirender ulang
-            const logsToRender = sortPortfolioLogs().filter(log => {
-                // Apply filters to the sorted data
-                const dateFrom = filterDateFromInput.value;
-                const dateTo = filterDateToInput.value;
-                const stockCode = filterStockCodeInput.value.toLowerCase();
-                const reason = filterReasonInput.value.toLowerCase();
-                const status = filterStatusSelect.value;
+            // Lakukan pengurutan dan pemfilteran pada salinan array
+            let logsToRender = [...portfolioLog];
+
+            // Filter
+            const dateFrom = filterDateFromInput.value;
+            const dateTo = filterDateToInput.value;
+            const stockCode = filterStockCodeInput.value.toLowerCase();
+            const reason = filterReasonInput.value.toLowerCase();
+            const status = filterStatusSelect.value;
             
+            logsToRender = logsToRender.filter(log => {
                 const logDate = log.date;
                 const logCode = log.code.toLowerCase();
                 const logReason = log.reason ? log.reason.toLowerCase() : '';
@@ -531,10 +495,55 @@
 
                 return true;
             });
+            
+            // Sort
+            logsToRender.sort((a, b) => {
+                let aValue = a[currentSortColumn];
+                let bValue = b[currentSortColumn];
+            
+                // Penanganan khusus untuk kolom Realisasi P/L
+                if (currentSortColumn === 'realizedPL') {
+                    const actualBuyPriceA = a.price * (1 + (a.feeBeli || 0) / 100);
+                    const actualSellPriceA = a.sellPrice ? a.sellPrice * (1 - (a.feeJual || 0) / 100) : null;
+                    const realizedPLA = actualSellPriceA !== null ? (actualSellPriceA - actualBuyPriceA) * a.lot * 100 : null;
+            
+                    const actualBuyPriceB = b.price * (1 + (b.feeBeli || 0) / 100);
+                    const actualSellPriceB = b.sellPrice ? b.sellPrice * (1 - (b.feeJual || 0) / 100) : null;
+                    const realizedPLB = actualSellPriceB !== null ? (actualSellPriceB - actualBuyPriceB) * b.lot * 100 : null;
+            
+                    aValue = realizedPLA;
+                    bValue = realizedPLB;
+                }
+            
+                // Handle string, numeric, and date comparisons
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    // Penanganan khusus untuk tanggal dan kode
+                    if (currentSortColumn === 'date' || currentSortColumn === 'sellDate') {
+                        aValue = aValue ? new Date(aValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
+                        bValue = bValue ? new Date(bValue) : (currentSortDirection === 'asc' ? new Date(0) : new Date());
+                    } else if (currentSortColumn === 'code' || currentSortColumn === 'reason') {
+                        aValue = aValue.toLowerCase();
+                        bValue = bValue.toLowerCase();
+                    }
+                }
+            
+                // Handle null/undefined values for sorting
+                if (aValue === null || aValue === undefined) return 1;
+                if (bValue === null || bValue === undefined) return -1;
+            
+                if (aValue < bValue) {
+                    return currentSortDirection === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return currentSortDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+
 
             if (logsToRender.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
             
-            logsToRender.forEach((log, index) => {
+            logsToRender.forEach(log => {
                 const row = document.createElement('tr');
                 row.className = 'bg-gray-800 border-b border-gray-700';
                 let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
@@ -836,7 +845,7 @@
              let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
              portfolioLog.forEach(log => {
                 totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-                if (log.sellPrice) totalSellValueWithFee += (log.price * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
+                if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
              });
              const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
@@ -1127,35 +1136,8 @@
 
         // --- FILTER LOGIC ---
         function applyLogFilters() {
-            const dateFrom = filterDateFromInput.value;
-            const dateTo = filterDateToInput.value;
-            const stockCode = filterStockCodeInput.value.toLowerCase();
-            const reason = filterReasonInput.value.toLowerCase();
-            const status = filterStatusSelect.value;
-
-            const filteredLogs = sortPortfolioLogs().filter(log => {
-                const logDate = log.date;
-                const logCode = log.code.toLowerCase();
-                const logReason = log.reason ? log.reason.toLowerCase() : '';
-                const logStatus = log.sellPrice ? 'closed' : 'open';
-
-                // Date filter
-                if (dateFrom && logDate < dateFrom) return false;
-                if (dateTo && logDate > dateTo) return false;
-
-                // Stock Code filter
-                if (stockCode && !logCode.includes(stockCode)) return false;
-
-                // Reason filter
-                if (reason && !logReason.includes(reason)) return false;
-
-                // Status filter
-                if (status !== 'all' && logStatus !== status) return false;
-
-                return true;
-            });
-
-            renderLogTable(filteredLogs);
+            // Cukup panggil renderLogTable() yang sekarang menangani semua logika
+            renderLogTable(); 
         }
 
         function resetLogFilters() {
@@ -1164,7 +1146,7 @@
             filterStockCodeInput.value = '';
             filterReasonInput.value = '';
             filterStatusSelect.value = 'all';
-            applyLogFilters(); // Re-render with all logs
+            renderLogTable(); // Re-render with all logs
         }
 
 
@@ -1210,20 +1192,23 @@
         document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
 
         document.getElementById('log-table-body').addEventListener('click', (event) => {
-            if (event.target.classList.contains('delete-log-btn')) {
+            const button = event.target.closest('button');
+            if (!button) return;
+
+            if (button.classList.contains('delete-log-btn')) {
                 // Find the actual index in portfolioLog array
-                const logIndex = parseInt(event.target.dataset.index);
+                const logIndex = parseInt(button.dataset.index);
                 handleDeleteLog(logIndex); // Call the new handler
-            } else if (event.target.classList.contains('sell-log-btn')) {
+            } else if (button.classList.contains('sell-log-btn')) {
                 // Find the actual index in portfolioLog array
-                const logIndex = parseInt(event.target.dataset.index);
+                const logIndex = parseInt(button.dataset.index);
                 document.getElementById('sell-log-index').value = logIndex;
                 document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
                 document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default Fee Jual from settings
                 openModal(sellModal);
-            } else if (event.target.classList.contains('edit-log-btn')) { // New event listener for edit button
+            } else if (button.classList.contains('edit-log-btn')) { // New event listener for edit button
                 // Find the actual index in portfolioLog array
-                const logIndex = parseInt(event.target.dataset.index);
+                const logIndex = parseInt(button.dataset.index);
                 handleEditLog(logIndex);
             }
         });
@@ -1247,7 +1232,7 @@
         });
 
         // New event listener for sorting table headers
-        document.getElementById('log-table-body').previousElementSibling.addEventListener('click', (event) => {
+        document.getElementById('tab-content-log').querySelector('thead').addEventListener('click', (event) => {
             const header = event.target.closest('.sortable-header');
             if (header) {
                 const sortBy = header.dataset.sortBy;
@@ -1259,7 +1244,7 @@
                     currentSortColumn = sortBy;
                     currentSortDirection = (sortBy === 'date' || sortBy === 'sellDate') ? 'desc' : 'asc';
                 }
-                refreshAllApplicationData();
+                renderLogTable();
             }
         });
 
@@ -1293,8 +1278,8 @@
         filterResetBtn.addEventListener('click', resetLogFilters);
         filterDateFromInput.addEventListener('change', applyLogFilters);
         filterDateToInput.addEventListener('change', applyLogFilters);
-        filterStockCodeInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
-        filterReasonInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
+        filterStockCodeInput.addEventListener('input', applyLogFilters); 
+        filterReasonInput.addEventListener('input', applyLogFilters); 
         filterStatusSelect.addEventListener('change', applyLogFilters);
 
 
