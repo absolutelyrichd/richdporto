@@ -1,7 +1,7 @@
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+ // Import the functions you need from the SDKs you need
+        import { initializeApp } from "[https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js](https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js)";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "[https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js](https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js)";
+        import { getFirestore, doc, setDoc, getDoc } from "[https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js](https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js)";
       
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -44,6 +44,9 @@
         let defaultFeeBeli = 0.11; // Default value for buy fee
         let defaultFeeJual = 0.11; // Default value for sell fee
 
+        // New sorting state variables
+        let currentSortKey = 'date';
+        let currentSortDirection = 'desc';
 
         // --- DOM Elements ---
         const tabButtons = { 
@@ -125,6 +128,13 @@
             if (value > 0) return `+${formatted}`;
             if (value < 0) return `-${formatted}`;
             return formatted;
+        }
+        
+        function getRealizedPL(log) {
+            if (!log.sellPrice) return null;
+            const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
+            const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
+            return (actualSellPrice - actualBuyPrice) * log.lot * 100;
         }
 
         // --- TAB MANAGEMENT ---
@@ -450,27 +460,31 @@
         function renderLogTable(filteredLogs = portfolioLog) {
             const logTableBody = document.getElementById('log-table-body');
             logTableBody.innerHTML = '';
-            // Update colspan for the new Fee Beli, Fee Jual, and Alasan Beli columns
-            if (filteredLogs.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
             
-            filteredLogs.forEach((log, index) => {
+            // Apply sorting before rendering
+            const sortedLogs = [...filteredLogs].sort(sortLogs);
+            updateSortIcons();
+
+            if (sortedLogs.length === 0) { logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; return; }
+            
+            sortedLogs.forEach((log, index) => {
                 const row = document.createElement('tr');
                 row.className = 'bg-gray-800 border-b border-gray-700';
                 let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
 
+                const originalIndex = portfolioLog.indexOf(log);
+
                 // Calculate actual buy price including Fee Beli
                 const actualBuyPrice = log.price * (1 + (log.feeBeli || 0) / 100);
+                const realizedPL = getRealizedPL(log);
 
                 if (log.sellPrice) {
-                    // Calculate actual sell value including Fee Jual
-                    const actualSellPrice = log.sellPrice * (1 - (log.feeJual || 0) / 100);
-                    const profitLoss = (actualSellPrice - actualBuyPrice) * log.lot * 100;
-                    const plColor = profitLoss >= 0 ? 'text-green-400' : 'text-red-500';
-                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(profitLoss, true)}</td>`;
+                    const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
+                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
                     feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
@@ -478,9 +492,9 @@
                     plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
                     actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Jual</button>
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
+                                    <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                                   </td>`;
                     sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                     feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
@@ -559,9 +573,7 @@
             }
 
             const totalRealizedPL = closedPositions.reduce((acc, log) => {
-                const buyCostPerShare = log.price * (1 + (log.feeBeli || 0) / 100);
-                const sellValuePerShare = log.sellPrice * (1 - (log.feeJual || 0) / 100);
-                return acc + ((sellValuePerShare - buyCostPerShare) * log.lot * 100);
+                return acc + getRealizedPL(log);
             }, 0);
             const realizedPlCard = document.createElement('div');
             realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
@@ -1041,7 +1053,80 @@
             triggerAutoSave(); // Save settings to Firebase
         }
 
-        // --- FILTER LOGIC ---
+        // --- FILTER & SORT LOGIC ---
+        function sortLogs(a, b) {
+            const key = currentSortKey;
+            const direction = currentSortDirection;
+            const isAsc = direction === 'asc';
+
+            let valA, valB;
+            
+            switch (key) {
+                case 'date':
+                case 'sellDate':
+                    valA = new Date(a[key]);
+                    valB = new Date(b[key]);
+                    // Handle null/empty dates by putting them last
+                    if (!a[key]) return isAsc ? 1 : -1;
+                    if (!b[key]) return isAsc ? -1 : 1;
+                    break;
+                case 'code':
+                case 'reason':
+                    valA = a[key] ? a[key].toLowerCase() : '';
+                    valB = b[key] ? b[key].toLowerCase() : '';
+                    break;
+                case 'price':
+                case 'lot':
+                case 'feeBeli':
+                case 'feeJual':
+                    valA = a[key] || 0;
+                    valB = b[key] || 0;
+                    break;
+                case 'status':
+                    valA = a.sellPrice ? 'closed' : 'open';
+                    valB = b.sellPrice ? 'closed' : 'open';
+                    break;
+                case 'realizedPL':
+                    valA = getRealizedPL(a) || 0;
+                    valB = getRealizedPL(b) || 0;
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (valA < valB) return isAsc ? -1 : 1;
+            if (valA > valB) return isAsc ? 1 : -1;
+            return 0;
+        }
+
+        function handleSort(event) {
+            const sortKey = event.currentTarget.dataset.sortKey;
+            if (currentSortKey === sortKey) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortKey = sortKey;
+                currentSortDirection = 'asc';
+            }
+            applyLogFilters(); // Re-render the table with the new sort order
+        }
+        
+        function updateSortIcons() {
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.innerHTML = '';
+                icon.classList.remove('asc', 'desc');
+                const key = icon.dataset.sortIcon;
+                if (key === currentSortKey) {
+                    if (currentSortDirection === 'asc') {
+                        icon.innerHTML = '&#x25B2;'; // up arrow
+                        icon.classList.add('asc');
+                    } else {
+                        icon.innerHTML = '&#x25BC;'; // down arrow
+                        icon.classList.add('desc');
+                    }
+                }
+            });
+        }
+
         function applyLogFilters() {
             const dateFrom = filterDateFromInput.value;
             const dateTo = filterDateToInput.value;
@@ -1194,6 +1279,11 @@
         filterStockCodeInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
         filterReasonInput.addEventListener('input', applyLogFilters); // Apply filter on input for immediate feedback
         filterStatusSelect.addEventListener('change', applyLogFilters);
+
+        // New event listener for sortable headers
+        document.querySelectorAll('.sortable-header').forEach(header => {
+            header.addEventListener('click', handleSort);
+        });
 
 
         // New listeners for Auth, Sync, and Backup
