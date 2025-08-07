@@ -133,6 +133,23 @@
                 position: static; /* Nonaktifkan sticky di mobile */
             }
         }
+
+        /* Gaya untuk header tabel yang bisa diurutkan */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sort-icon {
+            margin-left: 4px;
+            font-size: 0.8em;
+            color: #6B7280; /* gray-500 */
+        }
+        .sort-icon.asc, .sort-icon.desc {
+            color: #22D3EE; /* cyan-400 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -294,16 +311,46 @@
                                 <table class="w-full text-sm text-left text-gray-300">
                                     <thead class="text-xs text-cyan-300 uppercase bg-gray-700">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3">Tgl Beli</th>
-                                            <th scope="col" class="px-6 py-3">Kode</th>
-                                            <th scope="col" class="px-6 py-3">Harga Beli</th>
-                                            <th scope="col" class="px-6 py-3">Lot</th>
-                                            <th scope="col" class="px-6 py-3">Fee Beli</th>
-                                            <th scope="col" class="px-6 py-3">Fee Jual</th>
-                                            <th scope="col" class="px-6 py-3">Alasan Beli</th>
-                                            <th scope="col" class="px-6 py-3">Status</th>
-                                            <th scope="col" class="px-6 py-3">Tgl Jual</th>
-                                            <th scope="col" class="px-6 py-3">Realisasi P/L</th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="date">
+                                                <span>Tgl Beli</span>
+                                                <span class="sort-icon" data-sort-icon="date"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="code">
+                                                <span>Kode</span>
+                                                <span class="sort-icon" data-sort-icon="code"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="price">
+                                                <span>Harga Beli</span>
+                                                <span class="sort-icon" data-sort-icon="price"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="lot">
+                                                <span>Lot</span>
+                                                <span class="sort-icon" data-sort-icon="lot"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="feeBeli">
+                                                <span>Fee Beli</span>
+                                                <span class="sort-icon" data-sort-icon="feeBeli"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="feeJual">
+                                                <span>Fee Jual</span>
+                                                <span class="sort-icon" data-sort-icon="feeJual"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="reason">
+                                                <span>Alasan Beli</span>
+                                                <span class="sort-icon" data-sort-icon="reason"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="status">
+                                                <span>Status</span>
+                                                <span class="sort-icon" data-sort-icon="status"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="sellDate">
+                                                <span>Tgl Jual</span>
+                                                <span class="sort-icon" data-sort-icon="sellDate"></span>
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-key="realizedPL">
+                                                <span>Realisasi P/L</span>
+                                                <span class="sort-icon" data-sort-icon="realizedPL"></span>
+                                            </th>
                                             <th scope="col" class="px-6 py-3">Aksi</th>
                                         </tr>
                                     </thead>
