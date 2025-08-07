@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome untuk ikon sort -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module" src="/script.js"></script>
@@ -93,21 +94,25 @@
         #sync-status {
             transition: opacity 0.5s;
         }
-        
-        .sort-btn {
+        .sortable-header {
             cursor: pointer;
-            padding-left: 0.5rem;
-            color: #9CA3AF;
+            user-select: none;
         }
-
-        .sort-btn.active {
-            color: #22D3EE;
+        .sort-icon {
+            display: none;
+            margin-left: 8px;
         }
-        .sort-btn .fa-solid {
-            font-size: 0.7em;
-            margin-left: 0.25rem;
+        .sortable-header.asc .fa-sort-up,
+        .sortable-header.desc .fa-sort-down {
+            display: inline-block;
         }
-
+        .sortable-header .fa-sort {
+            display: inline-block;
+        }
+        .sortable-header.asc .fa-sort,
+        .sortable-header.desc .fa-sort {
+            display: none;
+        }
 
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
@@ -310,75 +315,65 @@
                                 <table class="w-full text-sm text-left text-gray-300">
                                     <thead class="text-xs text-cyan-300 uppercase bg-gray-700">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="date" data-type="date">
-                                                <span>Tgl Beli</span>
-                                                <span class="sort-btn" id="sort-btn-date">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="date">
+                                                Tgl Beli
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="code" data-type="string">
-                                                <span>Kode</span>
-                                                <span class="sort-btn" id="sort-btn-code">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="code">
+                                                Kode
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="price" data-type="number">
-                                                <span>Harga Beli</span>
-                                                <span class="sort-btn" id="sort-btn-price">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="price">
+                                                Harga Beli
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="lot" data-type="number">
-                                                <span>Lot</span>
-                                                <span class="sort-btn" id="sort-btn-lot">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="lot">
+                                                Lot
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="feeBeli" data-type="number">
-                                                <span>Fee Beli</span>
-                                                <span class="sort-btn" id="sort-btn-feeBeli">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="feeBeli">
+                                                Fee Beli
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="feeJual" data-type="number">
-                                                <span>Fee Jual</span>
-                                                <span class="sort-btn" id="sort-btn-feeJual">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="feeJual">
+                                                Fee Jual
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="reason" data-type="string">
-                                                <span>Alasan Beli</span>
-                                                <span class="sort-btn" id="sort-btn-reason">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="reason">
+                                                Alasan Beli
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="status" data-type="string">
-                                                <span>Status</span>
-                                                <span class="sort-btn" id="sort-btn-status">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="status">
+                                                Status
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="sellDate" data-type="date">
-                                                <span>Tgl Jual</span>
-                                                <span class="sort-btn" id="sort-btn-sellDate">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="sellDate">
+                                                Tgl Jual
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
-                                            <th scope="col" class="px-6 py-3 cursor-pointer" data-sort="realizedPL" data-type="number">
-                                                <span>Realisasi P/L</span>
-                                                <span class="sort-btn" id="sort-btn-realizedPL">
-                                                    <i class="fa-solid fa-sort-up hidden"></i>
-                                                    <i class="fa-solid fa-sort-down hidden"></i>
-                                                </span>
+                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="realizedPL">
+                                                Realisasi P/L
+                                                <i class="fa-solid fa-sort sort-icon"></i>
+                                                <i class="fa-solid fa-sort-up sort-icon"></i>
+                                                <i class="fa-solid fa-sort-down sort-icon"></i>
                                             </th>
                                             <th scope="col" class="px-6 py-3">Aksi</th>
                                         </tr>
