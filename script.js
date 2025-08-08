@@ -1040,6 +1040,10 @@ function handleSimParamsSubmit(event) {
     triggerAutoSave();
 }
 
+/**
+ * REVISED FUNCTION
+ * This function now saves the averaging strategy along with other simulation parameters.
+ */
 function handleSaveSimulation(isFromModal = false) {
     const simulation = {
         id: Date.now(),
@@ -1049,17 +1053,28 @@ function handleSaveSimulation(isFromModal = false) {
         dividend: parseFloat(document.getElementById(isFromModal ? 'modal-dividend' : 'dividend').value),
         avgDownPercent: parseFloat(document.getElementById(isFromModal ? 'modal-avg-down-percent' : 'avg-down-percent').value),
         avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
+        // NEW: Save strategy parameters
+        avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy').value,
+        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier').value),
         tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
         tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
         reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
     };
-    if (!simulation.stockCode) { showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); return; }
+    if (!simulation.stockCode) { 
+        showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); 
+        return; 
+    }
     savedSimulations.push(simulation);
     renderSavedSimulationsTable();
     if (isFromModal) closeModal(simParamsModal);
     switchTab('saved');
     triggerAutoSave();
 }
+
+/**
+ * REVISED FUNCTION
+ * This function now loads the saved averaging strategy when a simulation is loaded.
+ */
 function handleLoadOrDeleteSimulation(event) {
     const target = event.target;
     const simId = parseInt(target.dataset.id);
@@ -1068,6 +1083,7 @@ function handleLoadOrDeleteSimulation(event) {
     if (target.classList.contains('load-sim-btn')) {
         const simToLoad = savedSimulations.find(s => s.id === simId);
         if (simToLoad) {
+            // Load standard parameters
             document.getElementById('stock-code').value = simToLoad.stockCode;
             document.getElementById('initial-price').value = simToLoad.initialPrice;
             document.getElementById('initial-lot').value = simToLoad.initialLot;
@@ -1078,11 +1094,14 @@ function handleLoadOrDeleteSimulation(event) {
             document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
             document.getElementById('sim-reason').value = simToLoad.reason || '';
             
-            // Note: The new strategy parameters are not saved in the simulation object yet.
-            // You might want to add them to the handleSaveSimulation function later.
-            // For now, loading a simulation will revert to the default strategy (e.g., pengali lot x1).
-            document.getElementById('avg-strategy').value = 'lot';
-            document.getElementById('avg-multiplier').value = 1;
+            // NEW: Load strategy parameters and update both hidden and modal inputs
+            const savedStrategy = simToLoad.avgStrategy || 'lot';
+            const savedMultiplier = simToLoad.avgMultiplier || 1;
+            
+            document.getElementById('avg-strategy').value = savedStrategy;
+            document.getElementById('avg-multiplier').value = savedMultiplier;
+            document.getElementById('modal-avg-strategy').value = savedStrategy;
+            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
 
             calculateDashboard();
             updateActiveSimDisplay();
@@ -1109,14 +1128,39 @@ function handleLoadOrDeleteSimulation(event) {
         );
     }
 }
+
+/**
+ * REVISED FUNCTION
+ * This function now displays the saved averaging strategy in the table.
+ */
 function renderSavedSimulationsTable() {
     const tableBody = document.getElementById('saved-simulations-table-body');
     tableBody.innerHTML = '';
-    if (savedSimulations.length === 0) { tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">Belum ada simulasi yang disimpan.</td></tr>`; return; }
+    if (savedSimulations.length === 0) { 
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">Belum ada simulasi yang disimpan.</td></tr>`; 
+        return; 
+    }
     savedSimulations.forEach(sim => {
         const row = document.createElement('tr');
         row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
-        row.innerHTML = `<td class="px-6 py-4 font-medium text-cyan-300">${sim.stockCode.toUpperCase()}</td><td class="px-6 py-4">${formatCurrency(sim.initialPrice)}</td><td class="px-6 py-4">${sim.initialLot}</td><td class="px-6 py-4">${sim.avgDownPercent}%</td><td class="px-6 py-4">${sim.avgLevels}</td><td class="px-6 py-4 space-x-2"><button class="load-sim-btn text-green-400 hover:text-green-300" data-id="${sim.id}">Muat</button><button class="delete-sim-btn text-red-500 hover:text-red-400" data-id="${sim.id}">Hapus</button></td>`;
+        
+        // NEW: Format the strategy text for display
+        const strategy = sim.avgStrategy || 'lot'; // Default to 'lot' if not defined
+        const multiplier = sim.avgMultiplier || 1; // Default to 1 if not defined
+        const strategyText = strategy === 'lot' ? `Lot x${multiplier}` : `Rp x${multiplier}`;
+
+        row.innerHTML = `
+            <td class="px-6 py-4 font-medium text-cyan-300">${sim.stockCode.toUpperCase()}</td>
+            <td class="px-6 py-4">${formatCurrency(sim.initialPrice)}</td>
+            <td class="px-6 py-4">${sim.initialLot}</td>
+            <td class="px-6 py-4">${sim.avgDownPercent}%</td>
+            <td class="px-6 py-4">${sim.avgLevels}</td>
+            <td class="px-6 py-4">${strategyText}</td>
+            <td class="px-6 py-4 space-x-2">
+                <button class="load-sim-btn text-green-400 hover:text-green-300" data-id="${sim.id}">Muat</button>
+                <button class="delete-sim-btn text-red-500 hover:text-red-400" data-id="${sim.id}">Hapus</button>
+            </td>
+        `;
         tableBody.appendChild(row);
     });
 }
