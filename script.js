@@ -1045,9 +1045,9 @@
         
         // --- LOG SORTING FUNCTIONS ---
         function updateSortIcons() {
-            document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');
+            document.querySelectorAll('#tab-content-log .sort-icon').forEach(icon => icon.textContent = '');
             if (sortState.column) {
-                const currentHeader = document.querySelector(`[data-sort="${sortState.column}"] .sort-icon`);
+                const currentHeader = document.querySelector(`#tab-content-log [data-sort="${sortState.column}"] .sort-icon`);
                 if (currentHeader) {
                     currentHeader.textContent = sortState.direction === 'asc' ? ' ▲' : ' ▼';
                 }
@@ -1108,27 +1108,43 @@
                 filteredLogs.sort((a, b) => {
                     let aValue, bValue;
                     
-                    // Handle specific sorting logic for Realisasi P/L and Status
-                    if (sortState.column === 'realizedPL') {
-                        const aPL = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : -Infinity;
-                        const bPL = b.sellPrice ? ((b.sellPrice * (1 - (b.feeJual || 0) / 100)) - (b.price * (1 + (b.feeBeli || 0) / 100))) * b.lot * 100 : -Infinity;
-                        aValue = aPL;
-                        bValue = bPL;
-                    } else if (sortState.column === 'status') {
-                        aValue = a.sellPrice ? 'closed' : 'open';
-                        bValue = b.sellPrice ? 'closed' : 'open';
-                    } else {
-                        aValue = a[sortState.column];
-                        bValue = b[sortState.column];
+                    // Handle specific sorting logic for each column
+                    switch (sortState.column) {
+                        case 'realizedPL':
+                            aValue = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : -Infinity;
+                            bValue = b.sellPrice ? ((b.sellPrice * (1 - (b.feeJual || 0) / 100)) - (b.price * (1 + (b.feeBeli || 0) / 100))) * b.lot * 100 : -Infinity;
+                            break;
+                        case 'status':
+                            aValue = a.sellPrice ? 'closed' : 'open';
+                            bValue = b.sellPrice ? 'closed' : 'open';
+                            break;
+                        case 'date':
+                        case 'sellDate':
+                            aValue = a[sortState.column] ? new Date(a[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
+                            bValue = b[sortState.column] ? new Date(b[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
+                            break;
+                        case 'code':
+                        case 'reason':
+                            aValue = a[sortState.column];
+                            bValue = b[sortState.column];
+                            // Handle cases where reason is null
+                            if (aValue === undefined || aValue === null) aValue = '';
+                            if (bValue === undefined || bValue === null) bValue = '';
+                            break;
+                        default: // Numeric columns like price and lot
+                            aValue = a[sortState.column];
+                            bValue = b[sortState.column];
+                            if (aValue === undefined || aValue === null) aValue = 0;
+                            if (bValue === undefined || bValue === null) bValue = 0;
+                            break;
                     }
 
-                    // Handle undefined or null values
-                    if (aValue === undefined || aValue === null) aValue = '';
-                    if (bValue === undefined || bValue === null) bValue = '';
-                    
                     if (typeof aValue === 'string' && typeof bValue === 'string') {
                         return sortState.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                    } else {
+                    } else if (aValue instanceof Date && bValue instanceof Date) {
+                         return sortState.direction === 'asc' ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
+                    }
+                     else {
                         return sortState.direction === 'asc' ? aValue - bValue : bValue - aValue;
                     }
                 });
