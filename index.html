@@ -114,6 +114,19 @@
             margin-left: 0.5rem;
             width: 1em;
         }
+        
+        /* NEW: Custom Select Dropdown Style */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem; /* Make space for the arrow */
+        }
+        /* END NEW */
 
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
@@ -509,7 +522,7 @@
                     <!-- NEW: Averaging Strategy Controls -->
                     <div>
                         <label for="modal-avg-strategy" class="block text-sm font-medium text-gray-300 mb-1">Strategi Averaging</label>
-                        <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-300">
+                        <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
                             <option value="lot" selected>Berdasarkan Pengali Lot</option>
                             <option value="amount">Berdasarkan Pengali Total Beli</option>
                         </select>
