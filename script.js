@@ -1,6 +1,4 @@
 // Import the functions you need from the SDKs you need
-// CATATAN: Metode import ini berfungsi saat dijalankan langsung di browser,
-// namun akan menyebabkan error saat proses 'build' di Vercel.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -35,8 +33,8 @@ window.firebase = {
     getDoc
 };
 
-// --- API KEY UNTUK HARGA REAL-TIME ---
-const POLYGON_API_KEY = "F6Kl67QGMHtli_xcPVU5ZQaQK4MaEf6Z"; 
+// API Key Financial Modeling Prep
+const FMP_API_KEY = "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja";
 
 // --- DATA STORAGE ---
 let portfolioLog = [];
@@ -48,7 +46,6 @@ let autoSaveTimer = null;
 let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
 let defaultFeeBeli = 0.11; // Default value for buy fee
 let defaultFeeJual = 0.11; // Default value for sell fee
-let isFetchingPrice = false; // Flag untuk mencegah panggilan API ganda
 
 // --- Sort state for portfolio log ---
 let sortState = {
@@ -292,76 +289,6 @@ async function loadDataFromFirebase() {
     }
 }
 
-// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (DIPERBARUI DENGAN POLYGON.IO) ---
-/**
- * Mengambil harga penutupan sebelumnya untuk kode saham tertentu dari API Polygon.io.
- * @param {string} stockCode - Kode saham (misal: 'BBCA').
- */
-async function fetchRealTimePrice(stockCode) {
-    if (isFetchingPrice) {
-        showNotification("Harap tunggu panggilan API sebelumnya selesai.", "Info");
-        return;
-    }
-
-    if (!POLYGON_API_KEY || POLYGON_API_KEY === "YOUR_API_KEY") {
-        showNotification("Harap masukkan API Key Polygon.io Anda di file script.js.", "API Key Diperlukan");
-        return;
-    }
-
-    const fetchBtn = document.querySelector(`.fetch-price-btn[data-code="${stockCode.toUpperCase()}"]`);
-    const originalBtnContent = fetchBtn.innerHTML;
-    
-    try {
-        isFetchingPrice = true;
-        // Tampilkan status loading
-        fetchBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-        fetchBtn.disabled = true;
-
-        // --- PERBAIKAN FINAL: Menggunakan format ticker XIDX:TICKER ---
-        const formattedTicker = `XIDX:${stockCode.toUpperCase()}`;
-        const url = `https://api.polygon.io/v2/aggs/ticker/${formattedTicker}/prev?adjusted=true&apiKey=${POLYGON_API_KEY}`;
-        
-        const response = await fetch(url);
-
-        if (response.status === 429) {
-            throw new Error("Batas panggilan API (5 per menit) tercapai. Harap tunggu sebentar.");
-        }
-        
-        const data = await response.json();
-
-        if (data.status === "ERROR" || data.resultsCount === 0) {
-             throw new Error(data.error || `Tidak ada data untuk '${stockCode.toUpperCase()}'. Periksa kembali kode saham.`);
-        }
-
-        if (data.results && data.results.length > 0) {
-            const price = data.results[0].c; // 'c' adalah harga penutupan (close)
-            const inputField = document.getElementById(`current-price-${stockCode.toUpperCase()}`);
-            
-            if (inputField) {
-                inputField.value = price;
-                inputField.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        } else {
-            throw new Error(`Format respons API tidak valid untuk '${stockCode.toUpperCase()}'.`);
-        }
-
-    } catch (error) {
-        console.error(`Error fetching price for ${stockCode}:`, error);
-        showNotification(error.message, "Error");
-    } finally {
-        // Kembalikan tombol ke keadaan semula
-        if(fetchBtn) {
-            fetchBtn.innerHTML = originalBtnContent;
-            fetchBtn.disabled = false;
-        }
-        // Reset flag setelah 2 detik untuk memberi jeda
-        setTimeout(() => {
-            isFetchingPrice = false;
-        }, 2000);
-    }
-}
-
-
 // --- LOCAL JSON BACKUP/RESTORE ---
 function downloadJSON() {
     const dataToSave = {
@@ -597,6 +524,26 @@ function calculateEntryForProfit() {
     document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
 }
 
+// --- FUNGSI BARU UNTUK MENGAMBIL HARGA SAHAM REAL-TIME ---
+async function fetchStockPrice(stockCode) {
+    if (!stockCode || stockCode.length < 3) return null;
+    const apiUrl = `https://financialmodelingprep.com/api/v3/quote/${stockCode.toUpperCase()}.JK?apikey=${FMP_API_KEY}`;
+    
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data && data.length > 0 && data[0].price) {
+            return data[0].price;
+        }
+    } catch (error) {
+        console.error(`Gagal mengambil harga untuk ${stockCode}:`, error);
+        return null;
+    }
+}
+
 // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
 function renderLogTable(logsToRender = portfolioLog) {
     const logTableBody = document.getElementById('log-table-body');
@@ -657,9 +604,8 @@ function renderLogTable(logsToRender = portfolioLog) {
     updateSortIcons();
 }
 
-// --- PERUBAHAN: renderFinancialSummaries ---
-// Diperbarui untuk menambahkan tombol refresh harga
-function renderFinancialSummaries() {
+// FUNGSI INI SEKARANG MEMANGGIL FUNGSI BARU fetchStockPrice
+async function renderFinancialSummaries() {
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     const grandTotalContainer = document.getElementById('portfolio-grand-total');
     const realizedPlContainer = document.getElementById('realized-pl-summary');
@@ -693,25 +639,24 @@ function renderFinancialSummaries() {
     } else {
         const summary = openPositions.reduce((acc, log) => {
             const code = log.code.toUpperCase();
-            if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
+            if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0, codes: new Set() }; }
             acc[code].totalLots += log.lot;
-            // Store total cost with Fee for open positions
             acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
+            acc[code].codes.add(code);
             return acc;
         }, {});
         let grandTotalCost = 0;
-        Object.entries(summary).forEach(([code, data]) => {
-            grandTotalCost += data.totalCost;
-            const avgPriceWithFee = data.totalCost / (data.totalLots * 100); // This avgPrice now includes Fee
+        for (const code in summary) {
+            grandTotalCost += summary[code].totalCost;
+            const avgPriceWithFee = summary[code].totalCost / (summary[code].totalLots * 100);
             const priceValue = currentMarketPrices[code] || '';
             const summaryCard = document.createElement('div');
             summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-            // --- PERUBAHAN DI SINI: Menambahkan tombol refresh ---
             summaryCard.innerHTML = `
                 <h4 class="font-bold text-lg text-cyan-300">${code}</h4>
                 <div class="flex justify-between text-sm mt-2">
                     <span class="text-gray-400">Total Lot:</span>
-                    <span class="font-semibold">${data.totalLots}</span>
+                    <span class="font-semibold">${summary[code].totalLots}</span>
                 </div>
                 <div class="flex justify-between text-sm mt-1">
                     <span class="text-gray-400">Harga Rata-rata:</span>
@@ -719,26 +664,37 @@ function renderFinancialSummaries() {
                 </div>
                 <div class="flex justify-between text-sm mt-1">
                     <span class="text-gray-400">Total Investasi:</span>
-                    <span class="font-semibold">${formatCurrency(data.totalCost)}</span>
+                    <span class="font-semibold">${formatCurrency(summary[code].totalCost)}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm mt-2">
                     <label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label>
-                    <div class="flex items-center">
-                        <input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}">
-                        <button data-code="${code}" class="fetch-price-btn" title="Ambil Harga Real-time">
-                            <svg class="h-4 w-4 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"/>
-                            </svg>
-                        </button>
-                    </div>
+                    <input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}">
                 </div>
                 <div class="flex justify-between text-sm mt-1">
                     <span class="text-gray-400">Floating P/L:</span>
                     <span id="floating-pl-${code}" class="font-semibold">-</span>
-                </div>`;
-            // --- AKHIR PERUBAHAN ---
+                </div>
+            `;
             summaryContainer.appendChild(summaryCard);
-        });
+            
+            // PANGGIL FUNGSI BARU DI SINI
+            const priceInput = summaryCard.querySelector(`#current-price-${code}`);
+            if (priceInput.value === '') { // Hanya ambil harga jika input kosong
+                // Tampilkan status memuat
+                priceInput.placeholder = 'Memuat...';
+                priceInput.disabled = true;
+
+                const price = await fetchStockPrice(code);
+                if (price) {
+                    priceInput.value = price;
+                    currentMarketPrices[code] = price;
+                } else {
+                    priceInput.placeholder = 'Gagal';
+                }
+                priceInput.disabled = false;
+            }
+        }
+
         const grandTotalCard = document.createElement('div');
         grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
         grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p></div>`;
@@ -1158,7 +1114,7 @@ function handleSimParamsSubmit(event) {
 
 /**
  * REVISED FUNCTION
- * This function now saves the new averaging strategy along with other simulation parameters.
+ * This function now saves the averaging strategy along with other simulation parameters.
  */
 function handleSaveSimulation(isFromModal = false) {
     const simulation = {
@@ -1171,7 +1127,7 @@ function handleSaveSimulation(isFromModal = false) {
         avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
         // NEW: Save strategy parameters
         avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy').value,
-        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier').value),
+        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier').value),
         tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
         tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
         reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
@@ -1431,7 +1387,7 @@ document.getElementById('open-add-log-modal-btn').addEventListener('click', () =
     sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
     logSellPriceInput.value = '';
     logSellDateInput.value = '';
-    logFeeJualInput.value = defaultFeeJual; // Set default for new sell
+    logFeeJualInput.value = defaultFeeJual; // Set default Fee Jual from settings
     openModal(addLogModal);
 });
 document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
@@ -1501,16 +1457,6 @@ Object.keys(tabButtons).forEach(key => {
     tabButtons[key].addEventListener('click', () => switchTab(key));
 });
 
-// --- PERUBAHAN: Event Listener untuk Ringkasan Portofolio ---
-// Diperbarui untuk menangani klik pada tombol refresh dan input manual
-document.getElementById('portfolio-summary-by-stock').addEventListener('click', (event) => {
-    const fetchBtn = event.target.closest('.fetch-price-btn');
-    if (fetchBtn) {
-        const code = fetchBtn.dataset.code;
-        fetchRealTimePrice(code);
-    }
-});
-
 document.getElementById('portfolio-summary-by-stock').addEventListener('input', (event) => {
     if (event.target.classList.contains('current-price-input')) {
         const code = event.target.dataset.code;
@@ -1519,7 +1465,6 @@ document.getElementById('portfolio-summary-by-stock').addEventListener('input', 
         triggerAutoSave();
     }
 });
-
 
 document.getElementById('tab-content-performance').addEventListener('input', (event) => {
      if (event.target.classList.contains('performance-ihsg-input')) {
