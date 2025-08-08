@@ -1171,7 +1171,7 @@ function handleSaveSimulation(isFromModal = false) {
         avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
         // NEW: Save strategy parameters
         avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy').value,
-        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier').value),
+        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier').value),
         tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
         tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
         reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
