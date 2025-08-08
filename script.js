@@ -296,7 +296,7 @@ async function loadDataFromFirebase() {
  * @param {string} stockCode - Kode saham (misal: 'BBCA').
  */
 async function fetchRealTimePrice(stockCode) {
-    if (!FMP_API_KEY || FMP_API_KEY === "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja") {
+    if (!FMP_API_KEY || FMP_API_KEY === "YOUR_FREE_API_KEY") {
         showNotification("Harap masukkan API Key Anda di file script.js untuk menggunakan fitur ini.", "API Key Diperlukan");
         return;
     }
