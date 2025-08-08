@@ -12,57 +12,12 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617; /* Warna dasar: bg-slate-950 */
+            background-color: #0F172A; /* Warna dasar fallback */
+            /* Mengembalikan latar belakang gradasi yang halus dan aman */
+            background-image: linear-gradient(to bottom right, #020617, #0f172a, #020617);
             color: #e2e8f0; /* text-slate-200 */
-            overflow-x: hidden; /* Mencegah scroll horizontal */
+            overflow-x: hidden;
         }
-
-        /* --- Latar Belakang Gelombang Animasi --- */
-        .wave-background {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 30vh; /* Ketinggian area gelombang */
-            z-index: -1;
-            overflow: hidden;
-        }
-
-        .waves {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        .parallax > use {
-            animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
-        }
-        .parallax > use:nth-child(1) {
-            animation-delay: -2s;
-            animation-duration: 7s;
-            fill: rgba(30, 64, 175, 0.4); /* blue-800 */
-        }
-        .parallax > use:nth-child(2) {
-            animation-delay: -3s;
-            animation-duration: 10s;
-            fill: rgba(59, 130, 246, 0.3); /* blue-500 */
-        }
-        .parallax > use:nth-child(3) {
-            animation-delay: -4s;
-            animation-duration: 13s;
-            fill: rgba(8, 145, 178, 0.2); /* cyan-600 */
-        }
-        .parallax > use:nth-child(4) {
-            animation-delay: -5s;
-            animation-duration: 20s;
-            fill: rgba(15, 23, 42, 0.7); /* slate-900 */
-        }
-
-        @keyframes move-forever {
-            0% { transform: translate3d(-90px,0,0); }
-            100% { transform: translate3d(85px,0,0); }
-        }
-
 
         .card {
             background-color: rgba(15, 23, 42, 0.6); /* bg-slate-900 dengan transparansi */
@@ -87,7 +42,6 @@
             background-color: rgba(255, 255, 255, 0.05) !important;
         }
         
-        /* PERBAIKAN: Aturan CSS yang lebih spesifik untuk semua elemen form */
         input[type="text"],
         input[type="number"],
         input[type="date"],
@@ -95,15 +49,13 @@
         textarea {
             background-color: rgba(15, 23, 42, 0.7) !important;
             border-color: rgba(255, 255, 255, 0.1) !important;
-            color: #e2e8f0 !important; /* text-slate-200 */
+            color: #e2e8f0 !important;
         }
-        /* Memastikan warna placeholder juga terlihat */
         input::placeholder,
         textarea::placeholder {
-            color: #94a3b8; /* slate-400 */
+            color: #94a3b8;
             opacity: 1;
         }
-        /* Mengatur warna panah pada input number */
         input[type="number"] {
             -moz-appearance: textfield;
         }
@@ -173,21 +125,6 @@
     </style>
 </head>
 <body>
-
-    <div class="wave-background">
-        <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-        viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
-            <defs>
-                <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
-            </defs>
-            <g class="parallax">
-                <use xlink:href="#gentle-wave" x="48" y="0" />
-                <use xlink:href="#gentle-wave" x="48" y="3" />
-                <use xlink:href="#gentle-wave" x="48" y="5" />
-                <use xlink:href="#gentle-wave" x="48" y="7" />
-            </g>
-        </svg>
-    </div>
 
     <div class="container mx-auto p-4 md:p-8 relative z-10">
         <header class="mb-8">
