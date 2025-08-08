@@ -33,6 +33,10 @@ window.firebase = {
     getDoc
 };
 
+// --- API KEY UNTUK HARGA REAL-TIME ---
+// !!! PENTING: Ganti dengan API Key gratis Anda dari https://site.financialmodelingprep.com/developer/docs/
+const FMP_API_KEY = "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja"; 
+
 // --- DATA STORAGE ---
 let portfolioLog = [];
 let savedSimulations = [];
@@ -285,6 +289,60 @@ async function loadDataFromFirebase() {
         showNotification(`Gagal memuat data: ${error.message}`, 'Error');
     }
 }
+
+// --- FUNGSI BARU: PENGAMBILAN HARGA REAL-TIME ---
+/**
+ * Mengambil harga pasar saat ini untuk kode saham tertentu dari API.
+ * @param {string} stockCode - Kode saham (misal: 'BBCA').
+ */
+async function fetchRealTimePrice(stockCode) {
+    if (!FMP_API_KEY || FMP_API_KEY === "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja") {
+        showNotification("Harap masukkan API Key Anda di file script.js untuk menggunakan fitur ini.", "API Key Diperlukan");
+        return;
+    }
+
+    const fetchBtn = document.querySelector(`.fetch-price-btn[data-code="${stockCode.toUpperCase()}"]`);
+    const originalBtnContent = fetchBtn.innerHTML;
+    
+    try {
+        // Tampilkan status loading
+        fetchBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+        fetchBtn.disabled = true;
+
+        const url = `https://financialmodelingprep.com/api/v3/quote-short/${stockCode.toUpperCase()}.JK?apikey=${FMP_API_KEY}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Gagal mengambil data (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+
+        if (data && data.length > 0 && data[0].price) {
+            const price = data[0].price;
+            const inputField = document.getElementById(`current-price-${stockCode.toUpperCase()}`);
+            
+            if (inputField) {
+                inputField.value = price;
+                // Memicu event 'input' secara manual agar kalkulasi P/L diperbarui
+                inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        } else {
+            throw new Error("Format data tidak valid atau harga tidak ditemukan.");
+        }
+
+    } catch (error) {
+        console.error(`Error fetching price for ${stockCode}:`, error);
+        showNotification(`Gagal mengambil harga untuk ${stockCode}. Coba lagi nanti.`, "Error");
+    } finally {
+        // Kembalikan tombol ke keadaan semula
+        if(fetchBtn) {
+            fetchBtn.innerHTML = originalBtnContent;
+            fetchBtn.disabled = false;
+        }
+    }
+}
+
 
 // --- LOCAL JSON BACKUP/RESTORE ---
 function downloadJSON() {
@@ -581,6 +639,8 @@ function renderLogTable(logsToRender = portfolioLog) {
     updateSortIcons();
 }
 
+// --- PERUBAHAN: renderFinancialSummaries ---
+// Diperbarui untuk menambahkan tombol refresh harga
 function renderFinancialSummaries() {
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     const grandTotalContainer = document.getElementById('portfolio-grand-total');
@@ -628,7 +688,37 @@ function renderFinancialSummaries() {
             const priceValue = currentMarketPrices[code] || '';
             const summaryCard = document.createElement('div');
             summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-            summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
+            // --- PERUBAHAN DI SINI: Menambahkan tombol refresh ---
+            summaryCard.innerHTML = `
+                <h4 class="font-bold text-lg text-cyan-300">${code}</h4>
+                <div class="flex justify-between text-sm mt-2">
+                    <span class="text-gray-400">Total Lot:</span>
+                    <span class="font-semibold">${data.totalLots}</span>
+                </div>
+                <div class="flex justify-between text-sm mt-1">
+                    <span class="text-gray-400">Harga Rata-rata:</span>
+                    <span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span>
+                </div>
+                <div class="flex justify-between text-sm mt-1">
+                    <span class="text-gray-400">Total Investasi:</span>
+                    <span class="font-semibold">${formatCurrency(data.totalCost)}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm mt-2">
+                    <label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label>
+                    <div class="flex items-center">
+                        <input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}">
+                        <button data-code="${code}" class="fetch-price-btn" title="Ambil Harga Real-time">
+                            <svg class="h-4 w-4 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-between text-sm mt-1">
+                    <span class="text-gray-400">Floating P/L:</span>
+                    <span id="floating-pl-${code}" class="font-semibold">-</span>
+                </div>`;
+            // --- AKHIR PERUBAHAN ---
             summaryContainer.appendChild(summaryCard);
         });
         const grandTotalCard = document.createElement('div');
@@ -1393,6 +1483,16 @@ Object.keys(tabButtons).forEach(key => {
     tabButtons[key].addEventListener('click', () => switchTab(key));
 });
 
+// --- PERUBAHAN: Event Listener untuk Ringkasan Portofolio ---
+// Diperbarui untuk menangani klik pada tombol refresh dan input manual
+document.getElementById('portfolio-summary-by-stock').addEventListener('click', (event) => {
+    const fetchBtn = event.target.closest('.fetch-price-btn');
+    if (fetchBtn) {
+        const code = fetchBtn.dataset.code;
+        fetchRealTimePrice(code);
+    }
+});
+
 document.getElementById('portfolio-summary-by-stock').addEventListener('input', (event) => {
     if (event.target.classList.contains('current-price-input')) {
         const code = event.target.dataset.code;
@@ -1401,6 +1501,7 @@ document.getElementById('portfolio-summary-by-stock').addEventListener('input', 
         triggerAutoSave();
     }
 });
+
 
 document.getElementById('tab-content-performance').addEventListener('input', (event) => {
      if (event.target.classList.contains('performance-ihsg-input')) {
