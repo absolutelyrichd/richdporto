@@ -7,8 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome untuk ikon sort -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module" src="/script.js"></script>
     <style>
@@ -94,24 +92,16 @@
         #sync-status {
             transition: opacity 0.5s;
         }
-        .sortable-header {
+
+        /* Sortable table headers */
+        .sortable {
             cursor: pointer;
             user-select: none;
         }
         .sort-icon {
-            display: none;
-            margin-left: 8px;
-        }
-        .sortable-header.asc .fa-sort-up,
-        .sortable-header.desc .fa-sort-down {
             display: inline-block;
-        }
-        .sortable-header .fa-sort {
-            display: inline-block;
-        }
-        .sortable-header.asc .fa-sort,
-        .sortable-header.desc .fa-sort {
-            display: none;
+            margin-left: 0.5rem;
+            width: 1em; /* Memastikan penspasian yang konsisten */
         }
 
         /* Penyesuaian untuk tampilan mobile */
@@ -315,66 +305,16 @@
                                 <table class="w-full text-sm text-left text-gray-300">
                                     <thead class="text-xs text-cyan-300 uppercase bg-gray-700">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="date">
-                                                Tgl Beli
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="code">
-                                                Kode
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="price">
-                                                Harga Beli
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="lot">
-                                                Lot
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="feeBeli">
-                                                Fee Beli
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="feeJual">
-                                                Fee Jual
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="reason">
-                                                Alasan Beli
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="status">
-                                                Status
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="sellDate">
-                                                Tgl Jual
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 sortable-header" data-sort-by="realizedPL">
-                                                Realisasi P/L
-                                                <i class="fa-solid fa-sort sort-icon"></i>
-                                                <i class="fa-solid fa-sort-up sort-icon"></i>
-                                                <i class="fa-solid fa-sort-down sort-icon"></i>
-                                            </th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="date">Tgl Beli <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="code">Kode <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="price">Harga Beli <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="lot">Lot <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3">Fee Beli</th>
+                                            <th scope="col" class="px-6 py-3">Fee Jual</th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="reason">Alasan Beli <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="sellDate">Tgl Jual <span class="sort-icon"></span></th>
+                                            <th scope="col" class="px-6 py-3 sortable" data-sort="realizedPL">Realisasi P/L <span class="sort-icon"></span></th>
                                             <th scope="col" class="px-6 py-3">Aksi</th>
                                         </tr>
                                     </thead>
