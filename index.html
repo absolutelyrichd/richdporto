@@ -30,6 +30,16 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
+        /* Perbaikan untuk Latar Belakang Baris Tabel */
+        tbody tr {
+            background-color: transparent !important; /* Override kelas bg-gray-800 dari JS */
+            border-bottom-width: 1px;
+            border-color: rgba(255, 255, 255, 0.1);
+            transition: background-color 0.2s ease-in-out;
+        }
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.05) !important; /* Efek hover yang lebih lembut */
+        }
         input[type="number"] {
             -moz-appearance: textfield;
         }
@@ -91,7 +101,7 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
         }
         .btn {
-            @apply font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 border border-transparent;
+            @apply font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 border border-transparent shadow-lg;
         }
         .btn-primary {
              /* Gradasi untuk tombol utama */
@@ -104,6 +114,10 @@
          .btn-danger {
             /* Gradasi untuk tombol bahaya */
             @apply bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white btn;
+        }
+        .btn-info {
+            /* Gradasi biru untuk tombol info/simpan */
+             @apply bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white btn;
         }
         #sync-status {
             transition: opacity 0.5s;
@@ -201,7 +215,7 @@
                  <div class="card mb-8">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                          <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Parameter Simulasi Aktif</h2>
-                         <button id="open-sim-params-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto">Ubah Parameter</button>
+                         <button id="open-sim-params-modal-btn" class="btn-info w-full sm:w-auto">Ubah Parameter</button>
                     </div>
                     <div id="active-sim-params-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700/50 pt-4">
                     </div>
@@ -509,7 +523,7 @@
                 </div>
                 <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                     <button type="button" id="cancel-sim-params-btn" class="btn-secondary w-full sm:w-auto">Batal</button>
-                    <button type="button" id="save-simulation-from-modal-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg w-full sm:w-auto">Simpan</button>
+                    <button type="button" id="save-simulation-from-modal-btn" class="btn-info w-full sm:w-auto">Simpan</button>
                     <button type="submit" class="btn-primary w-full sm:w-auto">Terapkan</button>
                 </div>
             </form>
