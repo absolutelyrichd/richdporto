@@ -290,7 +290,7 @@ async function loadDataFromFirebase() {
     }
 }
 
-// --- FUNGSI BARU: PENGAMBILAN HARGA REAL-TIME ---
+// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (DIPERBARUI) ---
 /**
  * Mengambil harga pasar saat ini untuk kode saham tertentu dari API.
  * @param {string} stockCode - Kode saham (misal: 'BBCA').
@@ -312,8 +312,15 @@ async function fetchRealTimePrice(stockCode) {
         const url = `https://financialmodelingprep.com/api/v3/quote-short/${stockCode.toUpperCase()}.JK?apikey=${FMP_API_KEY}`;
         const response = await fetch(url);
 
+        // --- BARU: Penanganan error yang lebih detail ---
         if (!response.ok) {
-            throw new Error(`Gagal mengambil data (Status: ${response.status})`);
+            let errorMessage = `Gagal mengambil data (Status: ${response.status})`;
+            if (response.status === 401 || response.status === 403) {
+                errorMessage = "API Key tidak valid atau telah melebihi batas penggunaan.";
+            } else if (response.status === 404) {
+                errorMessage = `Kode saham '${stockCode.toUpperCase()}' tidak ditemukan oleh API.`;
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -328,12 +335,16 @@ async function fetchRealTimePrice(stockCode) {
                 inputField.dispatchEvent(new Event('input', { bubbles: true }));
             }
         } else {
-            throw new Error("Format data tidak valid atau harga tidak ditemukan.");
+            // Kasus ini bisa terjadi jika API key valid tapi paket gratis tidak mencakup ticker ini,
+            // atau API mengembalikan array kosong [].
+            throw new Error(`API tidak memberikan data harga untuk '${stockCode.toUpperCase()}'.`);
         }
 
     } catch (error) {
+        // --- BARU: Menampilkan pesan error yang lebih spesifik ---
         console.error(`Error fetching price for ${stockCode}:`, error);
-        showNotification(`Gagal mengambil harga untuk ${stockCode}. Coba lagi nanti.`, "Error");
+        // Pesan error sekarang lebih deskriptif dari statement 'throw' di atas.
+        showNotification(error.message, "Error");
     } finally {
         // Kembalikan tombol ke keadaan semula
         if(fetchBtn) {
