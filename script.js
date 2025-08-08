@@ -542,6 +542,9 @@ async function fetchStockPrice(stockCode) {
         const data = await response.json();
         if (data && data.length > 0 && data[0].price) {
             return data[0].price;
+        } else {
+            console.error(`API response for ${stockCode} did not contain a valid price.`);
+            return null;
         }
     } catch (error) {
         console.error(`Gagal mengambil harga untuk ${stockCode}:`, error);
@@ -694,8 +697,8 @@ async function renderFinancialSummaries() {
                     priceInput.value = price;
                     currentMarketPrices[code] = price;
                 } else {
-                    priceInput.value = 'N/A';
-                    priceInput.disabled = false;
+                    priceInput.placeholder = 'Gagal'; // Perbaikan di sini
+                    priceInput.value = ''; // Perbaikan di sini
                 }
                 priceInput.disabled = false;
             }
