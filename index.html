@@ -12,41 +12,98 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* Latar belakang gradasi yang lebih halus */
-            background-color: #0F172A; /* bg-slate-900 */
-            background-image: linear-gradient(to bottom right, #0f172a, #131c31, #0f172a);
+            background-color: #020617; /* Warna dasar fallback: bg-slate-950 */
+            color: #e2e8f0; /* text-slate-200 */
+            overflow-x: hidden; /* Mencegah scroll horizontal */
         }
+
+        /* --- Latar Belakang Aurora Animasi --- */
+        .aurora-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .aurora-background .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+        }
+
+        .shape1 {
+            width: 400px;
+            height: 400px;
+            background-color: #0891b2; /* cyan-600 */
+            top: -100px;
+            left: -100px;
+            animation: move1 20s infinite alternate;
+        }
+
+        .shape2 {
+            width: 350px;
+            height: 350px;
+            background-color: #4338ca; /* indigo-700 */
+            bottom: -50px;
+            right: -50px;
+            animation: move2 25s infinite alternate;
+        }
+        
+        .shape3 {
+            width: 250px;
+            height: 250px;
+            background-color: #be185d; /* pink-700 */
+            bottom: 150px;
+            left: 100px;
+            animation: move3 22s infinite alternate;
+        }
+
+        @keyframes move1 {
+            from { transform: translate(0, 0) rotate(0deg); }
+            to { transform: translate(200px, 100px) rotate(360deg); }
+        }
+
+        @keyframes move2 {
+            from { transform: translate(0, 0) rotate(0deg); }
+            to { transform: translate(-150px, -100px) rotate(180deg); }
+        }
+        
+        @keyframes move3 {
+            from { transform: translate(0, 0) rotate(0deg); }
+            to { transform: translate(50px, -150px) rotate(90deg); }
+        }
+
+
         .card {
-            /* Efek Glassmorphism: Latar belakang transparan dengan gradasi dan blur */
-            background-color: rgba(31, 41, 55, 0.5); /* bg-gray-800 dengan transparansi */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            /* Efek Glassmorphism yang disesuaikan untuk latar belakang baru */
+            background-color: rgba(15, 23, 42, 0.6); /* bg-slate-900 dengan transparansi */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 0.75rem; /* rounded-xl */
             padding: 1.5rem; /* p-6 */
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Border tipis untuk menonjolkan efek kaca */
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
         .table-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        /* Perbaikan untuk Latar Belakang Baris Tabel */
         tbody tr {
-            background-color: transparent !important; /* Override kelas bg-gray-800 dari JS */
+            background-color: transparent !important;
             border-bottom-width: 1px;
             border-color: rgba(255, 255, 255, 0.1);
             transition: background-color 0.2s ease-in-out;
         }
         tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.05) !important; /* Efek hover yang lebih lembut */
+            background-color: rgba(255, 255, 255, 0.05) !important;
         }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        input, select {
+             background-color: rgba(15, 23, 42, 0.7) !important; /* bg-slate-900 */
+             border-color: rgba(255, 255, 255, 0.1) !important;
         }
         /* Tab Styles */
         .tab-button {
@@ -55,16 +112,11 @@
             white-space: nowrap;
         }
         .tab-button.active {
-            /* Gradasi untuk border tab aktif */
             border-image: linear-gradient(to right, #22D3EE, #0EA5E9) 1;
-            color: #E5E7EB; /* gray-200 */
+            color: #E5E7EB;
         }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         /* Modal Styles */
         .modal-overlay {
             position: fixed;
@@ -86,10 +138,9 @@
             visibility: visible;
         }
         .modal-content {
-            /* Efek Glassmorphism untuk modal */
-            background-color: rgba(31, 41, 55, 0.6); /* bg-gray-800 dengan lebih banyak transparansi */
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background-color: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 2rem;
             border-radius: 0.75rem;
             width: 95%;
@@ -98,68 +149,32 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
-        #sync-status {
-            transition: opacity 0.5s;
-        }
+        #sync-status { transition: opacity 0.5s; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sort-icon { display: inline-block; margin-left: 0.5rem; width: 1em; }
 
-        /* Sortable table headers */
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-        .sort-icon {
-            display: inline-block;
-            margin-left: 0.5rem;
-            width: 1em;
-        }
-
-        /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
-            .container {
-                padding: 1rem;
-            }
-            .header-content {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .auth-container {
-                margin-top: 1rem;
-                width: 100%;
-                justify-content: flex-start;
-            }
-            .tab-nav {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .tab-button {
-                flex-grow: 1;
-                text-align: center;
-                padding: 0.75rem 0.5rem;
-                font-size: 0.875rem;
-            }
-            .card {
-                padding: 1rem;
-            }
-            .grid-cols-1-mobile {
-                grid-template-columns: 1fr;
-            }
-            .md\:col-span-2 {
-                grid-column: span 1 / span 1;
-            }
-            .lg\:col-span-1, .lg\:col-span-2 {
-                grid-column: span 1 / span 1;
-            }
-            .sticky {
-                position: static;
-            }
+            .container { padding: 1rem; }
+            .header-content { flex-direction: column; align-items: flex-start; }
+            .auth-container { margin-top: 1rem; width: 100%; justify-content: flex-start; }
+            .tab-nav { flex-wrap: wrap; justify-content: center; }
+            .tab-button { flex-grow: 1; text-align: center; padding: 0.75rem 0.5rem; font-size: 0.875rem; }
+            .card { padding: 1rem; }
+            .sticky { position: static; }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body>
 
-    <div class="container mx-auto p-4 md:p-8">
+    <div class="aurora-background">
+        <div class="shape shape1"></div>
+        <div class="shape shape2"></div>
+        <div class="shape shape3"></div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8 relative z-10">
         <header class="mb-8">
             <div class="flex flex-col md:flex-row justify-between items-center md:items-start header-content">
                 <div class="text-left mb-4 md:mb-0">
@@ -224,7 +239,7 @@
                     <h2 class="text-2xl font-semibold mb-4">Tabel Skenario Averaging</h2>
                     <div class="table-wrapper">
                         <table class="w-full text-sm text-left text-gray-300">
-                            <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
+                            <thead class="text-xs text-cyan-300 uppercase bg-transparent">
                                 <tr>
                                     <th scope="col" class="px-6 py-3">Level</th>
                                     <th scope="col" class="px-6 py-3">Harga Beli (Rp)</th>
@@ -251,18 +266,18 @@
                     <div id="profit-calc-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                         <div>
                             <label for="target-profit-rp" class="block text-sm font-medium text-gray-300 mb-1">Target Profit (Rp)</label>
-                            <input type="number" id="target-profit-rp" value="5000000" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                            <input type="number" id="target-profit-rp" value="5000000" class="w-full rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
                         </div>
                         <div>
                             <label for="target-profit-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label>
-                            <input type="number" id="target-profit-lot" value="20" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                            <input type="number" id="target-profit-lot" value="20" class="w-full rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
                         </div>
                         <div>
                             <label for="target-profit-percent" class="block text-sm font-medium text-gray-300 mb-1">Keuntungan (%)</label>
-                            <input type="number" id="target-profit-percent" value="25" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
+                            <input type="number" id="target-profit-percent" value="25" class="w-full rounded-lg p-2.5 focus:ring-cyan-500 focus:border-cyan-500">
                         </div>
                     </div>
-                    <div class="mt-6 text-center bg-gray-900/30 p-4 rounded-lg">
+                    <div class="mt-6 text-center bg-slate-900/50 p-4 rounded-lg">
                         <h3 class="text-gray-400 text-md font-medium">Estimasi Harga Entry Maksimal</h3>
                         <p id="entry-price-result" class="text-2xl md:text-3xl font-bold text-cyan-400 mt-2">IDR 0</p>
                     </div>
@@ -278,19 +293,19 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label for="filter-date-from" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Dari</label>
-                                    <input type="date" id="filter-date-from" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                                    <input type="date" id="filter-date-from" class="w-full rounded-lg p-2.5 text-gray-400">
                                 </div>
                                 <div>
                                     <label for="filter-date-to" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Sampai</label>
-                                    <input type="date" id="filter-date-to" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                                    <input type="date" id="filter-date-to" class="w-full rounded-lg p-2.5 text-gray-400">
                                 </div>
                                 <div>
                                     <label for="filter-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                    <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                                    <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full rounded-lg p-2.5">
                                 </div>
                                 <div>
                                     <label for="filter-status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                                    <select id="filter-status" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                                    <select id="filter-status" class="w-full rounded-lg p-2.5 text-gray-400">
                                         <option value="all">Semua</option>
                                         <option value="open">Open</option>
                                         <option value="closed">Closed</option>
@@ -298,7 +313,7 @@
                                 </div>
                                 <div class="md:col-span-2 lg:col-span-4">
                                     <label for="filter-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                                    <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                                    <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full rounded-lg p-2.5">
                                 </div>
                                 <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
                                     <button id="filter-reset-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Reset Filter</button>
@@ -314,7 +329,7 @@
                             </div>
                             <div class="table-wrapper">
                                 <table class="w-full text-sm text-left text-gray-300">
-                                    <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
+                                    <thead class="text-xs text-cyan-300 uppercase bg-transparent">
                                         <tr>
                                             <th scope="col" class="px-6 py-3 sortable" data-sort="date">Tgl Beli <span class="sort-icon"></span></th>
                                             <th scope="col" class="px-6 py-3 sortable" data-sort="code">Kode <span class="sort-icon"></span></th>
@@ -340,9 +355,9 @@
                             <div id="equity-monitoring" class="mb-4">
                                 <div class="mb-2">
                                     <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
-                                    <input type="number" id="initial-equity" value="100000000" class="w-full bg-gray-800/50 border border-gray-600 rounded-lg p-2.5">
+                                    <input type="number" id="initial-equity" value="100000000" class="w-full rounded-lg p-2.5">
                                 </div>
-                                <div class="p-4 bg-gray-900/30 rounded-lg text-center">
+                                <div class="p-4 bg-slate-900/50 rounded-lg text-center">
                                     <h4 class="text-gray-300 font-medium">Equitas / Cash Tersedia</h4>
                                     <p id="current-equity-display" class="text-2xl font-bold text-cyan-400 mt-1">IDR 0</p>
                                 </div>
@@ -363,7 +378,7 @@
                         <h2 class="text-2xl font-semibold mb-4">Daftar Simulasi Tersimpan</h2>
                         <div class="table-wrapper">
                             <table class="w-full text-sm text-left text-gray-300">
-                                <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
+                                <thead class="text-xs text-cyan-300 uppercase bg-transparent">
                                     <tr>
                                         <th scope="col" class="px-6 py-3">Kode Saham</th>
                                         <th scope="col" class="px-6 py-3">Harga Awal</th>
@@ -386,13 +401,13 @@
                     <h2 class="text-2xl font-semibold mb-4">Performa Portofolio vs IHSG</h2>
                     <p class="text-sm text-gray-400 mb-6">Performa "All Time" dihitung secara otomatis berdasarkan modal awal, transaksi, dan nilai floating P/L. Performa IHSG dapat diisi manual untuk perbandingan.</p>
                     
-                    <div class="mb-8 p-4 bg-gray-900/30 rounded-lg">
+                    <div class="mb-8 p-4 bg-slate-900/50 rounded-lg">
                         <canvas id="performanceChart"></canvas>
                     </div>
 
                     <div class="table-wrapper">
                         <table class="w-full text-sm text-left text-gray-300">
-                            <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
+                            <thead class="text-xs text-cyan-300 uppercase bg-transparent">
                                 <tr>
                                     <th scope="col" class="px-6 py-3">Periode</th>
                                     <th scope="col" class="px-6 py-3">Performa Portofolio</th>
@@ -439,11 +454,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="default-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Beli (%)</label>
-                                <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                                <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full rounded-lg p-2.5">
                             </div>
                             <div>
                                 <label for="default-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Jual (%)</label>
-                                <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                                <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full rounded-lg p-2.5">
                             </div>
                         </div>
                         <div class="flex justify-end mt-6">
@@ -473,39 +488,39 @@
                     <textarea id="sim-reason" class="hidden"></textarea>
                     <div>
                         <label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                        <input type="text" id="modal-stock-code" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="text" id="modal-stock-code" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label>
-                        <input type="number" id="modal-initial-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-initial-price" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label>
-                        <input type="number" id="modal-initial-lot" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-initial-lot" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label>
-                        <input type="number" id="modal-dividend" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-dividend" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label>
-                        <input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-avg-down-percent" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label>
-                        <input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-avg-levels" min="1" max="10" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label>
-                        <input type="number" id="modal-tp1-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-tp1-percent" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label>
-                        <input type="number" id="modal-tp2-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="modal-tp2-percent" class="w-full rounded-lg p-2.5">
                     </div>
                     <div class="md:col-span-2">
                         <label for="modal-sim-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Simulasi / Pembelian</label>
-                        <textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5"></textarea>
+                        <textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full rounded-lg p-2.5"></textarea>
                     </div>
                 </div>
                 <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -523,40 +538,40 @@
                 <input type="hidden" id="log-edit-index">
                 <div>
                     <label for="log-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                    <input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full rounded-lg p-2.5">
                 </div>
                 <div>
                     <label for="log-buy-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Beli</label>
-                    <input type="date" id="log-buy-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                    <input type="date" id="log-buy-date" required class="w-full rounded-lg p-2.5 text-gray-400">
                 </div>
                 <div>
                     <label for="log-buy-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Beli (per lembar)</label>
-                    <input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full rounded-lg p-2.5">
                 </div>
                 <div>
                     <label for="log-buy-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label>
-                    <input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full rounded-lg p-2.5">
                 </div>
                 <div>
                     <label for="log-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Fee Beli (%)</label>
-                    <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full rounded-lg p-2.5">
                 </div>
                 <div class="md:col-span-2">
                     <label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                    <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5"></textarea>
+                    <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full rounded-lg p-2.5"></textarea>
                 </div>
                 <div id="sell-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2 hidden">
                     <div>
                         <label for="log-sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                        <input type="number" id="log-sell-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="log-sell-price" class="w-full rounded-lg p-2.5">
                     </div>
                     <div>
                         <label for="log-sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                        <input type="date" id="log-sell-date" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                        <input type="date" id="log-sell-date" class="w-full rounded-lg p-2.5 text-gray-400">
                     </div>
                     <div>
                         <label for="log-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                        <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                        <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full rounded-lg p-2.5">
                     </div>
                 </div>
                 <div class="md:col-span-2 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -573,15 +588,15 @@
                 <input type="hidden" id="sell-log-index">
                 <div class="mb-4">
                     <label for="sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                    <input type="number" id="sell-price" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="number" id="sell-price" required class="w-full rounded-lg p-2.5">
                 </div>
                 <div class="mb-4">
                     <label for="sell-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                    <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
+                    <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full rounded-lg p-2.5">
                 </div>
                 <div class="mb-6">
                     <label for="sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                    <input type="date" id="sell-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
+                    <input type="date" id="sell-date" required class="w-full rounded-lg p-2.5 text-gray-400">
                 </div>
                 <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                     <button type="button" id="cancel-sell-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Batal</button>
