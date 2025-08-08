@@ -528,7 +528,11 @@ function calculateEntryForProfit() {
 // --- FUNGSI BARU UNTUK MENGAMBIL HARGA SAHAM REAL-TIME ---
 async function fetchStockPrice(stockCode) {
     if (!stockCode || stockCode.length < 3) return null;
-    const apiUrl = `https://financialmodelingprep.com/api/v3/quote/${stockCode.toUpperCase()}.JK?apikey=${FMP_API_KEY}`;
+    let formattedCode = stockCode.toUpperCase();
+    if (!formattedCode.endsWith('.JK')) {
+        formattedCode += '.JK';
+    }
+    const apiUrl = `https://financialmodelingprep.com/api/v3/quote/${formattedCode}?apikey=${FMP_API_KEY}`;
     
     try {
         const response = await fetch(apiUrl);
@@ -690,7 +694,8 @@ async function renderFinancialSummaries() {
                     priceInput.value = price;
                     currentMarketPrices[code] = price;
                 } else {
-                    priceInput.placeholder = 'Gagal';
+                    priceInput.value = 'N/A';
+                    priceInput.disabled = false;
                 }
                 priceInput.disabled = false;
             }
@@ -740,11 +745,13 @@ async function handleManualPriceUpdate() {
     for (let i = 0; i < uniqueStockCodes.length; i++) {
         const code = uniqueStockCodes[i];
         const price = prices[i];
-        if (price) {
-            currentMarketPrices[code] = price;
-            const priceInput = document.getElementById(`current-price-${code}`);
-            if (priceInput) {
+        const priceInput = document.getElementById(`current-price-${code}`);
+        if (priceInput) {
+            if (price) {
+                currentMarketPrices[code] = price;
                 priceInput.value = price;
+            } else {
+                priceInput.value = 'N/A';
             }
         }
     }
@@ -779,7 +786,18 @@ function calculateAndRenderFloatingPL() {
     Object.entries(summary).forEach(([code, data]) => {
         const currentPriceInput = document.getElementById(`current-price-${code}`);
         if (!currentPriceInput) return;
-        const currentPrice = parseFloat(currentPriceInput.value) || 0;
+        let currentPrice;
+        // Handle 'N/A' case from API response
+        if (currentPriceInput.value === 'N/A') {
+            currentPrice = 0;
+            const floatingPlElement = document.getElementById(`floating-pl-${code}`);
+            floatingPlElement.textContent = 'N/A';
+            floatingPlElement.className = `font-semibold text-gray-500`;
+            return; // Skip calculation for this stock
+        } else {
+            currentPrice = parseFloat(currentPriceInput.value) || 0;
+        }
+
         const floatingPlElement = document.getElementById(`floating-pl-${code}`);
         if (currentPrice > 0) {
             const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
