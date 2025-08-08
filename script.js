@@ -1057,11 +1057,19 @@
         function handleLogSort(event) {
             const column = event.currentTarget.dataset.sort;
             if (sortState.column === column) {
-                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                // If the same column is clicked again, toggle the sort direction
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : (sortState.direction === 'desc' ? null : 'asc');
             } else {
+                // If a new column is clicked, set it as the new sort column and direction to asc
                 sortState.column = column;
                 sortState.direction = 'asc';
             }
+
+            // If direction is null, reset sorting
+            if (sortState.direction === null) {
+                sortState.column = null;
+            }
+            
             applyLogFiltersAndSort();
         }
 
@@ -1111,8 +1119,8 @@
                     // Handle specific sorting logic for each column
                     switch (sortState.column) {
                         case 'realizedPL':
-                            aValue = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : -Infinity;
-                            bValue = b.sellPrice ? ((b.sellPrice * (1 - (b.feeJual || 0) / 100)) - (b.price * (1 + (b.feeBeli || 0) / 100))) * b.lot * 100 : -Infinity;
+                            aValue = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : (sortState.direction === 'asc' ? -Infinity : Infinity);
+                            bValue = b.sellPrice ? ((b.sellPrice * (1 - (b.feeJual || 0) / 100)) - (b.price * (1 + (b.feeBeli || 0) / 100))) * b.lot * 100 : (sortState.direction === 'asc' ? -Infinity : Infinity);
                             break;
                         case 'status':
                             aValue = a.sellPrice ? 'closed' : 'open';
