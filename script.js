@@ -415,7 +415,7 @@ function updateSimulationReasonDisplay() {
 
 /**
  * REVISED FUNCTION
- * This function now calculates the averaging scenario based on the selected strategy.
+ * This function now calculates and displays the nominal profit for TP1 and TP2.
  */
 function calculateDashboard() {
     // Get main parameters
@@ -427,7 +427,7 @@ function calculateDashboard() {
     const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0;
     const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0;
 
-    // NEW: Get averaging strategy parameters
+    // Get averaging strategy parameters
     const avgStrategy = document.getElementById('avg-strategy').value;
     const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
     const initialBuyAmount = initialPrice * initialLot * 100;
@@ -448,7 +448,6 @@ function calculateDashboard() {
             // Averaging Down Levels
             entryPrice = currentPrice * (1 - avgDownPercent / 100);
             
-            // NEW: Logic based on selected strategy
             if (avgStrategy === 'lot') {
                 // Strategy 1: Multiply the initial lot count
                 lotsToBuy = initialLot * avgMultiplier;
@@ -462,7 +461,7 @@ function calculateDashboard() {
                     lotsToBuy = 0;
                 }
             } else {
-                // Fallback to original logic if strategy is not set
+                // Fallback to original logic
                 lotsToBuy = initialLot;
             }
         }
@@ -476,8 +475,14 @@ function calculateDashboard() {
         
         const avgPrice = cumulativeCost / cumulativeShares;
         const dividendYield = dividend > 0 && entryPrice > 0 ? (dividend / entryPrice) * 100 : 0;
+        
+        // TP Price Calculation
         const tp1Price = avgPrice * (1 + tp1Percent / 100);
         const tp2Price = avgPrice * (1 + tp2Percent / 100);
+
+        // NEW: Nominal Profit Calculation
+        const profitTp1 = (tp1Price - avgPrice) * cumulativeShares;
+        const profitTp2 = (tp2Price - avgPrice) * cumulativeShares;
         
         const row = document.createElement('tr');
         row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
@@ -489,7 +494,9 @@ function calculateDashboard() {
             <td class="px-6 py-4 ${dividendYield > 5 ? 'text-green-400' : 'text-gray-300'}">${dividendYield.toFixed(2)}%</td>
             <td class="px-6 py-4 font-semibold text-blue-300">${formatCurrency(avgPrice)}</td>
             <td class="px-6 py-4 text-green-400">${formatCurrency(tp1Price)}</td>
+            <td class="px-6 py-4 font-semibold text-green-400">${formatCurrency(profitTp1, true)}</td>
             <td class="px-6 py-4 text-green-500">${formatCurrency(tp2Price)}</td>
+            <td class="px-6 py-4 font-semibold text-green-500">${formatCurrency(profitTp2, true)}</td>
         `;
         tableBody.appendChild(row);
         
@@ -503,6 +510,7 @@ function calculateDashboard() {
     document.getElementById('summary-total-lot').textContent = totalLots;
     document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice);
 }
+
 
 function calculateEntryForProfit() {
     const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0;
