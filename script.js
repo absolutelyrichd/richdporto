@@ -1055,17 +1055,17 @@
         }
 
         function handleLogSort(event) {
-            const column = event.currentTarget.dataset.sort;
+            const header = event.target.closest('.sortable');
+            if (!header) return;
+
+            const column = header.dataset.sort;
             if (sortState.column === column) {
-                // If the same column is clicked again, toggle the sort direction
                 sortState.direction = sortState.direction === 'asc' ? 'desc' : (sortState.direction === 'desc' ? null : 'asc');
             } else {
-                // If a new column is clicked, set it as the new sort column and direction to asc
                 sortState.column = column;
                 sortState.direction = 'asc';
             }
 
-            // If direction is null, reset sorting
             if (sortState.direction === null) {
                 sortState.column = null;
             }
