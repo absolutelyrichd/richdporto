@@ -17,66 +17,15 @@
             overflow-x: hidden; /* Mencegah scroll horizontal */
         }
 
-        /* --- Latar Belakang Aurora Animasi --- */
-        .aurora-background {
+        /* --- Latar Belakang Partikel Digital --- */
+        #particle-canvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
-            overflow: hidden;
+            z-index: -1; /* Pastikan canvas di belakang semua konten */
         }
-
-        .aurora-background .shape {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.4;
-        }
-
-        .shape1 {
-            width: 400px;
-            height: 400px;
-            background-color: #0891b2; /* cyan-600 */
-            top: -100px;
-            left: -100px;
-            animation: move1 20s infinite alternate;
-        }
-
-        .shape2 {
-            width: 350px;
-            height: 350px;
-            background-color: #4338ca; /* indigo-700 */
-            bottom: -50px;
-            right: -50px;
-            animation: move2 25s infinite alternate;
-        }
-        
-        .shape3 {
-            width: 250px;
-            height: 250px;
-            background-color: #be185d; /* pink-700 */
-            bottom: 150px;
-            left: 100px;
-            animation: move3 22s infinite alternate;
-        }
-
-        @keyframes move1 {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(200px, 100px) rotate(360deg); }
-        }
-
-        @keyframes move2 {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(-150px, -100px) rotate(180deg); }
-        }
-        
-        @keyframes move3 {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(50px, -150px) rotate(90deg); }
-        }
-
 
         .card {
             /* Efek Glassmorphism yang disesuaikan untuk latar belakang baru */
@@ -168,11 +117,7 @@
 </head>
 <body>
 
-    <div class="aurora-background">
-        <div class="shape shape1"></div>
-        <div class="shape shape2"></div>
-        <div class="shape shape3"></div>
-    </div>
+    <canvas id="particle-canvas"></canvas>
 
     <div class="container mx-auto p-4 md:p-8 relative z-10">
         <header class="mb-8">
@@ -627,6 +572,90 @@
             </div>
         </div>
     </div>
+    
+    <script>
+        // --- Skrip Animasi Latar Belakang Partikel ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
 
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function createParticles() {
+            particles = [];
+            let numberOfParticles = (canvas.width * canvas.height) / 9000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: Math.random() * 0.5 - 0.25,
+                    vy: Math.random() * 0.5 - 0.25,
+                    radius: Math.random() * 1.5 + 0.5,
+                    color: 'rgba(203, 213, 225, 0.5)' // slate-300
+                });
+            }
+        }
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            });
+        }
+
+        function updateParticles() {
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+            });
+        }
+        
+        function connectParticles() {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let distance = Math.sqrt(
+                        Math.pow(particles[a].x - particles[b].x, 2) +
+                        Math.pow(particles[a].y - particles[b].y, 2)
+                    );
+
+                    if (distance < 100) {
+                        opacityValue = 1 - (distance / 100);
+                        ctx.strokeStyle = `rgba(203, 213, 225, ${opacityValue * 0.3})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            drawParticles();
+            updateParticles();
+            connectParticles();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createParticles();
+        });
+
+        resizeCanvas();
+        createParticles();
+        animate();
+    </script>
 </body>
 </html>
