@@ -1417,7 +1417,7 @@ document.getElementById('open-add-log-modal-btn').addEventListener('click', () =
     sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
     logSellPriceInput.value = '';
     logSellDateInput.value = '';
-    logFeeJualInput.value = defaultFeeJual; // Set default Fee Jual from settings
+    logFeeJualInput.value = defaultFeeJual; // Set default for new sell
     openModal(addLogModal);
 });
 document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
