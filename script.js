@@ -564,7 +564,7 @@
                 });
                 const grandTotalCard = document.createElement('div');
                 grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
-                grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p>`;
+                grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p></div>`;
                 grandTotalContainer.appendChild(grandTotalCard);
             }
 
