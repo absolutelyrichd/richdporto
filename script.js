@@ -33,9 +33,6 @@ window.firebase = {
     getDoc
 };
 
-// API Key Financial Modeling Prep
-const FMP_API_KEY = "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja";
-
 // --- DATA STORAGE ---
 let portfolioLog = [];
 let savedSimulations = [];
@@ -90,7 +87,6 @@ const logoutBtn = document.getElementById('logout-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
-const refreshPricesBtn = document.getElementById('refresh-prices-btn'); // Dapatkan tombol baru
 
 // Backup Elements
 const downloadJsonBtn = document.getElementById('download-json-btn');
@@ -525,33 +521,6 @@ function calculateEntryForProfit() {
     document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
 }
 
-// --- FUNGSI BARU UNTUK MENGAMBIL HARGA SAHAM REAL-TIME ---
-async function fetchStockPrice(stockCode) {
-    if (!stockCode || stockCode.length < 3) return null;
-    let formattedCode = stockCode.toUpperCase();
-    if (!formattedCode.endsWith('.JK')) {
-        formattedCode += '.JK';
-    }
-    const apiUrl = `https://financialmodelingprep.com/api/v3/quote/${formattedCode}?apikey=${FMP_API_KEY}`;
-    
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data && data.length > 0 && data[0].price) {
-            return data[0].price;
-        } else {
-            console.error(`API response for ${stockCode} did not contain a valid price.`);
-            return null;
-        }
-    } catch (error) {
-        console.error(`Gagal mengambil harga untuk ${stockCode}:`, error);
-        return null;
-    }
-}
-
 // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
 function renderLogTable(logsToRender = portfolioLog) {
     const logTableBody = document.getElementById('log-table-body');
@@ -612,8 +581,7 @@ function renderLogTable(logsToRender = portfolioLog) {
     updateSortIcons();
 }
 
-// FUNGSI INI SEKARANG MEMANGGIL FUNGSI BARU fetchStockPrice
-async function renderFinancialSummaries() {
+function renderFinancialSummaries() {
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     const grandTotalContainer = document.getElementById('portfolio-grand-total');
     const realizedPlContainer = document.getElementById('realized-pl-summary');
@@ -647,63 +615,22 @@ async function renderFinancialSummaries() {
     } else {
         const summary = openPositions.reduce((acc, log) => {
             const code = log.code.toUpperCase();
-            if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0, codes: new Set() }; }
+            if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
             acc[code].totalLots += log.lot;
+            // Store total cost with Fee for open positions
             acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-            acc[code].codes.add(code);
             return acc;
         }, {});
         let grandTotalCost = 0;
-        for (const code in summary) {
-            grandTotalCost += summary[code].totalCost;
-            const avgPriceWithFee = summary[code].totalCost / (summary[code].totalLots * 100);
+        Object.entries(summary).forEach(([code, data]) => {
+            grandTotalCost += data.totalCost;
+            const avgPriceWithFee = data.totalCost / (data.totalLots * 100); // This avgPrice now includes Fee
             const priceValue = currentMarketPrices[code] || '';
             const summaryCard = document.createElement('div');
             summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-            summaryCard.innerHTML = `
-                <h4 class="font-bold text-lg text-cyan-300">${code}</h4>
-                <div class="flex justify-between text-sm mt-2">
-                    <span class="text-gray-400">Total Lot:</span>
-                    <span class="font-semibold">${summary[code].totalLots}</span>
-                </div>
-                <div class="flex justify-between text-sm mt-1">
-                    <span class="text-gray-400">Harga Rata-rata:</span>
-                    <span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span>
-                </div>
-                <div class="flex justify-between text-sm mt-1">
-                    <span class="text-gray-400">Total Investasi:</span>
-                    <span class="font-semibold">${formatCurrency(summary[code].totalCost)}</span>
-                </div>
-                <div class="flex justify-between items-center text-sm mt-2">
-                    <label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label>
-                    <input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}">
-                </div>
-                <div class="flex justify-between text-sm mt-1">
-                    <span class="text-gray-400">Floating P/L:</span>
-                    <span id="floating-pl-${code}" class="font-semibold">-</span>
-                </div>
-            `;
+            summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
             summaryContainer.appendChild(summaryCard);
-            
-            // PANGGIL FUNGSI BARU DI SINI
-            const priceInput = summaryCard.querySelector(`#current-price-${code}`);
-            if (priceInput.value === '') { // Hanya ambil harga jika input kosong
-                // Tampilkan status memuat
-                priceInput.placeholder = 'Memuat...';
-                priceInput.disabled = true;
-
-                const price = await fetchStockPrice(code);
-                if (price) {
-                    priceInput.value = price;
-                    currentMarketPrices[code] = price;
-                } else {
-                    priceInput.placeholder = 'Gagal'; // Perbaikan di sini
-                    priceInput.value = ''; // Perbaikan di sini
-                }
-                priceInput.disabled = false;
-            }
-        }
-
+        });
         const grandTotalCard = document.createElement('div');
         grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
         grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p></div>`;
@@ -726,51 +653,6 @@ async function renderFinancialSummaries() {
     renderPerformanceTab();
 }
 
-/**
- * FUNGSI BARU UNTUK MEMPERBARUI SEMUA HARGA SECARA MANUAL
- */
-async function handleManualPriceUpdate() {
-    refreshPricesBtn.disabled = true;
-    refreshPricesBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-1 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span>Memuat...</span>
-    `;
-
-    const openPositions = portfolioLog.filter(log => !log.sellPrice);
-    const uniqueStockCodes = [...new Set(openPositions.map(log => log.code.toUpperCase()))];
-    
-    const pricePromises = uniqueStockCodes.map(code => fetchStockPrice(code));
-    const prices = await Promise.all(pricePromises);
-
-    for (let i = 0; i < uniqueStockCodes.length; i++) {
-        const code = uniqueStockCodes[i];
-        const price = prices[i];
-        const priceInput = document.getElementById(`current-price-${code}`);
-        if (priceInput) {
-            if (price) {
-                currentMarketPrices[code] = price;
-                priceInput.value = price;
-            } else {
-                priceInput.value = 'N/A';
-            }
-        }
-    }
-    
-    calculateAndRenderFloatingPL();
-    triggerAutoSave();
-
-    refreshPricesBtn.disabled = false;
-    refreshPricesBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001m-4.992 0L2.25 18.024m13.773-8.676a.75.75 0 01.75-.75h4.992a.75.75 0 01.75.75v.001m-4.992 0a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024M16.023 9.348L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024M16.023 9.348L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024" />
-        </svg>
-        <span>Refresh Harga</span>
-    `;
-}
-
 function calculateAndRenderFloatingPL() {
     const openPositions = portfolioLog.filter(log => !log.sellPrice);
     const floatingPlContainer = document.getElementById('floating-pl-summary');
@@ -789,18 +671,7 @@ function calculateAndRenderFloatingPL() {
     Object.entries(summary).forEach(([code, data]) => {
         const currentPriceInput = document.getElementById(`current-price-${code}`);
         if (!currentPriceInput) return;
-        let currentPrice;
-        // Handle 'N/A' case from API response
-        if (currentPriceInput.value === 'N/A') {
-            currentPrice = 0;
-            const floatingPlElement = document.getElementById(`floating-pl-${code}`);
-            floatingPlElement.textContent = 'N/A';
-            floatingPlElement.className = `font-semibold text-gray-500`;
-            return; // Skip calculation for this stock
-        } else {
-            currentPrice = parseFloat(currentPriceInput.value) || 0;
-        }
-
+        const currentPrice = parseFloat(currentPriceInput.value) || 0;
         const floatingPlElement = document.getElementById(`floating-pl-${code}`);
         if (currentPrice > 0) {
             const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
@@ -1536,9 +1407,6 @@ document.getElementById('tab-content-performance').addEventListener('input', (ev
         calculatePerformanceDifference();
     }
 });
-
-// Tambahkan event listener untuk tombol refresh harga
-refreshPricesBtn.addEventListener('click', handleManualPriceUpdate);
 
 // --- SORTING EVENT LISTENER ---
 document.querySelector('#tab-content-log table thead').addEventListener('click', (event) => {
