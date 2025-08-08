@@ -101,7 +101,8 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
         }
         .btn {
-            @apply font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 border border-transparent shadow-lg;
+            /* PERBAIKAN: Menambahkan border tipis untuk definisi, dan sedikit shadow untuk efek kedalaman */
+            @apply font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-white/20 shadow-lg hover:shadow-xl hover:border-white/40;
         }
         .btn-primary {
              /* Gradasi untuk tombol utama */
