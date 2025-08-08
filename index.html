@@ -128,24 +128,6 @@
         }
         /* END NEW */
 
-        /* GAYA BARU: Tombol Ambil Harga */
-        .fetch-price-btn {
-            padding: 0.25rem;
-            margin-left: 0.5rem;
-            background-color: rgba(55, 65, 81, 0.5); /* bg-gray-700/50 */
-            border-radius: 9999px; /* rounded-full */
-            transition: background-color 0.2s;
-            flex-shrink: 0;
-        }
-        .fetch-price-btn:hover {
-            background-color: rgba(75, 85, 99, 0.7); /* bg-gray-600/70 */
-        }
-        .fetch-price-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        /* END GAYA BARU */
-
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
             .container {
@@ -369,7 +351,15 @@
                     </div>
                     <div class="lg:col-span-1">
                         <div class="card sticky top-8">
-                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Ringkasan Portofolio</h2>
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-semibold">Ringkasan Portofolio</h2>
+                                <button id="refresh-prices-btn" class="font-bold py-1 px-2 rounded-lg transition-all duration-300 flex items-center justify-center space-x-1 border border-sky-500/50 shadow-lg hover:shadow-sky-500/20 hover:border-sky-500 bg-sky-600 hover:bg-sky-500 text-white text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001m-4.992 0L2.25 18.024m13.773-8.676a.75.75 0 01.75-.75h4.992a.75.75 0 01.75.75v.001m-4.992 0a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024M16.023 9.348L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024M16.023 9.348L2.25 18.024m13.773-8.676a.75.75 0 01-.75-.75h-.001m-4.992 0a.75.75 0 01-.75-.75H16.023c-.33 0-.649.131-.884.366L2.25 18.024" />
+                                    </svg>
+                                    <span>Refresh Harga</span>
+                                </button>
+                            </div>
                             <div id="equity-monitoring" class="mb-4">
                                 <div class="mb-2">
                                     <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
