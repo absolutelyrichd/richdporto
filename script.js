@@ -1120,6 +1120,7 @@
                             break;
                         case 'date':
                         case 'sellDate':
+                            // Handle cases where date is null
                             aValue = a[sortState.column] ? new Date(a[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
                             bValue = b[sortState.column] ? new Date(b[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
                             break;
