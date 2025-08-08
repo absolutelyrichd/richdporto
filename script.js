@@ -34,8 +34,7 @@ window.firebase = {
 };
 
 // --- API KEY UNTUK HARGA REAL-TIME ---
-// !!! PENTING: Ganti dengan API Key gratis Anda dari https://site.financialmodelingprep.com/developer/docs/
-const FMP_API_KEY = "0EqQNk1llsb4v3XcYtZKN0AYcYrw86Ja"; 
+const ALPHA_VANTAGE_API_KEY = "2FX76TPUKDKE88NR"; 
 
 // --- DATA STORAGE ---
 let portfolioLog = [];
@@ -290,14 +289,14 @@ async function loadDataFromFirebase() {
     }
 }
 
-// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (DIPERBARUI) ---
+// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (MENGGUNAKAN ALPHA VANTAGE) ---
 /**
- * Mengambil harga pasar saat ini untuk kode saham tertentu dari API.
+ * Mengambil harga pasar saat ini untuk kode saham tertentu dari API Alpha Vantage.
  * @param {string} stockCode - Kode saham (misal: 'BBCA').
  */
 async function fetchRealTimePrice(stockCode) {
-    if (!FMP_API_KEY || FMP_API_KEY === "YOUR_FREE_API_KEY") {
-        showNotification("Harap masukkan API Key Anda di file script.js untuk menggunakan fitur ini.", "API Key Diperlukan");
+    if (!ALPHA_VANTAGE_API_KEY || ALPHA_VANTAGE_API_KEY === "YOUR_API_KEY") {
+        showNotification("Harap masukkan API Key Alpha Vantage Anda di file script.js.", "API Key Diperlukan");
         return;
     }
 
@@ -309,41 +308,33 @@ async function fetchRealTimePrice(stockCode) {
         fetchBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
         fetchBtn.disabled = true;
 
-        const url = `https://financialmodelingprep.com/api/v3/quote-short/${stockCode.toUpperCase()}.JK?apikey=${FMP_API_KEY}`;
+        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockCode.toUpperCase()}.JK&apikey=${ALPHA_VANTAGE_API_KEY}`;
         const response = await fetch(url);
-
-        // --- BARU: Penanganan error yang lebih detail ---
-        if (!response.ok) {
-            let errorMessage = `Gagal mengambil data (Status: ${response.status})`;
-            if (response.status === 401 || response.status === 403) {
-                errorMessage = "API Key tidak valid atau telah melebihi batas penggunaan.";
-            } else if (response.status === 404) {
-                errorMessage = `Kode saham '${stockCode.toUpperCase()}' tidak ditemukan oleh API.`;
-            }
-            throw new Error(errorMessage);
-        }
-
         const data = await response.json();
 
-        if (data && data.length > 0 && data[0].price) {
-            const price = data[0].price;
+        // Penanganan error spesifik Alpha Vantage
+        if (data["Error Message"]) {
+            throw new Error(`API Error: ${data["Error Message"]}`);
+        }
+        if (data["Note"]) {
+             throw new Error(`Batas panggilan API tercapai. Coba lagi nanti.`);
+        }
+
+        const globalQuote = data['Global Quote'];
+        if (globalQuote && globalQuote['05. price']) {
+            const price = parseFloat(globalQuote['05. price']);
             const inputField = document.getElementById(`current-price-${stockCode.toUpperCase()}`);
             
             if (inputField) {
                 inputField.value = price;
-                // Memicu event 'input' secara manual agar kalkulasi P/L diperbarui
                 inputField.dispatchEvent(new Event('input', { bubbles: true }));
             }
         } else {
-            // Kasus ini bisa terjadi jika API key valid tapi paket gratis tidak mencakup ticker ini,
-            // atau API mengembalikan array kosong [].
-            throw new Error(`API tidak memberikan data harga untuk '${stockCode.toUpperCase()}'.`);
+            throw new Error(`Tidak ada data harga untuk '${stockCode.toUpperCase()}'. Pastikan kode saham benar.`);
         }
 
     } catch (error) {
-        // --- BARU: Menampilkan pesan error yang lebih spesifik ---
         console.error(`Error fetching price for ${stockCode}:`, error);
-        // Pesan error sekarang lebih deskriptif dari statement 'throw' di atas.
         showNotification(error.message, "Error");
     } finally {
         // Kembalikan tombol ke keadaan semula
@@ -1561,4 +1552,3 @@ window.addEventListener('load', () => {
 
     refreshAllApplicationData();
     switchTab('simulator');
-});
