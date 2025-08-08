@@ -48,6 +48,7 @@ let autoSaveTimer = null;
 let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
 let defaultFeeBeli = 0.11; // Default value for buy fee
 let defaultFeeJual = 0.11; // Default value for sell fee
+let isFetchingPrice = false; // Flag untuk mencegah panggilan API ganda
 
 // --- Sort state for portfolio log ---
 let sortState = {
@@ -291,12 +292,17 @@ async function loadDataFromFirebase() {
     }
 }
 
-// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (MENGGUNAKAN POLYGON.IO) ---
+// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (DIPERBARUI DENGAN POLYGON.IO) ---
 /**
  * Mengambil harga penutupan sebelumnya untuk kode saham tertentu dari API Polygon.io.
  * @param {string} stockCode - Kode saham (misal: 'BBCA').
  */
 async function fetchRealTimePrice(stockCode) {
+    if (isFetchingPrice) {
+        showNotification("Harap tunggu panggilan API sebelumnya selesai.", "Info");
+        return;
+    }
+
     if (!POLYGON_API_KEY || POLYGON_API_KEY === "YOUR_API_KEY") {
         showNotification("Harap masukkan API Key Polygon.io Anda di file script.js.", "API Key Diperlukan");
         return;
@@ -306,6 +312,7 @@ async function fetchRealTimePrice(stockCode) {
     const originalBtnContent = fetchBtn.innerHTML;
     
     try {
+        isFetchingPrice = true;
         // Tampilkan status loading
         fetchBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
         fetchBtn.disabled = true;
@@ -315,6 +322,12 @@ async function fetchRealTimePrice(stockCode) {
         const url = `https://api.polygon.io/v2/aggs/ticker/${formattedTicker}/prev?adjusted=true&apiKey=${POLYGON_API_KEY}`;
         
         const response = await fetch(url);
+
+        // --- BARU: Pengecekan status HTTP untuk rate limit ---
+        if (response.status === 429) {
+            throw new Error("Batas panggilan API (5 per menit) tercapai. Harap tunggu sebentar.");
+        }
+        
         const data = await response.json();
 
         // Penanganan error spesifik Polygon.io
@@ -343,6 +356,10 @@ async function fetchRealTimePrice(stockCode) {
             fetchBtn.innerHTML = originalBtnContent;
             fetchBtn.disabled = false;
         }
+        // --- BARU: Reset flag setelah 2 detik untuk memberi jeda ---
+        setTimeout(() => {
+            isFetchingPrice = false;
+        }, 2000);
     }
 }
 
