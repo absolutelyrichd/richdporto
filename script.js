@@ -36,7 +36,7 @@ window.firebase = {
 };
 
 // --- API KEY UNTUK HARGA REAL-TIME ---
-const ALPHA_VANTAGE_API_KEY = "2FX76TPUKDKE88NR"; 
+const POLYGON_API_KEY = "F6Kl67QGMHtli_xcPVU5ZQaQK4MaEf6Z"; 
 
 // --- DATA STORAGE ---
 let portfolioLog = [];
@@ -291,14 +291,14 @@ async function loadDataFromFirebase() {
     }
 }
 
-// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (MENGGUNAKAN ALPHA VANTAGE) ---
+// --- FUNGSI PENGAMBILAN HARGA REAL-TIME (MENGGUNAKAN POLYGON.IO) ---
 /**
- * Mengambil harga pasar saat ini untuk kode saham tertentu dari API Alpha Vantage.
+ * Mengambil harga penutupan sebelumnya untuk kode saham tertentu dari API Polygon.io.
  * @param {string} stockCode - Kode saham (misal: 'BBCA').
  */
 async function fetchRealTimePrice(stockCode) {
-    if (!ALPHA_VANTAGE_API_KEY || ALPHA_VANTAGE_API_KEY === "YOUR_API_KEY") {
-        showNotification("Harap masukkan API Key Alpha Vantage Anda di file script.js.", "API Key Diperlukan");
+    if (!POLYGON_API_KEY || POLYGON_API_KEY === "YOUR_API_KEY") {
+        showNotification("Harap masukkan API Key Polygon.io Anda di file script.js.", "API Key Diperlukan");
         return;
     }
 
@@ -310,21 +310,20 @@ async function fetchRealTimePrice(stockCode) {
         fetchBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
         fetchBtn.disabled = true;
 
-        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockCode.toUpperCase()}.JK&apikey=${ALPHA_VANTAGE_API_KEY}`;
+        // Polygon.io menggunakan format XIDX:TICKER untuk saham Indonesia
+        const formattedTicker = `XIDX:${stockCode.toUpperCase()}`;
+        const url = `https://api.polygon.io/v2/aggs/ticker/${formattedTicker}/prev?adjusted=true&apiKey=${POLYGON_API_KEY}`;
+        
         const response = await fetch(url);
         const data = await response.json();
 
-        // Penanganan error spesifik Alpha Vantage
-        if (data["Error Message"]) {
-            throw new Error(`API Error: ${data["Error Message"]}`);
-        }
-        if (data["Note"]) {
-             throw new Error(`Batas panggilan API tercapai. Coba lagi nanti.`);
+        // Penanganan error spesifik Polygon.io
+        if (data.status === "ERROR" || data.resultsCount === 0) {
+             throw new Error(data.error || `Tidak ada data untuk '${stockCode.toUpperCase()}'.`);
         }
 
-        const globalQuote = data['Global Quote'];
-        if (globalQuote && globalQuote['05. price']) {
-            const price = parseFloat(globalQuote['05. price']);
+        if (data.results && data.results.length > 0) {
+            const price = data.results[0].c; // 'c' adalah harga penutupan (close)
             const inputField = document.getElementById(`current-price-${stockCode.toUpperCase()}`);
             
             if (inputField) {
@@ -332,7 +331,7 @@ async function fetchRealTimePrice(stockCode) {
                 inputField.dispatchEvent(new Event('input', { bubbles: true }));
             }
         } else {
-            throw new Error(`Tidak ada data harga untuk '${stockCode.toUpperCase()}'. Pastikan kode saham benar.`);
+            throw new Error(`Format respons API tidak valid untuk '${stockCode.toUpperCase()}'.`);
         }
 
     } catch (error) {
@@ -1554,4 +1553,3 @@ window.addEventListener('load', () => {
 
     refreshAllApplicationData();
     switchTab('simulator');
-});
