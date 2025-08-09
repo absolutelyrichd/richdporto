@@ -377,7 +377,6 @@ function refreshAllApplicationData() {
     renderFinancialSummaries();
     renderSavedSimulationsTable();
     calculateDashboard();
-    calculateEntryForProfit();
     updateSimulationReasonDisplay();
     renderPerformanceTab(); // Call renderPerformanceTab directly
     triggerAutoSave();
@@ -511,15 +510,17 @@ function calculateDashboard() {
     document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice);
 }
 
+// Function to handle the removed "Kalkulator Target Profit" section
+// This function is now removed.
+// function calculateEntryForProfit() {
+//     const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0;
+//     const targetProfitLot = parseFloat(document.getElementById('target-profit-lot').value) || 0;
+//     const targetProfitPercent = parseFloat(document.getElementById('target-profit-percent').value) || 0;
+//     if (targetProfitLot <= 0 || targetProfitPercent <= 0) { document.getElementById('entry-price-result').textContent = 'Input tidak valid'; return; }
+//     const entryPrice = targetProfitRp / (targetProfitLot * 100 * (targetProfitPercent / 100));
+//     document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
+// }
 
-function calculateEntryForProfit() {
-    const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0;
-    const targetProfitLot = parseFloat(document.getElementById('target-profit-lot').value) || 0;
-    const targetProfitPercent = parseFloat(document.getElementById('target-profit-percent').value) || 0;
-    if (targetProfitLot <= 0 || targetProfitPercent <= 0) { document.getElementById('entry-price-result').textContent = 'Input tidak valid'; return; }
-    const entryPrice = targetProfitRp / (targetProfitLot * 100 * (targetProfitPercent / 100));
-    document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
-}
 
 // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
 function renderLogTable(logsToRender = portfolioLog) {
@@ -1304,7 +1305,8 @@ function resetLogFilters() {
 
 
 // --- EVENT LISTENERS ---
-document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
+// The following event listener for the removed profit calculator form is now deleted.
+// document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
 logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
 simParamsForm.addEventListener('submit', handleSimParamsSubmit);
 sellForm.addEventListener('submit', handleSellSubmit);
