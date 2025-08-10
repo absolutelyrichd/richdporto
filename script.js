@@ -123,6 +123,9 @@ const customConfirmMessage = document.getElementById('delete-confirm-modal').que
 const customConfirmBtn = document.getElementById('confirm-delete-btn');
 const customCancelBtn = document.getElementById('cancel-delete-btn');
 
+// --- Perubahan DOM Elements untuk Tab Sticky ---
+const tabNavWrapper = document.getElementById('tab-nav-wrapper');
+let tabNavOffsetTop;
 
 // --- HELPER FUNCTIONS ---
 function formatCurrency(value, withSign = false) {
@@ -1303,6 +1306,19 @@ function resetLogFilters() {
     applyLogFiltersAndSort(); // Re-render with all logs
 }
 
+// --- Event listener for sticky nav ---
+window.addEventListener('scroll', () => {
+    // Memeriksa apakah tabNavWrapper sudah diinisialisasi
+    if (tabNavWrapper && tabNavOffsetTop !== undefined) {
+        if (window.scrollY >= tabNavOffsetTop) {
+            tabNavWrapper.classList.remove('default-state');
+            tabNavWrapper.classList.add('sticky-state');
+        } else {
+            tabNavWrapper.classList.remove('sticky-state');
+            tabNavWrapper.classList.add('default-state');
+        }
+    }
+});
 
 // --- EVENT LISTENERS ---
 // The following event listener for the removed profit calculator form is now deleted.
@@ -1440,6 +1456,12 @@ uploadJsonInput.addEventListener('change', handleFileUpload);
 // --- INITIALIZATION ---
 window.addEventListener('load', () => {
     document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
+    
+    // Simpan posisi awal nav
+    const tabNavElement = document.getElementById('tab-nav-wrapper');
+    if (tabNavElement) {
+        tabNavOffsetTop = tabNavElement.offsetTop;
+    }
     
     window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
         const wasNotLoggedIn = !currentUser;

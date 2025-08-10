@@ -157,6 +157,43 @@
         }
         /* END NEW */
 
+        /* --- Gaya Baru untuk Sticky Nav --- */
+        /* Tambahkan padding dan margin agar seperti "kartu melayang" */
+        #tab-nav-wrapper {
+            margin-bottom: 2rem; /* Ruang di bawah nav */
+            z-index: 100;
+        }
+
+        /* Gaya default saat tidak sticky (sama seperti sebelumnya) */
+        #tab-nav-wrapper.default-state {
+            padding: 0;
+            border-radius: 0;
+            border: none;
+            background-color: transparent;
+            box-shadow: none;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Gaya saat dalam mode sticky */
+        #tab-nav-wrapper.sticky-state {
+            padding: 0.5rem 1rem; /* Tambahkan padding */
+            border-radius: 0.75rem; /* Gunakan border-radius dari kelas card */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(31, 41, 55, 0.5); /* Gunakan warna latar belakang dari kelas card */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 1rem; /* Jarak dari atas layar saat sticky */
+            left: 50%;
+            transform: translateX(-50%); /* Posisikan di tengah secara horizontal */
+            width: calc(100% - 2rem); /* Lebar agar ada margin di samping */
+            max-width: 1280px; /* Batasi lebar seperti container utama */
+            transition: all 0.3s ease-in-out;
+        }
+        /* --- Akhir Gaya Baru --- */
+
+
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
             .container {
@@ -219,17 +256,19 @@
             </div>
         </header>
 
-        <!-- Tab Navigation -->
-        <div class="sticky top-0 z-10 mb-8 border-b border-gray-700/50 bg-gray-900/80 backdrop-blur-sm">
-            <nav class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
+        <!-- Container untuk Navigasi Tab -->
+        <!-- Perubahan di sini: Mengubah kelas dari sticky menjadi penampung baru -->
+        <div id="tab-nav-wrapper" class="default-state">
+            <div class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
                 <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
                 <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
                 <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
                 <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
                 <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Cadangkan / Pulihkan</button>
                 <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Pengaturan</button>
-            </nav>
+            </div>
         </div>
+        <!-- Akhir Perubahan -->
 
         <!-- Tab Content -->
         <div>
