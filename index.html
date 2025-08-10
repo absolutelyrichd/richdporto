@@ -188,8 +188,13 @@
             left: 50%;
             transform: translateX(-50%); /* Posisikan di tengah secara horizontal */
             width: calc(100% - 2rem); /* Lebar agar ada margin di samping */
-            max-width: 1280px; /* Batasi lebar seperti container utama */
+            max-width: 600px; /* **Perubahan: Mengurangi lebar maksimum navbar** */
             transition: all 0.3s ease-in-out;
+        }
+
+        /* Perubahan di sini: tambahkan `justify-center` untuk teks agar lebih terpusat */
+        #tab-nav-wrapper.sticky-state .tab-nav {
+            justify-content: center;
         }
         /* --- Akhir Gaya Baru --- */
 
