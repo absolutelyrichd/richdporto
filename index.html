@@ -52,6 +52,9 @@
         .tab-button {
             transition: all 0.3s ease;
             border-bottom: 3px solid transparent;
+            /* Perubahan di sini: Mengizinkan tombol untuk mengisi ruang */
+            flex-grow: 1; 
+            text-align: center;
             white-space: nowrap;
         }
         .tab-button.active {
@@ -188,7 +191,7 @@
             left: 50%;
             transform: translateX(-50%); /* Posisikan di tengah secara horizontal */
             width: calc(100% - 2rem); /* Lebar agar ada margin di samping */
-            max-width: 800px; /* **Perubahan: Mengurangi lebar maksimum navbar** */
+            max-width: 1280px; /* **Perubahan: Mengembalikan lebar maksimum** */
             transition: all 0.3s ease-in-out;
         }
 
