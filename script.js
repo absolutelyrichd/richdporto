@@ -124,8 +124,6 @@ const filterResetBtn = document.getElementById('filter-reset-btn');
 
 // Pagination Elements
 const paginationControls = document.getElementById('pagination-controls');
-const prevPageBtn = document.getElementById('prev-page-btn');
-const nextPageBtn = document.getElementById('next-page-btn');
 const pageInfoSpan = document.getElementById('page-info');
 const pageNumberContainer = document.getElementById('page-number-container');
 
@@ -616,8 +614,9 @@ function renderLogTable(logsToRender = []) {
 // --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    prevPageBtn.disabled = currentPage === 1;
-    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    // Remove prev and next buttons from logic
+    // prevPageBtn.disabled = currentPage === 1;
+    // nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
 
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
     const endItem = Math.min(startItem + itemsPerPage, totalItems);
@@ -1533,8 +1532,8 @@ filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFil
 filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
 // New listeners for Pagination
-prevPageBtn.addEventListener('click', goToPrevPage);
-nextPageBtn.addEventListener('click', goToNextPage);
+// prevPageBtn.addEventListener('click', goToPrevPage); // Removed `prevPageBtn` listener
+// nextPageBtn.addEventListener('click', goToNextPage); // Removed `nextPageBtn` listener
 pageNumberContainer.addEventListener('click', (event) => {
     const page = event.target.dataset.page;
     if (page) {
