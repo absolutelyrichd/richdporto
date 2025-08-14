@@ -201,7 +201,65 @@
         }
         /* --- Akhir Gaya Baru --- */
 
+        /* New Navbar Style from User */
+        .tab-nav {
+            background-color: transparent; /* Keep it transparent */
+            justify-content: flex-start; /* Keep tabs left-aligned */
+            transition: 1s;
+        }
+        
+        .tab-nav-container:hover > :not(.tab-button:hover) {
+            transition: 300ms;
+            filter: blur(1.5px);
+            transform: scale(0.95, 0.95);
+        }
+        
+        .tab-button {
+            position: relative;
+            background-color: transparent;
+            border: none;
+            padding: 10px;
+            color: #E5E7EB; /* gray-200 */
+            display: flex;
+            gap: 5px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 1s;
+            box-sizing: border-box;
+            border-bottom: 3px solid transparent;
+            flex-grow: 0; /* Override flex-grow to prevent stretching */
+        }
+        
+        .tab-button.active {
+            color: #FFFFFF;
+            background-color: rgba(31, 41, 55, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
+            border-radius: 10px;
+        }
 
+        .tab-button:not(:active):hover {
+            display: flex;
+            box-sizing: border-box;
+            border: 2px solid #1a1f24;
+            color: #637185;
+            background-color: #1a1f24;
+        }
+
+        /* Hide the original ::before pseudo element and replace with a bottom bar */
+        .tab-button.active::after {
+            content: "";
+            position: absolute;
+            bottom: 0px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, #22D3EE, #0EA5E9);
+            border-radius: 0 0 5px 5px;
+            opacity: 1;
+            transition: 1s;
+        }
+        
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
             .container {
@@ -265,15 +323,17 @@
         </header>
 
         <!-- Container untuk Navigasi Tab -->
-        <!-- Perubahan di sini: Mengubah kelas dari sticky menjadi penampung baru -->
+        <!-- Perubahan di sini: Menambahkan kelas baru untuk penampung efek hover -->
         <div id="tab-nav-wrapper" class="default-state">
-            <div class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
-                <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
-                <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
-                <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
-                <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
-                <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Cadangkan / Pulihkan</button>
-                <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Pengaturan</button>
+            <div class="tab-nav-container">
+                <div class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
+                    <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
+                    <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
+                    <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
+                    <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
+                    <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Cadangkan / Pulihkan</button>
+                    <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Pengaturan</button>
+                </div>
             </div>
         </div>
         <!-- Akhir Perubahan -->
