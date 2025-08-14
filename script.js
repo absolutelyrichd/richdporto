@@ -44,10 +44,10 @@ let deleteLogIndexToConfirm = -1; // New variable to store the index for deletio
 let defaultFeeBeli = 0.11; // Default value for buy fee
 let defaultFeeJual = 0.11; // Default value for sell fee
 
-// --- Paginasi ---
+// --- Pagination ---
 const itemsPerPage = 10;
 let currentPage = 1;
-let filteredLogsData = []; // Menyimpan data yang sudah difilter
+let filteredLogsData = []; // Stores the filtered data
 // ---
 
 // --- Sort state for portfolio log ---
@@ -122,11 +122,12 @@ const filterStatusSelect = document.getElementById('filter-status');
 const filterApplyBtn = document.getElementById('filter-apply-btn');
 const filterResetBtn = document.getElementById('filter-reset-btn');
 
-// Paginasi Elements
+// Pagination Elements
 const paginationControls = document.getElementById('pagination-controls');
 const prevPageBtn = document.getElementById('prev-page-btn');
 const nextPageBtn = document.getElementById('next-page-btn');
 const pageInfoSpan = document.getElementById('page-info');
+const pageNumberContainer = document.getElementById('page-number-container');
 
 // Custom Confirmation Modal Elements
 const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
@@ -134,7 +135,7 @@ const customConfirmMessage = document.getElementById('delete-confirm-modal').que
 const customConfirmBtn = document.getElementById('confirm-delete-btn');
 const customCancelBtn = document.getElementById('cancel-delete-btn');
 
-// --- Perubahan DOM Elements untuk Tab Sticky ---
+// --- DOM Elements for Sticky Nav ---
 const tabNavWrapper = document.getElementById('tab-nav-wrapper');
 let tabNavOffsetTop;
 
@@ -569,7 +570,7 @@ function renderLogTable(logsToRender = []) {
                 const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
                 plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
-                // Gunakan index asli dari array `portfolioLog` untuk mengedit/menghapus
+                // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
                                 <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
@@ -580,7 +581,7 @@ function renderLogTable(logsToRender = []) {
             } else {
                 plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
-                 // Gunakan index asli dari array `portfolioLog` untuk mengedit/menghapus
+                 // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
                                 <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
@@ -612,21 +613,41 @@ function renderLogTable(logsToRender = []) {
     updateSortIcons();
 }
 
-// --- Paginasi Logic ---
+// --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     prevPageBtn.disabled = currentPage === 1;
     nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
 
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-    const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
+    const endItem = Math.min(startItem + itemsPerPage, totalItems);
     pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
     
-    // Sembunyikan kontrol paginasi jika tidak ada entri atau hanya 1 halaman
+    pageNumberContainer.innerHTML = '';
+    if (totalPages > 1) {
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.dataset.page = i;
+            pageButton.className = `py-1 px-3 rounded-lg font-bold transition-all duration-200 
+                                     ${i === currentPage ? 'bg-cyan-600 text-white' : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300'}`;
+            pageNumberContainer.appendChild(pageButton);
+        }
+    }
+
+    // Hide pagination controls if there are no entries or only 1 page
     if (totalItems <= itemsPerPage) {
         paginationControls.classList.add('hidden');
     } else {
         paginationControls.classList.remove('hidden');
+    }
+}
+
+function goToPage(pageNumber) {
+    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+        currentPage = pageNumber;
+        renderLogTable(filteredLogsData);
     }
 }
 
@@ -644,7 +665,7 @@ function goToNextPage() {
         renderLogTable(filteredLogsData);
     }
 }
-// --- End Paginasi Logic ---
+// --- End Pagination Logic ---
 
 
 function renderFinancialSummaries() {
@@ -1266,7 +1287,7 @@ function handleLogSort(event) {
         sortState.column = null;
     }
     
-    currentPage = 1; // Kembali ke halaman pertama saat mengurutkan
+    currentPage = 1; // Return to the first page when sorting
     applyLogFiltersAndSort();
 }
 
@@ -1274,7 +1295,7 @@ function handleLogSort(event) {
 function saveSettings() {
     defaultFeeBeli = parseFloat(defaultFeeBeliInput.value);
     defaultFeeJual = parseFloat(defaultFeeJualInput.value);
-    showNotification('Pengaturan default berhasil disimpan!', 'Sukses');
+    showNotification('Default settings saved successfully!', 'Success');
     triggerAutoSave(); // Save settings to Firebase
 }
 
@@ -1356,7 +1377,7 @@ function applyLogFiltersAndSort() {
         });
     }
 
-    filteredLogsData = filtered; // Simpan data yang sudah difilter dan diurutkan ke variabel global
+    filteredLogsData = filtered; // Save the filtered and sorted data to a global variable
     renderLogTable(filteredLogsData);
 }
 
@@ -1367,13 +1388,13 @@ function resetLogFilters() {
     filterReasonInput.value = '';
     filterStatusSelect.value = 'all';
     sortState = { column: 'date', direction: 'desc' }; // Reset sort state
-    currentPage = 1; // Reset halaman ke 1
+    currentPage = 1; // Reset to page 1
     applyLogFiltersAndSort(); // Re-render with all logs
 }
 
 // --- Event listener for sticky nav ---
 window.addEventListener('scroll', () => {
-    // Memeriksa apakah tabNavWrapper sudah diinisialisasi
+    // Check if tabNavWrapper is initialized
     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
         if (window.scrollY >= tabNavOffsetTop) {
             tabNavWrapper.classList.remove('default-state');
@@ -1402,11 +1423,11 @@ document.getElementById('open-add-log-modal-btn').addEventListener('click', () =
     logEditIndexInput.value = ''; // Clear edit index
     logForm.reset(); // Clear form fields
     document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
-    logFeeBeliInput.value = defaultFeeBeli; // Set default Fee Beli from settings
+    logFeeBeliInput.value = defaultFeeBeli; // Set default buy fee from settings
     sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
     logSellPriceInput.value = '';
     logSellDateInput.value = '';
-    logFeeJualInput.value = defaultFeeJual; // Set default Fee Jual from settings
+    logFeeJualInput.value = defaultFeeJual; // Set default sell fee from settings
     openModal(addLogModal);
 });
 document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
@@ -1434,7 +1455,7 @@ document.getElementById('save-simulation-from-modal-btn').addEventListener('clic
 document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
 
 document.getElementById('log-table-body').addEventListener('click', (event) => {
-    // Cari elemen tombol terdekat untuk memastikan kita mengklik tombol, bukan baris tabel
+    // Find the closest button element to ensure we clicked a button, not a table row
     const targetButton = event.target.closest('button');
     if (!targetButton) return;
     
@@ -1445,7 +1466,7 @@ document.getElementById('log-table-body').addEventListener('click', (event) => {
     } else if (targetButton.classList.contains('sell-log-btn')) {
         document.getElementById('sell-log-index').value = logIndex;
         document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default Fee Jual from settings
+        document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default sell fee from settings
         openModal(sellModal);
     } else if (targetButton.classList.contains('edit-log-btn')) { // New event listener for edit button
         handleEditLog(logIndex);
@@ -1511,9 +1532,15 @@ filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLog
 filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
 filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
-// New listeners for Paginasi
+// New listeners for Pagination
 prevPageBtn.addEventListener('click', goToPrevPage);
 nextPageBtn.addEventListener('click', goToNextPage);
+pageNumberContainer.addEventListener('click', (event) => {
+    const page = event.target.dataset.page;
+    if (page) {
+        goToPage(parseInt(page));
+    }
+});
 
 
 // New listeners for Auth, Sync, and Backup
@@ -1526,7 +1553,7 @@ uploadJsonInput.addEventListener('change', handleFileUpload);
 window.addEventListener('load', () => {
     document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
     
-    // Simpan posisi awal nav
+    // Save the initial position of the nav
     const tabNavElement = document.getElementById('tab-nav-wrapper');
     if (tabNavElement) {
         tabNavOffsetTop = tabNavElement.offsetTop;
