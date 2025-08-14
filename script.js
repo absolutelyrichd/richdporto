@@ -139,9 +139,6 @@ const customCancelBtn = document.getElementById('cancel-delete-btn');
 const tabNavWrapper = document.getElementById('tab-nav-wrapper');
 let tabNavOffsetTop;
 
-// --- Back to Top Elements ---
-const backToTopBtn = document.getElementById('back-to-top-btn');
-
 // --- HELPER FUNCTIONS ---
 function formatCurrency(value, withSign = false) {
     const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(value));
@@ -1395,9 +1392,9 @@ function resetLogFilters() {
     applyLogFiltersAndSort(); // Re-render with all logs
 }
 
-// --- Event listener for sticky nav dan back to top ---
+// --- Event listener for sticky nav ---
 window.addEventListener('scroll', () => {
-    // Logic untuk sticky nav
+    // Check if tabNavWrapper is initialized
     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
         if (window.scrollY >= tabNavOffsetTop) {
             tabNavWrapper.classList.remove('default-state');
@@ -1407,23 +1404,7 @@ window.addEventListener('scroll', () => {
             tabNavWrapper.classList.add('default-state');
         }
     }
-    
-    // Logic untuk tombol Back to Top
-    const scrollPosition = window.scrollY || document.documentElement.scrollTop;
-    if (scrollPosition > 100) {
-        backToTopBtn.classList.add('show');
-    } else {
-        backToTopBtn.classList.remove('show');
-    }
 });
-
-backToTopBtn.addEventListener('click', () => {
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-});
-// --- End Back to Top Logic ---
 
 // --- EVENT LISTENERS ---
 // The following event listener for the removed profit calculator form is now deleted.
