@@ -614,10 +614,6 @@ function renderLogTable(logsToRender = []) {
 // --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    // Remove prev and next buttons from logic
-    // prevPageBtn.disabled = currentPage === 1;
-    // nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
-
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
     const endItem = Math.min(startItem + itemsPerPage, totalItems);
     pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
@@ -628,8 +624,8 @@ function updatePaginationControls(totalItems) {
             const pageButton = document.createElement('button');
             pageButton.textContent = i;
             pageButton.dataset.page = i;
-            pageButton.className = `py-1 px-3 rounded-lg font-bold transition-all duration-200 
-                                     ${i === currentPage ? 'bg-cyan-600 text-white' : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300'}`;
+            // Update class to use the new CSS styles
+            pageButton.className = `pagination-button ${i === currentPage ? 'active' : ''}`;
             pageNumberContainer.appendChild(pageButton);
         }
     }
@@ -1371,7 +1367,7 @@ function applyLogFiltersAndSort() {
                  return sortState.direction === 'asc' ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
             }
              else {
-                return sortState.direction === 'asc' ? aValue - bValue : bValue - aValue;
+                return sortState.direction === 'asc' ? aValue - bValue : b-a;
             }
         });
     }
@@ -1532,8 +1528,6 @@ filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFil
 filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
 // New listeners for Pagination
-// prevPageBtn.addEventListener('click', goToPrevPage); // Removed `prevPageBtn` listener
-// nextPageBtn.addEventListener('click', goToNextPage); // Removed `nextPageBtn` listener
 pageNumberContainer.addEventListener('click', (event) => {
     const page = event.target.dataset.page;
     if (page) {
