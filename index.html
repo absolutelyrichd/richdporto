@@ -207,8 +207,8 @@
             padding: 0.5em 2em;
             border: transparent;
             box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
-            /* Warna solid yang sama dengan teks header */
-            background-color: #22d3ee;
+            /* Warna solid biru yang lebih gelap */
+            background-color: #0c4a6e;
             background-image: none;
             color: white;
             border-radius: 8px; 
@@ -217,6 +217,7 @@
 
         .btn-glass:hover {
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* Shadow yang lebih sederhana */
+            background-color: #075985; /* Sedikit lebih terang saat di-hover */
             transform: translateY(-2px);
         }
 
@@ -228,12 +229,12 @@
         /* Kelas untuk warna tombol Jual */
         .btn-sell {
             /* Warna solid merah yang soft */
-            background-color: #ef4444; /* bg-red-500 */
+            background-color: rgba(239, 68, 68, 0.8);
             background-image: none;
         }
 
         .btn-sell:hover {
-            box-shadow: 0 4-6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         /* Kelas untuk warna tombol Logout */
@@ -372,87 +373,17 @@
                         <table class="w-full text-sm text-left text-gray-300">
                             <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3">Level</th>
-                                    <th scope="col" class="px-6 py-3">Harga Beli (Rp)</th>
-                                    <th scope="col" class="px-6 py-3">Lot Beli</th>
-                                    <th scope="col" class="px-6 py-3">Total Beli (Rp)</th>
-                                    <th scope="col" class="px-6 py-3">Yield Dividen</th>
-                                    <th scope="col" class="px-6 py-3">Harga Rata-rata (Rp)</th>
-                                    <th scope="col" class="px-6 py-3">Harga TP 1</th>
-                                    <th scope="col" class="px-6 py-3">Profit TP 1</th>
-                                    <th scope="col" class="px-6 py-3">Harga TP 2</th>
-                                    <th scope="col" class="px-6 py-3">Profit TP 2</th>
-                                </tr>
-                            </thead>
-                            <tbody id="scenario-table-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div id="simulation-reason-card" class="card mb-8 hidden">
-                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Alasan Simulasi</h2>
-                    <p id="simulation-reason-display" class="text-gray-300 whitespace-pre-wrap"></p>
-                </div>
-            </div>
-
-            <!-- Portfolio Log Tab -->
-            <div id="tab-content-log" class="tab-content">
-                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2">
-                        <div class="card mb-8">
-                            <h2 class="text-2xl font-semibold mb-4">Filter Riwayat Transaksi</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label for="filter-date-from" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Dari</label>
-                                    <input type="date" id="filter-date-from" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                </div>
-                                <div>
-                                    <label for="filter-date-to" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Sampai</label>
-                                    <input type="date" id="filter-date-to" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                </div>
-                                <div>
-                                    <label for="filter-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                    <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
-                                </div>
-                                <div>
-                                    <label for="filter-status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                                    <select id="filter-status" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                        <option value="all">Semua</option>
-                                        <option value="open">Open</option>
-                                        <option value="closed">Closed</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-2 lg:col-span-4">
-                                    <label for="filter-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                                    <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
-                                </div>
-                                <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
-                                    <button id="filter-reset-btn" class="btn-glass btn-secondary">Reset Filter</button>
-                                    <button id="filter-apply-btn" class="btn-glass">Terapkan Filter</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                                <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Riwayat Transaksi</h2>
-                                <button id="open-add-log-modal-btn" class="btn-glass">Tambah Transaksi</button>
-                            </div>
-                            <div class="table-wrapper">
-                                <table class="w-full text-sm text-left text-gray-300">
-                                    <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="date">Tgl Beli <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="code">Kode <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="price">Harga Beli <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="lot">Lot <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3">Fee Beli</th>
-                                            <th scope="col" class="px-6 py-3">Fee Jual</th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="reason">Alasan Beli <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="sellDate">Tgl Jual <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3 sortable" data-sort="realizedPL">Realisasi P/L <span class="sort-icon"></span></th>
-                                            <th scope="col" class="px-6 py-3">Aksi</th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="date">Tgl Beli <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="code">Kode <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="price">Harga Beli <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="lot">Lot <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3">Fee Beli</th>
+                                    <th scope="col" class="px-6 py-3">Fee Jual</th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="reason">Alasan Beli <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="sellDate">Tgl Jual <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3 sortable" data-sort="realizedPL">Realisasi P/L <span class="sort-icon"></span></th>
+                                    <th scope="col" class="px-6 py-3">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="log-table-body"></tbody>
