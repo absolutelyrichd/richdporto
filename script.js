@@ -1395,22 +1395,7 @@ function resetLogFilters() {
     applyLogFiltersAndSort(); // Re-render with all logs
 }
 
-// --- Event listener for sticky nav ---
-// Hapus event listener ganda untuk scroll
-// window.addEventListener('scroll', () => {
-//     // Check if tabNavWrapper is initialized
-//     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
-//         if (window.scrollY >= tabNavOffsetTop) {
-//             tabNavWrapper.classList.remove('default-state');
-//             tabNavWrapper.classList.add('sticky-state');
-//         } else {
-//             tabNavWrapper.classList.remove('sticky-state');
-//             tabNavWrapper.classList.add('default-state');
-//         }
-//     }
-// });
-
-// --- Back to Top Logic ---
+// --- Event listener for sticky nav dan back to top ---
 window.addEventListener('scroll', () => {
     // Logic untuk sticky nav
     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
@@ -1424,7 +1409,8 @@ window.addEventListener('scroll', () => {
     }
     
     // Logic untuk tombol Back to Top
-    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+    const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+    if (scrollPosition > 100) {
         backToTopBtn.classList.add('show');
     } else {
         backToTopBtn.classList.remove('show');
