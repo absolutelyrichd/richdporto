@@ -388,7 +388,7 @@
                     <div id="tab-content-simulator" class="tab-content active">
                         <div class="card mb-8">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                                <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Parameter Simulasi Aktif</h2>
+                                <h2 class="text-2xl font-semibold mb-4 sm:mb-0 text-gray-200">Parameter Simulasi Aktif</h2>
                                 <button id="open-sim-params-modal-btn" class="btn btn-primary">Ubah Parameter</button>
                             </div>
                             <div id="active-sim-params-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700/50 pt-4">
@@ -396,7 +396,7 @@
                         </div>
 
                         <div class="card mb-8">
-                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Ringkasan Portofolio (Equitas)</h2>
+                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Ringkasan Portofolio (Equitas)</h2>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                                 <div>
                                     <h3 class="text-gray-400 text-sm font-medium">Total Investasi</h3>
@@ -414,7 +414,7 @@
                         </div>
                         
                         <div class="card mb-8">
-                            <h2 class="text-2xl font-semibold mb-4">Tabel Skenario Averaging</h2>
+                            <h2 class="text-2xl font-semibold mb-4 text-gray-200">Tabel Skenario Averaging</h2>
                             <div class="table-wrapper">
                                 <table class="w-full text-sm text-left text-gray-300">
                                     <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
@@ -437,7 +437,7 @@
                         </div>
 
                         <div id="simulation-reason-card" class="card mb-8 hidden">
-                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Alasan Simulasi</h2>
+                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Alasan Simulasi</h2>
                             <p id="simulation-reason-display" class="text-gray-300 whitespace-pre-wrap"></p>
                         </div>
                     </div>
@@ -447,7 +447,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div class="lg:col-span-2">
                                 <div class="card mb-8">
-                                    <h2 class="text-2xl font-semibold mb-4">Filter Riwayat Transaksi</h2>
+                                    <h2 class="text-2xl font-semibold mb-4 text-gray-200">Filter Riwayat Transaksi</h2>
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div>
                                             <label for="filter-date-from" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Dari</label>
@@ -482,7 +482,7 @@
 
                                 <div class="card">
                                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                                        <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Riwayat Transaksi</h2>
+                                        <h2 class="text-2xl font-semibold mb-4 sm:mb-0 text-gray-200">Riwayat Transaksi</h2>
                                         <button id="open-add-log-modal-btn" class="btn btn-primary">Tambah Transaksi</button>
                                     </div>
                                     <div class="table-wrapper">
@@ -514,7 +514,7 @@
                             </div>
                             <div class="lg:col-span-1">
                                 <div class="card sticky top-8">
-                                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Ringkasan Portofolio</h2>
+                                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Ringkasan Portofolio</h2>
                                     <div id="equity-monitoring" class="mb-4">
                                         <div class="mb-2">
                                             <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
@@ -538,7 +538,7 @@
                     <div id="tab-content-saved" class="tab-content">
                         <div class="max-w-5xl mx-auto">
                             <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4">Daftar Simulasi Tersimpan</h2>
+                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Daftar Simulasi Tersimpan</h2>
                                 <div class="table-wrapper">
                                     <table class="w-full text-sm text-left text-gray-300">
                                         <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
@@ -562,7 +562,7 @@
                     <!-- Performance Tab -->
                     <div id="tab-content-performance" class="tab-content">
                         <div class="card">
-                            <h2 class="text-2xl font-semibold mb-4">Performa Portofolio vs IHSG</h2>
+                            <h2 class="text-2xl font-semibold mb-4 text-gray-200">Performa Portofolio vs IHSG</h2>
                             <p class="text-sm text-gray-400 mb-6">Performa "All Time" dihitung secara otomatis berdasarkan modal awal, transaksi, dan nilai floating P/L. Performa IHSG dapat diisi manual untuk perbandingan.</p>
                             
                             <div class="mb-8 p-4 bg-gray-900/30 rounded-lg">
@@ -590,7 +590,7 @@
                     <div id="tab-content-backup" class="tab-content">
                         <div class="max-w-5xl mx-auto">
                             <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4">Pencadangan & Pemulihan Lokal</h2>
+                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Pencadangan & Pemulihan Lokal</h2>
                                 <p class="text-gray-400 mb-6">Simpan data portofolio dan simulasi Anda ke sebuah file di komputer Anda, atau pulihkan dari file yang sudah ada. Ini berguna untuk pencadangan atau transfer data secara manual.</p>
                                 <div class="flex flex-col md:flex-row gap-4">
                                     <button id="download-json-btn" class="btn btn-primary">
@@ -613,7 +613,7 @@
                     <div id="tab-content-settings" class="tab-content">
                         <div class="max-w-5xl mx-auto">
                             <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4">Pengaturan Default</h2>
+                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Pengaturan Default</h2>
                                 <p class="text-gray-400 mb-6">Atur nilai fee default untuk transaksi beli dan jual.</p>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -638,7 +638,7 @@
             <!-- Modals -->
             <div id="sim-params-modal" class="modal-overlay">
                 <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-6">Parameter Simulasi</h3>
+                    <h3 class="text-2xl font-semibold mb-6 text-gray-200">Parameter Simulasi</h3>
                     <form id="sim-params-form">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Hidden inputs to store main values -->
@@ -722,7 +722,7 @@
             </div>
             <div id="add-log-modal" class="modal-overlay">
                 <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-6" id="log-modal-title">Tambah Catatan Transaksi</h3>
+                    <h3 class="text-2xl font-semibold mb-6 text-gray-200" id="log-modal-title">Tambah Catatan Transaksi</h3>
                     <form id="log-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <input type="hidden" id="log-edit-index">
                         <div>
@@ -772,7 +772,7 @@
             </div>
             <div id="sell-modal" class="modal-overlay">
                 <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-4">Realisasi Posisi</h3>
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-200">Realisasi Posisi</h3>
                     <form id="sell-form">
                         <input type="hidden" id="sell-log-index">
                         <div class="mb-4">
