@@ -130,17 +130,14 @@ const pageInfoSpan = document.getElementById('page-info');
 const pageNumberContainer = document.getElementById('page-number-container');
 
 // Custom Confirmation Modal Elements
-const customConfirmTitle = document.getElementById('delete-confirm-modal')?.querySelector('h3');
-const customConfirmMessage = document.getElementById('delete-confirm-modal')?.querySelector('p');
+const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
+const customConfirmMessage = document.getElementById('delete-confirm-modal').querySelector('p');
 const customConfirmBtn = document.getElementById('confirm-delete-btn');
 const customCancelBtn = document.getElementById('cancel-delete-btn');
 
 // --- DOM Elements for Sticky Nav ---
 const tabNavWrapper = document.getElementById('tab-nav-wrapper');
 let tabNavOffsetTop;
-// Perbaikan: Mendefinisikan elemen nav untuk event delegation
-const tabNavContainer = document.getElementById('tab-nav-container');
-
 
 // --- HELPER FUNCTIONS ---
 function formatCurrency(value, withSign = false) {
@@ -154,21 +151,31 @@ function formatCurrency(value, withSign = false) {
 // --- TAB MANAGEMENT ---
 function switchTab(tabName) {
     console.log('Switching to tab:', tabName);
-    
-    // Pastikan semua tab tidak aktif
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    
-    // Aktifkan tab yang dipilih
-    const targetButton = document.querySelector(`[data-tab-name="${tabName}"]`);
-    const targetContent = document.getElementById(`tab-content-${tabName}`);
+    // Remove 'active' from all tab buttons
+    Object.values(tabButtons).forEach(btn => {
+        if (btn) { // Ensure the button element exists
+            btn.classList.remove('active');
+        }
+    });
 
+    // Remove 'active' from all tab content divs
+    Object.values(tabContents).forEach(content => {
+        if (content) { // Ensure the content element exists
+            content.classList.remove('active');
+        }
+    });
+    
+    // Get the target button and content
+    const targetButton = tabButtons[tabName];
+    const targetContent = tabContents[tabName];
+
+    // Add 'active' to the selected tab button and content
     if (targetButton && targetContent) {
         targetButton.classList.add('active');
         targetContent.classList.add('active');
         console.log(`Successfully activated tab: ${tabName}`);
     } else {
-        console.error(`Error: Tab button or content not found for tabName: ${tabName}.`);
+        console.error(`Error: Tab button or content not found for tabName: ${tabName}. Check if the ID is correct in index.html and script.js.`);
     }
 }
 
@@ -184,28 +191,30 @@ async function handleGoogleLogin() {
 
 async function handleLogout() {
     console.log('Logout button clicked.');
+    // Use custom confirmation modal instead of browser's confirm()
     showCustomConfirmModal(
         'Konfirmasi Logout',
         'Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.',
         'Logout',
         'Batal',
-        async () => {
+        async () => { // onConfirm callback
             console.log('Logout confirmed.');
             try {
-                currentUser = null;
                 await window.firebase.signOut(window.firebase.auth);
                 showNotification('Logout berhasil.', 'Sukses');
                 resetAllData();
-                closeModal(deleteConfirmModal);
+                closeModal(deleteConfirmModal); // Close the modal after successful logout
+                console.log('Logout successful, modal closed.');
             } catch (error) {
                 console.error("Error during logout:", error);
                 showNotification(`Logout gagal: ${error.message}`, 'Error');
-                closeModal(deleteConfirmModal);
+                closeModal(deleteConfirmModal); // Ensure modal closes even on error
+                console.log('Logout error, modal closed.');
             }
         },
-        () => {
+        () => { // onCancel callback
             console.log('Logout cancelled.');
-            closeModal(deleteConfirmModal);
+            closeModal(deleteConfirmModal); // Close the modal if cancelled
         }
     );
 }
@@ -213,20 +222,16 @@ async function handleLogout() {
 function updateUIForAuthState(user) {
     currentUser = user;
     if (user) {
-        if (loginBtn) loginBtn.classList.add('hidden');
-        if (userInfoDiv) {
-            userInfoDiv.classList.remove('hidden');
-            userInfoDiv.classList.add('flex');
-        }
-        if (userNameSpan) userNameSpan.textContent = user.displayName || user.email;
+        loginBtn.classList.add('hidden');
+        userInfoDiv.classList.remove('hidden');
+        userInfoDiv.classList.add('flex');
+        userNameSpan.textContent = user.displayName || user.email;
     } else {
-        if (loginBtn) loginBtn.classList.remove('hidden');
-        if (userInfoDiv) {
-            userInfoDiv.classList.add('hidden');
-            userInfoDiv.classList.remove('flex');
-        }
-        if (userNameSpan) userNameSpan.textContent = '';
-        if (syncStatusSpan) syncStatusSpan.classList.add('opacity-0');
+        loginBtn.classList.remove('hidden');
+        userInfoDiv.classList.add('hidden');
+        userInfoDiv.classList.remove('flex');
+        userNameSpan.textContent = '';
+        syncStatusSpan.classList.add('opacity-0');
     }
 }
 
@@ -234,35 +239,31 @@ function updateUIForAuthState(user) {
 function triggerAutoSave() {
     if (!currentUser) return;
     
-    if (syncStatusSpan) syncStatusSpan.textContent = 'Menyimpan...';
-    if (syncStatusSpan) syncStatusSpan.classList.remove('opacity-0');
+    syncStatusSpan.textContent = 'Menyimpan...';
+    syncStatusSpan.classList.remove('opacity-0');
 
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(async () => {
         const dataToSave = {
             portfolioLog: portfolioLog,
             savedSimulations: savedSimulations,
-            initialEquity: document.getElementById('initial-equity')?.value,
+            initialEquity: document.getElementById('initial-equity').value,
             currentMarketPrices: currentMarketPrices,
-            simulationReason: document.getElementById('sim-reason')?.value,
-            defaultFeeBeli: defaultFeeBeli,
-            defaultFeeJual: defaultFeeJual,
+            simulationReason: document.getElementById('sim-reason').value,
+            defaultFeeBeli: defaultFeeBeli, // Save default buy fee
+            defaultFeeJual: defaultFeeJual, // Save default sell fee
             updatedAt: new Date().toISOString()
         };
 
         try {
             const userDocRef = window.firebase.doc(window.firebase.db, "portfolios", currentUser.uid);
             await window.firebase.setDoc(userDocRef, dataToSave);
-            if (syncStatusSpan) syncStatusSpan.textContent = 'Tersimpan ✓';
-            setTimeout(() => {
-                if (syncStatusSpan) syncStatusSpan.classList.add('opacity-0');
-            }, 2000);
+            syncStatusSpan.textContent = 'Tersimpan ✓';
+            setTimeout(() => syncStatusSpan.classList.add('opacity-0'), 2000);
         } catch (error) {
             console.error("Error auto-saving data to Firestore: ", error);
-            if (syncStatusSpan) {
-                syncStatusSpan.textContent = 'Gagal menyimpan';
-                syncStatusSpan.classList.add('text-red-500');
-            }
+            syncStatusSpan.textContent = 'Gagal menyimpan';
+            syncStatusSpan.classList.add('text-red-500');
         }
     }, 1500);
 }
@@ -278,14 +279,15 @@ async function loadDataFromFirebase() {
             const data = docSnap.data();
             portfolioLog = data.portfolioLog || [];
             savedSimulations = data.savedSimulations || [];
-            if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+            document.getElementById('initial-equity').value = data.initialEquity || "100000000";
             currentMarketPrices = data.currentMarketPrices || {};
-            if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = data.simulationReason || '';
-            defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11;
-            defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11;
+            document.getElementById('sim-reason').value = data.simulationReason || '';
+            defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
+            defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
             
-            if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
-            if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
+            // Update settings inputs with loaded defaults
+            defaultFeeBeliInput.value = defaultFeeBeli;
+            defaultFeeJualInput.value = defaultFeeJual;
 
             refreshAllApplicationData();
             showNotification('Data berhasil dimuat dari cloud!', 'Sukses');
@@ -304,11 +306,11 @@ function downloadJSON() {
     const dataToSave = {
         portfolioLog: portfolioLog,
         savedSimulations: savedSimulations,
-        initialEquity: document.getElementById('initial-equity')?.value,
+        initialEquity: document.getElementById('initial-equity').value,
         currentMarketPrices: currentMarketPrices,
-        simulationReason: document.getElementById('sim-reason')?.value,
-        defaultFeeBeli: defaultFeeBeli,
-        defaultFeeJual: defaultFeeJual,
+        simulationReason: document.getElementById('sim-reason').value,
+        defaultFeeBeli: defaultFeeBeli, // Include default fees in backup
+        defaultFeeJual: defaultFeeJual, // Include default fees in backup
     };
     const dataStr = JSON.stringify(dataToSave, null, 2);
     const dataBlob = new Blob([dataStr], {type: "application/json"});
@@ -326,6 +328,7 @@ function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Use custom confirmation modal instead of browser's confirm()
     showCustomConfirmModal(
         'Konfirmasi Pemulihan Data',
         'Ini akan menimpa data Anda saat ini. Lanjutkan?',
@@ -339,14 +342,15 @@ function handleFileUpload(event) {
                     if (data && typeof data === 'object') {
                         portfolioLog = data.portfolioLog || [];
                         savedSimulations = data.savedSimulations || [];
-                        if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+                        document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                         currentMarketPrices = data.currentMarketPrices || {};
-                        if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = data.simulationReason || '';
-                        defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11;
-                        defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11;
+                        document.getElementById('sim-reason').value = data.simulationReason || '';
+                        defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
+                        defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
                         
-                        if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
-                        if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
+                        // Update settings inputs with loaded defaults
+                        defaultFeeBeliInput.value = defaultFeeBeli;
+                        defaultFeeJualInput.value = defaultFeeJual;
 
                         refreshAllApplicationData();
                         showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
@@ -357,14 +361,14 @@ function handleFileUpload(event) {
                     showNotification(`Gagal memuat file: ${error.message}`, 'Error');
                 } finally {
                     event.target.value = '';
-                    closeModal(deleteConfirmModal);
+                    closeModal(deleteConfirmModal); // Ensure modal closes after file load attempt
                 }
             };
             reader.readAsText(file);
         }, 
         () => {
-            event.target.value = '';
-            closeModal(deleteConfirmModal);
+            event.target.value = ''; // Clear the file input if cancelled
+            closeModal(deleteConfirmModal); // Close the modal if cancelled
         }
     );
 }
@@ -374,29 +378,23 @@ function resetAllData() {
     portfolioLog = [];
     savedSimulations = [];
     currentMarketPrices = {};
-    if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = "100000000";
-    if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = "";
-    defaultFeeBeli = 0.11;
-    defaultFeeJual = 0.11;
-    const today = new Date().toISOString().split('T')[0];
-    if(document.getElementById('filter-date-from')) document.getElementById('filter-date-from').value = today;
-    if(document.getElementById('filter-date-to')) document.getElementById('filter-date-to').value = today;
-    if(document.getElementById('filter-status')) document.getElementById('filter-status').value = 'all';
-    if(document.getElementById('filter-stock-code')) document.getElementById('filter-stock-code').value = '';
-    if(document.getElementById('filter-reason')) document.getElementById('filter-reason').value = '';
-    if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
-    if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
+    document.getElementById('initial-equity').value = "100000000";
+    document.getElementById('sim-reason').value = "";
+    defaultFeeBeli = 0.11; // Reset default fees
+    defaultFeeJual = 0.11; // Reset default fees
+    defaultFeeBeliInput.value = defaultFeeBeli;
+    defaultFeeJualInput.value = defaultFeeJual;
     refreshAllApplicationData();
 }
 
 function refreshAllApplicationData() {
-    currentPage = 1;
-    applyLogFiltersAndSort();
+    currentPage = 1; // Reset halaman ke 1 setiap kali data disegarkan
+    applyLogFiltersAndSort(); // Apply filters and sort on refresh
     renderFinancialSummaries();
     renderSavedSimulationsTable();
     calculateDashboard();
     updateSimulationReasonDisplay();
-    renderPerformanceTab();
+    renderPerformanceTab(); // Call renderPerformanceTab directly
     triggerAutoSave();
 }
 
@@ -404,22 +402,15 @@ function refreshAllApplicationData() {
 // --- SIMULATOR CALCULATIONS & DISPLAY ---
 function updateActiveSimDisplay() {
     const displayContainer = document.getElementById('active-sim-params-display');
-    if (!displayContainer) return;
-    const avgStrategyElement = document.getElementById('avg-strategy');
-    const avgMultiplierElement = document.getElementById('avg-multiplier');
-    const stockCodeElement = document.getElementById('stock-code');
-    const initialPriceElement = document.getElementById('initial-price');
-    const initialLotElement = document.getElementById('initial-lot');
-    const avgDownPercentElement = document.getElementById('avg-down-percent');
-
-    const strategy = avgStrategyElement?.value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
-    const multiplier = avgMultiplierElement?.value;
+    // NEW: Add strategy to the display
+    const strategy = document.getElementById('avg-strategy').value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
+    const multiplier = document.getElementById('avg-multiplier').value;
 
     displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${stockCodeElement?.value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(initialPriceElement?.value)}</div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${initialLotElement?.value}</div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${avgDownPercentElement?.value}%</div>
+        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
+        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(document.getElementById('initial-price').value)}</div>
+        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div>
+        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>
         <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> ${strategy} (x${multiplier})</div>
     `;
 }
@@ -427,31 +418,36 @@ function updateActiveSimDisplay() {
 function updateSimulationReasonDisplay() {
     const reasonCard = document.getElementById('simulation-reason-card');
     const reasonDisplay = document.getElementById('simulation-reason-display');
-    const reasonText = document.getElementById('sim-reason')?.value;
+    const reasonText = document.getElementById('sim-reason').value;
 
     if (reasonText && reasonText.trim() !== '') {
-        if (reasonDisplay) reasonDisplay.textContent = reasonText;
-        if (reasonCard) reasonCard.classList.remove('hidden');
+        reasonDisplay.textContent = reasonText;
+        reasonCard.classList.remove('hidden');
     } else {
-        if (reasonCard) reasonCard.classList.add('hidden');
+        reasonCard.classList.add('hidden');
     }
 }
 
+/**
+ * REVISED FUNCTION
+ * This function now calculates and displays the nominal profit for TP1 and TP2.
+ */
 function calculateDashboard() {
-    const initialPrice = parseFloat(document.getElementById('initial-price')?.value) || 0;
-    const initialLot = parseFloat(document.getElementById('initial-lot')?.value) || 0;
-    const dividend = parseFloat(document.getElementById('dividend')?.value) || 0;
-    const avgDownPercent = parseFloat(document.getElementById('avg-down-percent')?.value) || 0;
-    const avgLevels = parseInt(document.getElementById('avg-levels')?.value) || 0;
-    const tp1Percent = parseFloat(document.getElementById('tp1-percent')?.value) || 0;
-    const tp2Percent = parseFloat(document.getElementById('tp2-percent')?.value) || 0;
+    // Get main parameters
+    const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
+    const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
+    const dividend = parseFloat(document.getElementById('dividend').value) || 0;
+    const avgDownPercent = parseFloat(document.getElementById('avg-down-percent').value) || 0;
+    const avgLevels = parseInt(document.getElementById('avg-levels').value) || 0;
+    const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0;
+    const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0;
 
-    const avgStrategy = document.getElementById('avg-strategy')?.value;
-    const avgMultiplier = parseFloat(document.getElementById('avg-multiplier')?.value) || 1;
+    // Get averaging strategy parameters
+    const avgStrategy = document.getElementById('avg-strategy').value;
+    const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
     const initialBuyAmount = initialPrice * initialLot * 100;
 
     const tableBody = document.getElementById('scenario-table-body');
-    if (!tableBody) return;
     tableBody.innerHTML = ''; 
     
     let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice;
@@ -460,22 +456,27 @@ function calculateDashboard() {
         let entryPrice, lotsToBuy;
 
         if (i === 0) {
+            // Initial Entry
             entryPrice = initialPrice;
             lotsToBuy = initialLot;
         } else {
+            // Averaging Down Levels
             entryPrice = currentPrice * (1 - avgDownPercent / 100);
             
             if (avgStrategy === 'lot') {
+                // Strategy 1: Multiply the initial lot count
                 lotsToBuy = initialLot * avgMultiplier;
             } else if (avgStrategy === 'amount') {
+                // Strategy 2: Multiply the initial buy amount (in Rupiah)
                 const targetAmount = initialBuyAmount * avgMultiplier;
                 if (entryPrice > 0) {
                     const sharesToBuy = targetAmount / entryPrice;
-                    lotsToBuy = Math.round(sharesToBuy / 100);
+                    lotsToBuy = Math.round(sharesToBuy / 100); // Round to the nearest whole lot
                 } else {
                     lotsToBuy = 0;
                 }
             } else {
+                // Fallback to original logic
                 lotsToBuy = initialLot;
             }
         }
@@ -490,9 +491,11 @@ function calculateDashboard() {
         const avgPrice = cumulativeCost / cumulativeShares;
         const dividendYield = dividend > 0 && entryPrice > 0 ? (dividend / entryPrice) * 100 : 0;
         
+        // TP Price Calculation
         const tp1Price = avgPrice * (1 + tp1Percent / 100);
         const tp2Price = avgPrice * (1 + tp2Percent / 100);
 
+        // NEW: Nominal Profit Calculation
         const profitTp1 = (tp1Price - avgPrice) * cumulativeShares;
         const profitTp2 = (tp2Price - avgPrice) * cumulativeShares;
         
@@ -515,23 +518,32 @@ function calculateDashboard() {
         currentPrice = entryPrice;
     }
 
-    const summaryTotalInvestment = document.getElementById('summary-total-investment');
-    const summaryTotalLot = document.getElementById('summary-total-lot');
-    const summaryAvgPrice = document.getElementById('summary-avg-price');
     const totalInvestment = cumulativeCost;
     const totalLots = cumulativeShares / 100;
     const finalAvgPrice = totalInvestment / (totalLots * 100) || 0;
-    if(summaryTotalInvestment) summaryTotalInvestment.textContent = formatCurrency(totalInvestment);
-    if(summaryTotalLot) summaryTotalLot.textContent = totalLots;
-    if(summaryAvgPrice) summaryAvgPrice.textContent = formatCurrency(finalAvgPrice);
+    document.getElementById('summary-total-investment').textContent = formatCurrency(totalInvestment);
+    document.getElementById('summary-total-lot').textContent = totalLots;
+    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice);
 }
 
+// Function to handle the removed "Kalkulator Target Profit" section
+// This function is now removed.
+// function calculateEntryForProfit() {
+//     const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0;
+//     const targetProfitLot = parseFloat(document.getElementById('target-profit-lot').value) || 0;
+//     const targetProfitPercent = parseFloat(document.getElementById('target-profit-percent').value) || 0;
+//     if (targetProfitLot <= 0 || targetProfitPercent <= 0) { document.getElementById('entry-price-result').textContent = 'Input tidak valid'; return; }
+//     const entryPrice = targetProfitRp / (targetProfitLot * 100 * (targetProfitPercent / 100));
+//     document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
+// }
 
+
+// --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
 function renderLogTable(logsToRender = []) {
     const logTableBody = document.getElementById('log-table-body');
-    if (!logTableBody) return;
     logTableBody.innerHTML = '';
     
+    // Tentukan data yang akan ditampilkan berdasarkan halaman saat ini
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const logsForPage = logsToRender.slice(startIndex, endIndex);
@@ -539,15 +551,17 @@ function renderLogTable(logsToRender = []) {
     if (logsToRender.length === 0) { 
         logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; 
     } else if (logsForPage.length === 0) {
+        // Jika halaman saat ini tidak memiliki data, pindah ke halaman terakhir
         currentPage = Math.ceil(logsToRender.length / itemsPerPage);
         renderLogTable(logsToRender);
         return;
     } else {
-        logsForPage.forEach((log) => {
+        logsForPage.forEach((log, index) => {
             const row = document.createElement('tr');
             row.className = 'bg-gray-800 border-b border-gray-700';
             let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
             
+            // Calculate realized P/L if sold
             const realizedPL = log.sellPrice
                 ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
                 : null;
@@ -556,6 +570,7 @@ function renderLogTable(logsToRender = []) {
                 const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
                 plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
+                // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
                                 <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
@@ -566,6 +581,7 @@ function renderLogTable(logsToRender = []) {
             } else {
                 plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
+                 // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
                                 <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
@@ -573,7 +589,7 @@ function renderLogTable(logsToRender = []) {
                                 <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
                 sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-                feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
             }
             
             row.innerHTML = `
@@ -597,17 +613,18 @@ function renderLogTable(logsToRender = []) {
     updateSortIcons();
 }
 
+// --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
-    if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
 
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
     const endItem = Math.min(startItem + itemsPerPage, totalItems);
-    if(pageInfoSpan) pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
+    pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
     
-    if(pageNumberContainer) pageNumberContainer.innerHTML = '';
-    if (totalPages > 1 && pageNumberContainer) {
+    pageNumberContainer.innerHTML = '';
+    if (totalPages > 1) {
         for (let i = 1; i <= totalPages; i++) {
             const pageButton = document.createElement('button');
             pageButton.textContent = i;
@@ -618,12 +635,11 @@ function updatePaginationControls(totalItems) {
         }
     }
 
-    if (paginationControls) {
-        if (totalItems <= itemsPerPage) {
-            paginationControls.classList.add('hidden');
-        } else {
-            paginationControls.classList.remove('hidden');
-        }
+    // Hide pagination controls if there are no entries or only 1 page
+    if (totalItems <= itemsPerPage) {
+        paginationControls.classList.add('hidden');
+    } else {
+        paginationControls.classList.remove('hidden');
     }
 }
 
@@ -649,6 +665,7 @@ function goToNextPage() {
         renderLogTable(filteredLogsData);
     }
 }
+// --- End Pagination Logic ---
 
 
 function renderFinancialSummaries() {
@@ -657,11 +674,9 @@ function renderFinancialSummaries() {
     const realizedPlContainer = document.getElementById('realized-pl-summary');
     const currentEquityDisplay = document.getElementById('current-equity-display');
     
-    if(summaryContainer) summaryContainer.innerHTML = '';
-    if(grandTotalContainer) grandTotalContainer.innerHTML = '';
-    if(realizedPlContainer) realizedPlContainer.innerHTML = '';
+    summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = '';
 
-    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalBuyCostWithFee = 0;
     let totalSellValueWithFee = 0;
     
@@ -674,37 +689,39 @@ function renderFinancialSummaries() {
         }
     });
 
+    // Equity calculation now considers Fee for both buy and sell
     const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-    if(currentEquityDisplay) currentEquityDisplay.textContent = formatCurrency(currentEquity);
+    currentEquityDisplay.textContent = formatCurrency(currentEquity);
 
     const openPositions = portfolioLog.filter(log => !log.sellPrice);
     const closedPositions = portfolioLog.filter(log => log.sellPrice);
     
     if (openPositions.length === 0) {
-        if(summaryContainer) summaryContainer.innerHTML = `<p class="text-gray-500 text-center">Tidak ada posisi terbuka.</p>`;
-        if(grandTotalContainer) grandTotalContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(0)}</p></div>`;
+        summaryContainer.innerHTML = `<p class="text-gray-500 text-center">Tidak ada posisi terbuka.</p>`;
+        grandTotalContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(0)}</p></div>`;
     } else {
         const summary = openPositions.reduce((acc, log) => {
             const code = log.code.toUpperCase();
             if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
             acc[code].totalLots += log.lot;
+            // Store total cost with Fee for open positions
             acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
             return acc;
         }, {});
         let grandTotalCost = 0;
         Object.entries(summary).forEach(([code, data]) => {
             grandTotalCost += data.totalCost;
-            const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
+            const avgPriceWithFee = data.totalCost / (data.totalLots * 100); // This avgPrice now includes Fee
             const priceValue = currentMarketPrices[code] || '';
             const summaryCard = document.createElement('div');
             summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
             summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
-            if(summaryContainer) summaryContainer.appendChild(summaryCard);
+            summaryContainer.appendChild(summaryCard);
         });
         const grandTotalCard = document.createElement('div');
         grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
         grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p></div>`;
-        if(grandTotalContainer) grandTotalContainer.appendChild(grandTotalCard);
+        grandTotalContainer.appendChild(grandTotalCard);
     }
 
     const totalRealizedPL = closedPositions.reduce((acc, log) => {
@@ -716,25 +733,23 @@ function renderFinancialSummaries() {
     realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
     const plColor = totalRealizedPL >= 0 ? 'text-green-400' : 'text-red-500';
     realizedPlCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Realisasi P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalRealizedPL, true)}</p>`;
-    if(realizedPlContainer) realizedPlContainer.appendChild(realizedPlCard);
+    realizedPlContainer.appendChild(realizedPlCard);
     
     calculateAndRenderFloatingPL();
+    // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
     renderPerformanceTab();
 }
 
 function calculateAndRenderFloatingPL() {
     const openPositions = portfolioLog.filter(log => !log.sellPrice);
     const floatingPlContainer = document.getElementById('floating-pl-summary');
-    if (openPositions.length === 0) {
-        if (floatingPlContainer) floatingPlContainer.innerHTML = '';
-        renderPerformanceTab();
-        return;
-    }
+    if (openPositions.length === 0) { floatingPlContainer.innerHTML = ''; renderPerformanceTab(); return; }
     
     const summary = openPositions.reduce((acc, log) => {
         const code = log.code.toUpperCase();
         if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
         acc[code].totalLots += log.lot;
+        // Use actual buy price (including Fee Beli) for floating P/L calculation
         acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
         return acc;
     }, {});
@@ -747,29 +762,30 @@ function calculateAndRenderFloatingPL() {
         const floatingPlElement = document.getElementById(`floating-pl-${code}`);
         if (currentPrice > 0) {
             const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
+            // Floating P/L is (current market price - average buy price with Fee) * shares
             const floatingPL = (currentPrice - avgPriceWithFee) * data.totalLots * 100;
             totalFloatingPL += floatingPL;
             const plColor = floatingPL >= 0 ? 'text-green-400' : 'text-red-500';
-            if (floatingPlElement) {
-                floatingPlElement.className = `font-semibold ${plColor}`;
-                floatingPlElement.textContent = formatCurrency(floatingPL, true);
-            }
+            floatingPlElement.className = `font-semibold ${plColor}`;
+            floatingPlElement.textContent = formatCurrency(floatingPL, true);
         } else {
-            if(floatingPlElement) floatingPlElement.textContent = '-';
+            floatingPlElement.textContent = '-';
         }
     });
 
     const plColor = totalFloatingPL >= 0 ? 'text-green-400' : 'text-red-500';
-    if(floatingPlContainer) floatingPlContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Floating P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalFloatingPL, true)}</p></div>`;
+    floatingPlContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Floating P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalFloatingPL, true)}</p></div>`;
+    // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
     renderPerformanceTab();
 }
 
+// --- PERFORMANCE TAB MANAGEMENT ---
+// Moved renderPerformanceChart definition before its calls
 function renderPerformanceChart() {
-    const ctx = document.getElementById('performanceChart')?.getContext('2d');
-    if (!ctx) return;
+    const ctx = document.getElementById('performanceChart').getContext('2d');
     const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time'];
     
-    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let allTimeReturn = NaN;
     if (initialEquity > 0) {
         let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
@@ -848,10 +864,9 @@ function renderPerformanceChart() {
 
 function renderPerformanceTab() {
     const tableBody = document.getElementById('performance-table-body');
-    if (!tableBody) return;
     tableBody.innerHTML = '';
 
-    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     if (initialEquity <= 0) {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-500">Masukkan modal awal untuk menghitung performa.</td></tr>`;
         if (performanceChart) performanceChart.destroy();
@@ -897,103 +912,97 @@ function renderPerformanceTab() {
 }
 
 function calculatePerformanceDifference() {
-    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
-    if (initialEquity <= 0) return;
+     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+     if (initialEquity <= 0) return;
 
-    let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
-    portfolioLog.forEach(log => {
+     let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
+     portfolioLog.forEach(log => {
         totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
         if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
-    });
-    const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
+     });
+     const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
-    const openPositions = portfolioLog.filter(log => !log.sellPrice);
-    let valueOfOpenPositions = 0;
-    const summary = openPositions.reduce((acc, log) => {
+     const openPositions = portfolioLog.filter(log => !log.sellPrice);
+     let valueOfOpenPositions = 0;
+     const summary = openPositions.reduce((acc, log) => {
         const code = log.code.toUpperCase();
         if (!acc[code]) acc[code] = { totalLots: 0 };
         acc[code].totalLots += log.lot;
         return acc;
-    }, {});
-    Object.entries(summary).forEach(([code, data]) => {
+     }, {});
+     Object.entries(summary).forEach(([code, data]) => {
         const currentPrice = currentMarketPrices[code] || 0;
         if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
-    });
-    const currentTotalValue = currentEquity + valueOfOpenPositions;
-    const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
+     });
+     const currentTotalValue = currentEquity + valueOfOpenPositions;
+     const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
 
-    document.querySelectorAll('.performance-ihsg-input').forEach(input => {
+     document.querySelectorAll('.performance-ihsg-input').forEach(input => {
         const period = input.dataset.period;
         const diffCell = document.getElementById(`performance-diff-${period.replace(/\s+/g, '')}`);
         const ihsgPerf = parseFloat(input.value);
 
         if (!isNaN(ihsgPerf) && period === 'All Time' && isFinite(allTimeReturn)) {
             const difference = allTimeReturn - ihsgPerf;
-            if(diffCell) {
-                diffCell.className = `px-6 py-4 font-semibold ${difference >= 0 ? 'text-green-400' : 'text-red-500'}`;
-                diffCell.textContent = `${difference.toFixed(2)}%`;
-            }
+            diffCell.className = `px-6 py-4 font-semibold ${difference >= 0 ? 'text-green-400' : 'text-red-500'}`;
+            diffCell.textContent = `${difference.toFixed(2)}%`;
         } else {
-            if(diffCell) {
-                diffCell.textContent = '-';
-                diffCell.className = `px-6 py-4 font-semibold`;
-            }
+            diffCell.textContent = '-';
+            diffCell.className = `px-6 py-4 font-semibold`;
         }
-    });
-    renderPerformanceChart();
+     });
+     renderPerformanceChart();
 }
 
-function openModal(modal) {
-    if (modal) modal.classList.add('active');
-}
-function closeModal(modal) {
-    if (modal) modal.classList.remove('active');
-}
+// --- MODAL MANAGEMENT ---
+function openModal(modal) { modal.classList.add('active'); }
+function closeModal(modal) { modal.classList.remove('active'); }
 
 function showNotification(message, title = 'Pemberitahuan') {
-    const notificationTitle = document.getElementById('notification-title');
-    const notificationMessage = document.getElementById('notification-message');
-    if(notificationTitle) notificationTitle.textContent = title;
-    if(notificationMessage) notificationMessage.textContent = message;
+    document.getElementById('notification-title').textContent = title;
+    document.getElementById('notification-message').textContent = message;
     openModal(notificationModal);
 }
 
+// Custom confirmation modal function
 let confirmCallback = null;
 let cancelCallback = null;
 
 function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonText, onConfirm, onCancel) {
-    if(customConfirmTitle) customConfirmTitle.textContent = title;
-    if(customConfirmMessage) customConfirmMessage.textContent = message;
-    if(customConfirmBtn) customConfirmBtn.textContent = confirmButtonText;
-    if(customCancelBtn) customCancelBtn.textContent = cancelButtonText;
+    customConfirmTitle.textContent = title;
+    customConfirmMessage.textContent = message;
+    customConfirmBtn.textContent = confirmButtonText;
+    customCancelBtn.textContent = cancelButtonText;
     confirmCallback = onConfirm;
     cancelCallback = onCancel;
-    openModal(deleteConfirmModal);
+    openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
 }
 
+// --- EVENT HANDLERS ---
 function handleAddOrEditLog(event) {
     event.preventDefault();
-    const isEdit = logEditIndexInput?.value !== '';
-    const index = isEdit ? parseInt(logEditIndexInput?.value) : -1;
+    const isEdit = logEditIndexInput.value !== '';
+    const index = isEdit ? parseInt(logEditIndexInput.value) : -1;
 
     const newLog = {
-        id: isEdit ? portfolioLog[index]?.id : Date.now(),
-        code: document.getElementById('log-stock-code')?.value, 
-        date: document.getElementById('log-buy-date')?.value,
-        price: parseFloat(document.getElementById('log-buy-price')?.value), 
-        lot: parseInt(document.getElementById('log-buy-lot')?.value),
-        feeBeli: parseFloat(logFeeBeliInput?.value),
-        reason: document.getElementById('log-reason')?.value, 
+        id: isEdit ? portfolioLog[index].id : Date.now(), // Preserve ID for edits
+        code: document.getElementById('log-stock-code').value, 
+        date: document.getElementById('log-buy-date').value,
+        price: parseFloat(document.getElementById('log-buy-price').value), 
+        lot: parseInt(document.getElementById('log-buy-lot').value),
+        feeBeli: parseFloat(logFeeBeliInput.value), // Get Fee Beli
+        reason: document.getElementById('log-reason').value, 
         sellPrice: null, 
         sellDate: null,
-        feeJual: null
+        feeJual: null // Initialize Fee Jual
     };
 
-    if (isEdit && portfolioLog[index]?.sellPrice !== null) {
-        newLog.sellPrice = parseFloat(logSellPriceInput?.value);
-        newLog.sellDate = logSellDateInput?.value;
-        newLog.feeJual = parseFloat(logFeeJualInput?.value);
-    } else if (isEdit) {
+    // If editing a sold transaction, get sell details from the modal
+    if (isEdit && portfolioLog[index].sellPrice !== null) {
+        newLog.sellPrice = parseFloat(logSellPriceInput.value);
+        newLog.sellDate = logSellDateInput.value;
+        newLog.feeJual = parseFloat(logFeeJualInput.value);
+    } else if (isEdit) { // If editing an open transaction, ensure sell details are cleared if they somehow exist
          newLog.sellPrice = null;
          newLog.sellDate = null;
          newLog.feeJual = null;
@@ -1002,17 +1011,19 @@ function handleAddOrEditLog(event) {
 
     if (!newLog.code || !newLog.date || !newLog.price || !newLog.lot) { showNotification('Harap isi semua kolom yang wajib diisi.'); return; }
     
+    // Calculate transaction cost including Fee Beli
     const transactionCost = newLog.price * newLog.lot * 100 * (1 + (newLog.feeBeli || 0) / 100);
     
-    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
     portfolioLog.forEach((log, i) => {
-        if (isEdit && i === index) return;
+        if (isEdit && i === index) return; // Exclude current log being edited from calculation
         totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
         if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
     });
     const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
 
+    // Check if adding this new transaction would exceed available equity
     if (!isEdit && transactionCost > currentEquity) {
         showNotification(`Transaksi gagal. Total pembelian (${formatCurrency(transactionCost)}) melebihi ekuitas yang tersedia (${formatCurrency(currentEquity)}).`);
         return;
@@ -1024,7 +1035,7 @@ function handleAddOrEditLog(event) {
         portfolioLog.push(newLog);
     }
     
-    if (logForm) logForm.reset();
+    logForm.reset();
     closeModal(addLogModal);
     refreshAllApplicationData();
 }
@@ -1038,10 +1049,10 @@ function handleDeleteLog(index) {
         () => {
             portfolioLog.splice(index, 1);
             refreshAllApplicationData();
-            closeModal(deleteConfirmModal);
+            closeModal(deleteConfirmModal); // Close the confirmation modal after deletion
         }, 
         () => {
-            closeModal(deleteConfirmModal);
+            closeModal(deleteConfirmModal); // Close the confirmation modal if cancelled
         }
     );
 }
@@ -1049,28 +1060,30 @@ function handleDeleteLog(index) {
 function handleEditLog(index) {
     const logToEdit = portfolioLog[index];
     if (logToEdit) {
-        if(logModalTitle) logModalTitle.textContent = 'Edit Catatan Transaksi';
-        if(submitLogBtn) submitLogBtn.textContent = 'Simpan Perubahan';
-        if(logEditIndexInput) logEditIndexInput.value = index;
+        logModalTitle.textContent = 'Edit Catatan Transaksi';
+        submitLogBtn.textContent = 'Simpan Perubahan';
+        logEditIndexInput.value = index;
 
-        if(document.getElementById('log-stock-code')) document.getElementById('log-stock-code').value = logToEdit.code;
-        if(document.getElementById('log-buy-date')) document.getElementById('log-buy-date').value = logToEdit.date;
-        if(document.getElementById('log-buy-price')) document.getElementById('log-buy-price').value = logToEdit.price;
-        if(document.getElementById('log-buy-lot')) document.getElementById('log-buy-lot').value = logToEdit.lot;
-        if(logFeeBeliInput) logFeeBeliInput.value = logToEdit.feeBeli || defaultFeeBeli;
+        // Populate common fields
+        document.getElementById('log-stock-code').value = logToEdit.code;
+        document.getElementById('log-buy-date').value = logToEdit.date;
+        document.getElementById('log-buy-price').value = logToEdit.price;
+        document.getElementById('log-buy-lot').value = logToEdit.lot;
+        logFeeBeliInput.value = logToEdit.feeBeli || defaultFeeBeli; // Default Fee Beli
 
-        if(document.getElementById('log-reason')) document.getElementById('log-reason').value = logToEdit.reason;
+        document.getElementById('log-reason').value = logToEdit.reason;
 
+        // Handle sell-specific fields visibility and population
         if (logToEdit.sellPrice !== null) {
-            if(sellFieldsContainer) sellFieldsContainer.classList.remove('hidden');
-            if(logSellPriceInput) logSellPriceInput.value = logToEdit.sellPrice;
-            if(logSellDateInput) logSellDateInput.value = logToEdit.sellDate;
-            if(logFeeJualInput) logFeeJualInput.value = logToEdit.feeJual || defaultFeeJual;
+            sellFieldsContainer.classList.remove('hidden');
+            logSellPriceInput.value = logToEdit.sellPrice;
+            logSellDateInput.value = logToEdit.sellDate;
+            logFeeJualInput.value = logToEdit.feeJual || defaultFeeJual; // Default Fee Jual
         } else {
-            if(sellFieldsContainer) sellFieldsContainer.classList.add('hidden');
-            if(logSellPriceInput) logSellPriceInput.value = '';
-            if(logSellDateInput) logSellDateInput.value = '';
-            if(logFeeJualInput) logFeeJualInput.value = defaultFeeJual;
+            sellFieldsContainer.classList.add('hidden');
+            logSellPriceInput.value = '';
+            logSellDateInput.value = '';
+            logFeeJualInput.value = defaultFeeJual; // Set default for new sell
         }
         openModal(addLogModal);
     }
@@ -1078,15 +1091,15 @@ function handleEditLog(index) {
 
 function handleSellSubmit(event) {
     event.preventDefault();
-    const index = parseInt(document.getElementById('sell-log-index')?.value);
-    const sellPrice = parseFloat(document.getElementById('sell-price')?.value);
-    const sellDate = document.getElementById('sell-date')?.value;
-    const feeJual = parseFloat(document.getElementById('sell-fee-jual')?.value);
+    const index = parseInt(document.getElementById('sell-log-index').value);
+    const sellPrice = parseFloat(document.getElementById('sell-price').value);
+    const sellDate = document.getElementById('sell-date').value;
+    const feeJual = parseFloat(document.getElementById('sell-fee-jual').value); // Get Fee Jual from sell modal
 
     if (!isNaN(index) && sellPrice > 0 && sellDate) {
         portfolioLog[index].sellPrice = sellPrice;
         portfolioLog[index].sellDate = sellDate;
-        portfolioLog[index].feeJual = feeJual;
+        portfolioLog[index].feeJual = feeJual; // Store Fee Jual
         closeModal(sellModal);
         refreshAllApplicationData();
     } else {
@@ -1094,20 +1107,26 @@ function handleSellSubmit(event) {
     }
 }
 
+/**
+ * REVISED FUNCTION
+ * This function now also saves the new averaging strategy parameters.
+ */
 function handleSimParamsSubmit(event) {
     event.preventDefault();
-    if(document.getElementById('stock-code')) document.getElementById('stock-code').value = document.getElementById('modal-stock-code')?.value;
-    if(document.getElementById('initial-price')) document.getElementById('initial-price').value = document.getElementById('modal-initial-price')?.value;
-    if(document.getElementById('initial-lot')) document.getElementById('initial-lot').value = document.getElementById('modal-initial-lot')?.value;
-    if(document.getElementById('dividend')) document.getElementById('dividend').value = document.getElementById('modal-dividend')?.value;
-    if(document.getElementById('avg-down-percent')) document.getElementById('avg-down-percent').value = document.getElementById('modal-avg-down-percent')?.value;
-    if(document.getElementById('avg-levels')) document.getElementById('avg-levels').value = document.getElementById('modal-avg-levels')?.value;
-    if(document.getElementById('tp1-percent')) document.getElementById('tp1-percent').value = document.getElementById('modal-tp1-percent')?.value;
-    if(document.getElementById('tp2-percent')) document.getElementById('tp2-percent').value = document.getElementById('modal-tp2-percent')?.value;
-    if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = document.getElementById('modal-sim-reason')?.value;
+    // Copy standard values
+    document.getElementById('stock-code').value = document.getElementById('modal-stock-code').value;
+    document.getElementById('initial-price').value = document.getElementById('modal-initial-price').value;
+    document.getElementById('initial-lot').value = document.getElementById('modal-initial-lot').value;
+    document.getElementById('dividend').value = document.getElementById('modal-dividend').value;
+    document.getElementById('avg-down-percent').value = document.getElementById('modal-avg-down-percent').value;
+    document.getElementById('avg-levels').value = document.getElementById('modal-avg-levels').value;
+    document.getElementById('tp1-percent').value = document.getElementById('modal-tp1-percent').value;
+    document.getElementById('tp2-percent').value = document.getElementById('modal-tp2-percent').value;
+    document.getElementById('sim-reason').value = document.getElementById('modal-sim-reason').value;
 
-    if(document.getElementById('avg-strategy')) document.getElementById('avg-strategy').value = document.getElementById('modal-avg-strategy')?.value;
-    if(document.getElementById('avg-multiplier')) document.getElementById('avg-multiplier').value = document.getElementById('modal-avg-multiplier')?.value;
+    // NEW: Copy averaging strategy values
+    document.getElementById('avg-strategy').value = document.getElementById('modal-avg-strategy').value;
+    document.getElementById('avg-multiplier').value = document.getElementById('modal-avg-multiplier').value;
     
     calculateDashboard();
     updateActiveSimDisplay();
@@ -1116,20 +1135,25 @@ function handleSimParamsSubmit(event) {
     triggerAutoSave();
 }
 
+/**
+ * REVISED FUNCTION
+ * This function now saves the averaging strategy along with other simulation parameters.
+ */
 function handleSaveSimulation(isFromModal = false) {
     const simulation = {
         id: Date.now(),
-        stockCode: document.getElementById(isFromModal ? 'modal-stock-code' : 'stock-code')?.value,
-        initialPrice: parseFloat(document.getElementById(isFromModal ? 'modal-initial-price' : 'initial-price')?.value),
-        initialLot: parseFloat(document.getElementById(isFromModal ? 'modal-initial-lot' : 'initial-lot')?.value),
-        dividend: parseFloat(document.getElementById(isFromModal ? 'modal-dividend' : 'dividend')?.value),
-        avgDownPercent: parseFloat(document.getElementById(isFromModal ? 'modal-avg-down-percent' : 'avg-down-percent')?.value),
-        avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels')?.value),
-        avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy')?.value,
-        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier')?.value),
-        tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent')?.value),
-        tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent')?.value),
-        reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason')?.value,
+        stockCode: document.getElementById(isFromModal ? 'modal-stock-code' : 'stock-code').value,
+        initialPrice: parseFloat(document.getElementById(isFromModal ? 'modal-initial-price' : 'initial-price').value),
+        initialLot: parseFloat(document.getElementById(isFromModal ? 'modal-initial-lot' : 'initial-lot').value),
+        dividend: parseFloat(document.getElementById(isFromModal ? 'modal-dividend' : 'dividend').value),
+        avgDownPercent: parseFloat(document.getElementById(isFromModal ? 'modal-avg-down-percent' : 'avg-down-percent').value),
+        avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
+        // NEW: Save strategy parameters
+        avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy').value,
+        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier').value),
+        tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
+        tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
+        reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
     };
     if (!simulation.stockCode) { 
         showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); 
@@ -1142,9 +1166,70 @@ function handleSaveSimulation(isFromModal = false) {
     triggerAutoSave();
 }
 
+/**
+ * REVISED FUNCTION
+ * This function now loads the saved averaging strategy when a simulation is loaded.
+ */
+function handleLoadOrDeleteSimulation(event) {
+    const target = event.target;
+    const simId = parseInt(target.dataset.id);
+    if (isNaN(simId)) return;
+
+    if (target.classList.contains('load-sim-btn')) {
+        const simToLoad = savedSimulations.find(s => s.id === simId);
+        if (simToLoad) {
+            // Load standard parameters
+            document.getElementById('stock-code').value = simToLoad.stockCode;
+            document.getElementById('initial-price').value = simToLoad.initialPrice;
+            document.getElementById('initial-lot').value = simToLoad.initialLot;
+            document.getElementById('dividend').value = simToLoad.dividend;
+            document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
+            document.getElementById('avg-levels').value = simToLoad.avgLevels;
+            document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
+            document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
+            document.getElementById('sim-reason').value = simToLoad.reason || '';
+            
+            // NEW: Load strategy parameters and update both hidden and modal inputs
+            const savedStrategy = simToLoad.avgStrategy || 'lot';
+            const savedMultiplier = simToLoad.avgMultiplier || 1;
+            
+            document.getElementById('avg-strategy').value = savedStrategy;
+            document.getElementById('avg-multiplier').value = savedMultiplier;
+            document.getElementById('modal-avg-strategy').value = savedStrategy;
+            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
+
+            calculateDashboard();
+            updateActiveSimDisplay();
+            updateSimulationReasonDisplay();
+            switchTab('simulator');
+            triggerAutoSave();
+        }
+    } else if (target.classList.contains('delete-sim-btn')) {
+        // Use custom confirmation modal for deleting simulations
+        showCustomConfirmModal(
+            'Konfirmasi Hapus Simulasi',
+            'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
+            'Hapus',
+            'Batal',
+            () => {
+                savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                renderSavedSimulationsTable();
+                triggerAutoSave();
+                closeModal(deleteConfirmModal);
+            }, 
+            () => {
+                closeModal(deleteConfirmModal);
+            }
+        );
+    }
+}
+
+/**
+ * REVISED FUNCTION
+ * This function now displays the saved averaging strategy in the table.
+ */
 function renderSavedSimulationsTable() {
     const tableBody = document.getElementById('saved-simulations-table-body');
-    if (!tableBody) return;
     tableBody.innerHTML = '';
     if (savedSimulations.length === 0) { 
         tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">Belum ada simulasi yang disimpan.</td></tr>`; 
@@ -1154,8 +1239,9 @@ function renderSavedSimulationsTable() {
         const row = document.createElement('tr');
         row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
         
-        const strategy = sim.avgStrategy || 'lot';
-        const multiplier = sim.avgMultiplier || 1;
+        // NEW: Format the strategy text for display
+        const strategy = sim.avgStrategy || 'lot'; // Default to 'lot' if not defined
+        const multiplier = sim.avgMultiplier || 1; // Default to 1 if not defined
         const strategyText = strategy === 'lot' ? `Lot x${multiplier}` : `Rp x${multiplier}`;
 
         row.innerHTML = `
@@ -1174,6 +1260,7 @@ function renderSavedSimulationsTable() {
     });
 }
 
+// --- LOG SORTING FUNCTIONS ---
 function updateSortIcons() {
     document.querySelectorAll('#tab-content-log .sort-icon').forEach(icon => icon.textContent = '');
     if (sortState.column) {
@@ -1200,43 +1287,54 @@ function handleLogSort(event) {
         sortState.column = null;
     }
     
-    currentPage = 1;
+    currentPage = 1; // Return to the first page when sorting
     applyLogFiltersAndSort();
 }
 
+// --- SETTINGS MANAGEMENT ---
 function saveSettings() {
-    defaultFeeBeli = parseFloat(defaultFeeBeliInput?.value);
-    defaultFeeJual = parseFloat(defaultFeeJualInput?.value);
+    defaultFeeBeli = parseFloat(defaultFeeBeliInput.value);
+    defaultFeeJual = parseFloat(defaultFeeJualInput.value);
     showNotification('Default settings saved successfully!', 'Success');
-    triggerAutoSave();
+    triggerAutoSave(); // Save settings to Firebase
 }
 
+// --- FILTER LOGIC ---
 function applyLogFiltersAndSort() {
-    const dateFrom = filterDateFromInput?.value;
-    const dateTo = filterDateToInput?.value;
-    const stockCode = filterStockCodeInput?.value.toLowerCase();
-    const reason = filterReasonInput?.value.toLowerCase();
-    const status = filterStatusSelect?.value;
+    const dateFrom = filterDateFromInput.value;
+    const dateTo = filterDateToInput.value;
+    const stockCode = filterStockCodeInput.value.toLowerCase();
+    const reason = filterReasonInput.value.toLowerCase();
+    const status = filterStatusSelect.value;
     
     let filtered = portfolioLog.filter(log => {
         const logDate = log.date;
-        const logCode = log.code?.toLowerCase();
+        const logCode = log.code.toLowerCase();
         const logReason = log.reason ? log.reason.toLowerCase() : '';
         const logStatus = log.sellPrice ? 'closed' : 'open';
 
+        // Date filter
         if (dateFrom && logDate < dateFrom) return false;
         if (dateTo && logDate > dateTo) return false;
-        if (stockCode && !logCode?.includes(stockCode)) return false;
+
+        // Stock Code filter
+        if (stockCode && !logCode.includes(stockCode)) return false;
+
+        // Reason filter
         if (reason && !logReason.includes(reason)) return false;
+
+        // Status filter
         if (status !== 'all' && logStatus !== status) return false;
 
         return true;
     });
     
+    // Apply sorting after filtering
     if (sortState.column) {
         filtered.sort((a, b) => {
             let aValue, bValue;
             
+            // Handle specific sorting logic for each column
             switch (sortState.column) {
                 case 'realizedPL':
                     aValue = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : (sortState.direction === 'asc' ? -Infinity : Infinity);
@@ -1248,6 +1346,7 @@ function applyLogFiltersAndSort() {
                     break;
                 case 'date':
                 case 'sellDate':
+                    // Handle cases where date is null
                     aValue = a[sortState.column] ? new Date(a[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
                     bValue = b[sortState.column] ? new Date(b[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
                     break;
@@ -1255,10 +1354,11 @@ function applyLogFiltersAndSort() {
                 case 'reason':
                     aValue = a[sortState.column];
                     bValue = b[sortState.column];
+                    // Handle cases where reason is null
                     if (aValue === undefined || aValue === null) aValue = '';
                     if (bValue === undefined || bValue === null) bValue = '';
                     break;
-                default:
+                default: // Numeric columns like price and lot
                     aValue = a[sortState.column];
                     bValue = b[sortState.column];
                     if (aValue === undefined || aValue === null) aValue = 0;
@@ -1277,22 +1377,24 @@ function applyLogFiltersAndSort() {
         });
     }
 
-    filteredLogsData = filtered;
+    filteredLogsData = filtered; // Save the filtered and sorted data to a global variable
     renderLogTable(filteredLogsData);
 }
 
 function resetLogFilters() {
-    if(filterDateFromInput) filterDateFromInput.value = '';
-    if(filterDateToInput) filterDateToInput.value = '';
-    if(filterStockCodeInput) filterStockCodeInput.value = '';
-    if(filterReasonInput) filterReasonInput.value = '';
-    if(filterStatusSelect) filterStatusSelect.value = 'all';
-    sortState = { column: 'date', direction: 'desc' };
-    currentPage = 1;
-    applyLogFiltersAndSort();
+    filterDateFromInput.value = '';
+    filterDateToInput.value = '';
+    filterStockCodeInput.value = '';
+    filterReasonInput.value = '';
+    filterStatusSelect.value = 'all';
+    sortState = { column: 'date', direction: 'desc' }; // Reset sort state
+    currentPage = 1; // Reset to page 1
+    applyLogFiltersAndSort(); // Re-render with all logs
 }
 
+// --- Event listener for sticky nav ---
 window.addEventListener('scroll', () => {
+    // Check if tabNavWrapper is initialized
     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
         if (window.scrollY >= tabNavOffsetTop) {
             tabNavWrapper.classList.remove('default-state');
@@ -1304,100 +1406,98 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// --- PERBAIKAN PENTING: Menggunakan Event Delegation untuk Tab ---
-if (tabNavContainer) {
-    tabNavContainer.addEventListener('click', (event) => {
-        const targetButton = event.target.closest('.tab-button');
-        if (targetButton && targetButton.dataset.tabName) {
-            switchTab(targetButton.dataset.tabName);
-        }
-    });
-}
-// --- Akhir Perbaikan Event Delegation ---
-
 // --- EVENT LISTENERS ---
-if (logForm) logForm.addEventListener('submit', handleAddOrEditLog);
-if (simParamsForm) simParamsForm.addEventListener('submit', handleSimParamsSubmit);
-if (sellForm) sellForm.addEventListener('submit', handleSellSubmit);
-document.getElementById('initial-equity')?.addEventListener('input', () => {
+// The following event listener for the removed profit calculator form is now deleted.
+// document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
+logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
+simParamsForm.addEventListener('submit', handleSimParamsSubmit);
+sellForm.addEventListener('submit', handleSellSubmit);
+document.getElementById('initial-equity').addEventListener('input', () => {
     renderFinancialSummaries();
     triggerAutoSave();
 });
 
-document.getElementById('open-add-log-modal-btn')?.addEventListener('click', () => {
-    if(logModalTitle) logModalTitle.textContent = 'Tambah Catatan Transaksi';
-    if(submitLogBtn) submitLogBtn.textContent = 'Tambah';
-    if(logEditIndexInput) logEditIndexInput.value = '';
-    if(logForm) logForm.reset();
-    const today = new Date().toISOString().split('T')[0];
-    if(document.getElementById('log-buy-date')) document.getElementById('log-buy-date').value = today;
-    if(logFeeBeliInput) logFeeBeliInput.value = defaultFeeBeli;
-    if(sellFieldsContainer) sellFieldsContainer.classList.add('hidden');
-    if(logSellPriceInput) logSellPriceInput.value = '';
-    if(logSellDateInput) logSellDateInput.value = '';
-    if(logFeeJualInput) logFeeJualInput.value = defaultFeeJual;
+document.getElementById('open-add-log-modal-btn').addEventListener('click', () => {
+    logModalTitle.textContent = 'Tambah Catatan Transaksi';
+    submitLogBtn.textContent = 'Tambah';
+    logEditIndexInput.value = ''; // Clear edit index
+    logForm.reset(); // Clear form fields
+    document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
+    logFeeBeliInput.value = defaultFeeBeli; // Set default buy fee from settings
+    sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
+    logSellPriceInput.value = '';
+    logSellDateInput.value = '';
+    logFeeJualInput.value = defaultFeeJual; // Set default sell fee from settings
     openModal(addLogModal);
 });
-document.getElementById('cancel-add-log-btn')?.addEventListener('click', () => closeModal(addLogModal));
+document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
 
-document.getElementById('open-sim-params-modal-btn')?.addEventListener('click', () => {
-    if(document.getElementById('modal-stock-code')) document.getElementById('modal-stock-code').value = document.getElementById('stock-code')?.value || '';
-    if(document.getElementById('modal-initial-price')) document.getElementById('modal-initial-price').value = document.getElementById('initial-price')?.value || '';
-    if(document.getElementById('modal-initial-lot')) document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot')?.value || '';
-    if(document.getElementById('modal-dividend')) document.getElementById('modal-dividend').value = document.getElementById('dividend')?.value || '';
-    if(document.getElementById('modal-avg-down-percent')) document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent')?.value || '';
-    if(document.getElementById('modal-avg-levels')) document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels')?.value || '';
-    if(document.getElementById('modal-tp1-percent')) document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent')?.value || '';
-    if(document.getElementById('modal-tp2-percent')) document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent')?.value || '';
-    if(document.getElementById('modal-sim-reason')) document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason')?.value || '';
+document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => {
+    // Load existing main values into modal
+    document.getElementById('modal-stock-code').value = document.getElementById('stock-code').value;
+    document.getElementById('modal-initial-price').value = document.getElementById('initial-price').value;
+    document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot').value;
+    document.getElementById('modal-dividend').value = document.getElementById('dividend').value;
+    document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent').value;
+    document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels').value;
+    document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent').value;
+    document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent').value;
+    document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason').value;
     
-    if(document.getElementById('modal-avg-strategy')) document.getElementById('modal-avg-strategy').value = document.getElementById('avg-strategy')?.value || '';
-    if(document.getElementById('modal-avg-multiplier')) document.getElementById('modal-avg-multiplier').value = document.getElementById('avg-multiplier')?.value || '';
+    // NEW: Load existing strategy values into modal
+    document.getElementById('modal-avg-strategy').value = document.getElementById('avg-strategy').value;
+    document.getElementById('modal-avg-multiplier').value = document.getElementById('avg-multiplier').value;
 
     openModal(simParamsModal);
 });
-document.getElementById('cancel-sim-params-btn')?.addEventListener('click', () => closeModal(simParamsModal));
-document.getElementById('save-simulation-from-modal-btn')?.addEventListener('click', () => handleSaveSimulation(true));
-document.getElementById('notification-ok-btn')?.addEventListener('click', () => closeModal(notificationModal));
+document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(simParamsModal));
+document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => handleSaveSimulation(true));
+document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
 
-document.getElementById('log-table-body')?.addEventListener('click', (event) => {
+document.getElementById('log-table-body').addEventListener('click', (event) => {
+    // Find the closest button element to ensure we clicked a button, not a table row
     const targetButton = event.target.closest('button');
     if (!targetButton) return;
     
     const logIndex = parseInt(targetButton.dataset.index);
 
     if (targetButton.classList.contains('delete-log-btn')) {
-        handleDeleteLog(logIndex);
+        handleDeleteLog(logIndex); // Call the new handler
     } else if (targetButton.classList.contains('sell-log-btn')) {
-        if(document.getElementById('sell-log-index')) document.getElementById('sell-log-index').value = logIndex;
-        if(document.getElementById('sell-date')) document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
-        if(document.getElementById('sell-fee-jual')) document.getElementById('sell-fee-jual').value = portfolioLog[logIndex]?.feeJual || defaultFeeJual;
+        document.getElementById('sell-log-index').value = logIndex;
+        document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default sell fee from settings
         openModal(sellModal);
-    } else if (targetButton.classList.contains('edit-log-btn')) {
+    } else if (targetButton.classList.contains('edit-log-btn')) { // New event listener for edit button
         handleEditLog(logIndex);
     }
 });
-document.getElementById('cancel-sell-btn')?.addEventListener('click', () => closeModal(sellModal));
+document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
 
-document.getElementById('confirm-delete-btn')?.addEventListener('click', () => {
+// Event listeners for the new custom confirmation modal buttons
+document.getElementById('confirm-delete-btn').addEventListener('click', () => {
     if (confirmCallback) {
         confirmCallback();
-        confirmCallback = null;
+        confirmCallback = null; // Reset callback
         cancelCallback = null;
     }
 });
 
-document.getElementById('cancel-delete-btn')?.addEventListener('click', () => {
+document.getElementById('cancel-delete-btn').addEventListener('click', () => {
     if (cancelCallback) {
         cancelCallback();
-        cancelCallback = null;
+        cancelCallback = null; // Reset callback
         confirmCallback = null;
     }
 });
 
-document.getElementById('saved-simulations-table-body')?.addEventListener('click', handleLoadOrDeleteSimulation);
+document.getElementById('saved-simulations-table-body').addEventListener('click', handleLoadOrDeleteSimulation);
 
-document.getElementById('portfolio-summary-by-stock')?.addEventListener('input', (event) => {
+Object.keys(tabButtons).forEach(key => {
+    tabButtons[key].addEventListener('click', () => switchTab(key));
+});
+
+document.getElementById('portfolio-summary-by-stock').addEventListener('input', (event) => {
     if (event.target.classList.contains('current-price-input')) {
         const code = event.target.dataset.code;
         currentMarketPrices[code] = event.target.value;
@@ -1406,32 +1506,36 @@ document.getElementById('portfolio-summary-by-stock')?.addEventListener('input',
     }
 });
 
-document.getElementById('tab-content-performance')?.addEventListener('input', (event) => {
+document.getElementById('tab-content-performance').addEventListener('input', (event) => {
      if (event.target.classList.contains('performance-ihsg-input')) {
         calculatePerformanceDifference();
     }
 });
 
-document.querySelector('#tab-content-log table thead')?.addEventListener('click', (event) => {
+// --- SORTING EVENT LISTENER ---
+document.querySelector('#tab-content-log table thead').addEventListener('click', (event) => {
     const header = event.target.closest('.sortable');
     if (header) {
         handleLogSort(event);
     }
 });
 
-saveSettingsBtn?.addEventListener('click', saveSettings);
+// Event listeners for Settings tab
+saveSettingsBtn.addEventListener('click', saveSettings);
 
-filterApplyBtn?.addEventListener('click', applyLogFiltersAndSort);
-filterResetBtn?.addEventListener('click', resetLogFilters);
-if(filterDateFromInput) filterDateFromInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-if(filterDateToInput) filterDateToInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-if(filterStockCodeInput) filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); });
-if(filterReasonInput) filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); });
-if(filterStatusSelect) filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+// Event listeners for Filter section
+filterApplyBtn.addEventListener('click', applyLogFiltersAndSort);
+filterResetBtn.addEventListener('click', resetLogFilters);
+filterDateFromInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+filterDateToInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
-if(prevPageBtn) prevPageBtn.addEventListener('click', goToPrevPage);
-if(nextPageBtn) nextPageBtn.addEventListener('click', goToNextPage);
-if(pageNumberContainer) pageNumberContainer.addEventListener('click', (event) => {
+// New listeners for Pagination
+prevPageBtn.addEventListener('click', goToPrevPage);
+nextPageBtn.addEventListener('click', goToNextPage);
+pageNumberContainer.addEventListener('click', (event) => {
     const page = event.target.dataset.page;
     if (page) {
         goToPage(parseInt(page));
@@ -1439,31 +1543,22 @@ if(pageNumberContainer) pageNumberContainer.addEventListener('click', (event) =>
 });
 
 
-if(loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
-if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-if(downloadJsonBtn) downloadJsonBtn.addEventListener('click', downloadJSON);
-if(uploadJsonInput) uploadJsonInput.addEventListener('change', handleFileUpload);
+// New listeners for Auth, Sync, and Backup
+loginBtn.addEventListener('click', handleGoogleLogin);
+logoutBtn.addEventListener('click', handleLogout);
+downloadJsonBtn.addEventListener('click', downloadJSON);
+uploadJsonInput.addEventListener('change', handleFileUpload);
 
-function initializeUI() {
-    const today = new Date().toISOString().split('T')[0];
-    const filterDateFromElement = document.getElementById('filter-date-from');
-    const filterDateToElement = document.getElementById('filter-date-to');
-    const logBuyDateElement = document.getElementById('log-buy-date');
+// --- INITIALIZATION ---
+window.addEventListener('load', () => {
+    document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
     
-    if(filterDateFromElement) filterDateFromElement.value = today;
-    if(filterDateToElement) filterDateToElement.value = today;
-    if(logBuyDateElement) logBuyDateElement.value = today;
-    
+    // Save the initial position of the nav
     const tabNavElement = document.getElementById('tab-nav-wrapper');
     if (tabNavElement) {
         tabNavOffsetTop = tabNavElement.offsetTop;
     }
-
-    refreshAllApplicationData();
-    switchTab('simulator');
-}
-
-window.addEventListener('load', () => {
+    
     window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
         const wasNotLoggedIn = !currentUser;
         updateUIForAuthState(user);
@@ -1472,5 +1567,6 @@ window.addEventListener('load', () => {
         }
     });
 
-    initializeUI();
+    refreshAllApplicationData();
+    switchTab('simulator');
 });
