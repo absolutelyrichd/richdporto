@@ -1424,7 +1424,7 @@ window.addEventListener('scroll', () => {
     }
     
     // Logic untuk tombol Back to Top
-    if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
         backToTopBtn.classList.add('show');
     } else {
         backToTopBtn.classList.remove('show');
