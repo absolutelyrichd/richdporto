@@ -201,6 +201,48 @@
         }
         /* --- Akhir Gaya Baru --- */
 
+        /* CSS BARU untuk Tombol Glassmorphism */
+        .btn-glass {
+            font-size: 17px;
+            padding: 0.5em 2em;
+            border: transparent;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+            background-color: #22d3ee; /* Warna default */
+            background-image: linear-gradient(90deg, rgba(34, 211, 238, 1) 0%, rgba(14, 165, 233, 1) 100%);
+            color: white;
+            border-radius: 8px; /* Lebih besar dari 4px */
+            transition: all 0.3s ease;
+        }
+
+        .btn-glass:hover {
+            box-shadow: 0 4px 15px rgba(34, 211, 238, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-glass:active {
+            transform: translate(0em, 0.2em);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        /* Kelas untuk warna tombol Jual */
+        .btn-sell {
+            background-color: #ef4444; /* Warna default */
+            background-image: linear-gradient(90deg, rgba(239, 68, 68, 1) 0%, rgba(220, 38, 38, 1) 100%);
+        }
+
+        .btn-sell:hover {
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Kelas untuk warna tombol Logout */
+        .btn-logout {
+            background-color: #dc2626; /* Warna default */
+            background-image: linear-gradient(90deg, rgba(220, 38, 38, 1) 0%, rgba(185, 28, 28, 1) 100%);
+        }
+        
+        .btn-logout:hover {
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+        }
 
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
@@ -255,10 +297,10 @@
                 </div>
                 <div id="auth-container" class="text-right flex items-center space-x-4 auth-container">
                      <span id="sync-status" class="text-sm text-gray-400 opacity-0"></span>
-                    <button id="login-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white">Login dengan Google</button>
+                    <button id="login-btn" class="btn-glass">Login dengan Google</button>
                     <div id="user-info" class="hidden items-center">
                         <span id="user-name" class="mr-4 text-gray-300 truncate max-w-[150px] sm:max-w-none"></span>
-                        <button id="logout-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-red-500/50 shadow-lg hover:shadow-red-500/20 hover:border-red-500 bg-red-600 hover:bg-red-500 text-white">Logout</button>
+                        <button id="logout-btn" class="btn-glass btn-logout">Logout</button>
                     </div>
                 </div>
             </div>
@@ -285,7 +327,7 @@
                  <div class="card mb-8">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                          <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Parameter Simulasi Aktif</h2>
-                         <button id="open-sim-params-modal-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-sky-500/50 shadow-lg hover:shadow-sky-500/20 hover:border-sky-500 bg-sky-600 hover:bg-sky-500 text-white w-full sm:w-auto">Ubah Parameter</button>
+                         <button id="open-sim-params-modal-btn" class="btn-glass">Ubah Parameter</button>
                     </div>
                     <div id="active-sim-params-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700/50 pt-4">
                     </div>
@@ -370,8 +412,8 @@
                                     <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5">
                                 </div>
                                 <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
-                                    <button id="filter-reset-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Reset Filter</button>
-                                    <button id="filter-apply-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white w-full sm:w-auto">Terapkan Filter</button>
+                                    <button id="filter-reset-btn" class="btn-glass bg-gray-600 hover:bg-gray-500">Reset Filter</button>
+                                    <button id="filter-apply-btn" class="btn-glass">Terapkan Filter</button>
                                 </div>
                             </div>
                         </div>
@@ -379,7 +421,7 @@
                         <div class="card">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                                 <h2 class="text-2xl font-semibold mb-4 sm:mb-0">Riwayat Transaksi</h2>
-                                <button id="open-add-log-modal-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white w-full sm:w-auto">Tambah Transaksi</button>
+                                <button id="open-add-log-modal-btn" class="btn-glass">Tambah Transaksi</button>
                             </div>
                             <div class="table-wrapper">
                                 <table class="w-full text-sm text-left text-gray-300">
@@ -497,12 +539,12 @@
                         <h2 class="text-2xl font-semibold mb-4">Pencadangan & Pemulihan Lokal</h2>
                         <p class="text-gray-400 mb-6">Simpan data portofolio dan simulasi Anda ke sebuah file di komputer Anda, atau pulihkan dari file yang sudah ada. Ini berguna untuk pencadangan atau transfer data secara manual.</p>
                         <div class="flex flex-col md:flex-row gap-4">
-                            <button id="download-json-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white w-full md:w-auto">
+                            <button id="download-json-btn" class="btn-glass">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                                 <span>Unduh Cadangan (JSON)</span>
                             </button>
                             <div>
-                                <label for="upload-json-input" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white cursor-pointer w-full">
+                                <label for="upload-json-input" class="btn-glass bg-gray-600 hover:bg-gray-500 cursor-pointer w-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
                                     <span>Muat dari Cadangan (JSON)</span>
                                 </label>
@@ -530,7 +572,7 @@
                             </div>
                         </div>
                         <div class="flex justify-end mt-6">
-                            <button id="save-settings-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white">Simpan Pengaturan</button>
+                            <button id="save-settings-btn" class="btn-glass">Simpan Pengaturan</button>
                         </div>
                     </div>
                 </div>
@@ -617,9 +659,9 @@
                     </div>
                 </div>
                 <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                    <button type="button" id="cancel-sim-params-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Batal</button>
-                    <button type="button" id="save-simulation-from-modal-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-sky-500/50 shadow-lg hover:shadow-sky-500/20 hover:border-sky-500 bg-sky-600 hover:bg-sky-500 text-white w-full sm:w-auto">Simpan</button>
-                    <button type="submit" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white w-full sm:w-auto">Terapkan</button>
+                    <button type="button" id="cancel-sim-params-btn" class="btn-glass bg-gray-600 hover:bg-gray-500">Batal</button>
+                    <button type="button" id="save-simulation-from-modal-btn" class="btn-glass">Simpan</button>
+                    <button type="submit" class="btn-glass">Terapkan</button>
                 </div>
             </form>
         </div>
@@ -668,8 +710,8 @@
                     </div>
                 </div>
                 <div class="md:col-span-2 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                    <button type="button" id="cancel-add-log-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Batal</button>
-                    <button type="submit" id="submit-log-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white w-full sm:w-auto">Tambah</button>
+                    <button type="button" id="cancel-add-log-btn" class="btn-glass bg-gray-600 hover:bg-gray-500">Batal</button>
+                    <button type="submit" id="submit-log-btn" class="btn-glass">Tambah</button>
                 </div>
             </form>
         </div>
@@ -692,8 +734,8 @@
                     <input type="date" id="sell-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
                 </div>
                 <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                    <button type="button" id="cancel-sell-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white w-full sm:w-auto">Batal</button>
-                    <button type="submit" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-red-500/50 shadow-lg hover:shadow-red-500/20 hover:border-red-500 bg-red-600 hover:bg-red-500 text-white w-full sm:w-auto">Konfirmasi Jual</button>
+                    <button type="button" id="cancel-sell-btn" class="btn-glass bg-gray-600 hover:bg-gray-500">Batal</button>
+                    <button type="submit" class="btn-glass btn-sell">Konfirmasi Jual</button>
                 </div>
             </form>
         </div>
@@ -703,7 +745,7 @@
             <h3 id="notification-title" class="text-2xl font-semibold mb-4 text-yellow-300">Pemberitahuan</h3>
             <p id="notification-message" class="text-gray-300 mb-6"></p>
             <div class="flex justify-end">
-                <button type="button" id="notification-ok-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-cyan-500/50 shadow-lg hover:shadow-cyan-500/20 hover:border-cyan-500 bg-cyan-600 hover:bg-cyan-500 text-white">OK</button>
+                <button type="button" id="notification-ok-btn" class="btn-glass">OK</button>
             </div>
         </div>
     </div>
@@ -715,8 +757,8 @@
             <h3 class="text-2xl font-semibold mb-4 text-red-400">Konfirmasi Hapus</h3>
             <p class="text-gray-300 mb-6">Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.</p>
             <div class="flex justify-center space-x-4">
-                <button type="button" id="cancel-delete-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-gray-500/50 shadow-lg hover:shadow-gray-500/20 hover:border-gray-500 bg-gray-600 hover:bg-gray-500 text-white">Batal</button>
-                <button type="button" id="confirm-delete-btn" class="font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 border border-red-500/50 shadow-lg hover:shadow-red-500/20 hover:border-red-500 bg-red-600 hover:bg-red-500 text-white">Hapus</button>
+                <button type="button" id="cancel-delete-btn" class="btn-glass bg-gray-600 hover:bg-gray-500">Batal</button>
+                <button type="button" id="confirm-delete-btn" class="btn-glass btn-sell">Hapus</button>
             </div>
             </div>
         </div>
