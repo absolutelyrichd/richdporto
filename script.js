@@ -1396,8 +1396,23 @@ function resetLogFilters() {
 }
 
 // --- Event listener for sticky nav ---
+// Hapus event listener ganda untuk scroll
+// window.addEventListener('scroll', () => {
+//     // Check if tabNavWrapper is initialized
+//     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
+//         if (window.scrollY >= tabNavOffsetTop) {
+//             tabNavWrapper.classList.remove('default-state');
+//             tabNavWrapper.classList.add('sticky-state');
+//         } else {
+//             tabNavWrapper.classList.remove('sticky-state');
+//             tabNavWrapper.classList.add('default-state');
+//         }
+//     }
+// });
+
+// --- Back to Top Logic ---
 window.addEventListener('scroll', () => {
-    // Check if tabNavWrapper is initialized
+    // Logic untuk sticky nav
     if (tabNavWrapper && tabNavOffsetTop !== undefined) {
         if (window.scrollY >= tabNavOffsetTop) {
             tabNavWrapper.classList.remove('default-state');
@@ -1407,10 +1422,8 @@ window.addEventListener('scroll', () => {
             tabNavWrapper.classList.add('default-state');
         }
     }
-});
-
-// --- Back to Top Logic ---
-window.addEventListener('scroll', () => {
+    
+    // Logic untuk tombol Back to Top
     if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
         backToTopBtn.classList.add('show');
     } else {
