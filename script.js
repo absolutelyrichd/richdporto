@@ -224,16 +224,20 @@ async function handleLogout() {
 function updateUIForAuthState(user) {
     currentUser = user;
     if (user) {
-        loginBtn.classList.add('hidden');
-        userInfoDiv.classList.remove('hidden');
-        userInfoDiv.classList.add('flex');
-        userNameSpan.textContent = user.displayName || user.email;
+        if (loginBtn) loginBtn.classList.add('hidden');
+        if (userInfoDiv) {
+            userInfoDiv.classList.remove('hidden');
+            userInfoDiv.classList.add('flex');
+        }
+        if (userNameSpan) userNameSpan.textContent = user.displayName || user.email;
     } else {
-        loginBtn.classList.remove('hidden');
-        userInfoDiv.classList.add('hidden');
-        userInfoDiv.classList.remove('flex');
-        userNameSpan.textContent = '';
-        syncStatusSpan.classList.add('opacity-0');
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (userInfoDiv) {
+            userInfoDiv.classList.add('hidden');
+            userInfoDiv.classList.remove('flex');
+        }
+        if (userNameSpan) userNameSpan.textContent = '';
+        if (syncStatusSpan) syncStatusSpan.classList.add('opacity-0');
     }
 }
 
@@ -241,17 +245,17 @@ function updateUIForAuthState(user) {
 function triggerAutoSave() {
     if (!currentUser) return;
     
-    syncStatusSpan.textContent = 'Menyimpan...';
-    syncStatusSpan.classList.remove('opacity-0');
+    if (syncStatusSpan) syncStatusSpan.textContent = 'Menyimpan...';
+    if (syncStatusSpan) syncStatusSpan.classList.remove('opacity-0');
 
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(async () => {
         const dataToSave = {
             portfolioLog: portfolioLog,
             savedSimulations: savedSimulations,
-            initialEquity: document.getElementById('initial-equity').value,
+            initialEquity: document.getElementById('initial-equity')?.value,
             currentMarketPrices: currentMarketPrices,
-            simulationReason: document.getElementById('sim-reason').value,
+            simulationReason: document.getElementById('sim-reason')?.value,
             defaultFeeBeli: defaultFeeBeli, // Save default buy fee
             defaultFeeJual: defaultFeeJual, // Save default sell fee
             updatedAt: new Date().toISOString()
@@ -260,12 +264,16 @@ function triggerAutoSave() {
         try {
             const userDocRef = window.firebase.doc(window.firebase.db, "portfolios", currentUser.uid);
             await window.firebase.setDoc(userDocRef, dataToSave);
-            syncStatusSpan.textContent = 'Tersimpan ✓';
-            setTimeout(() => syncStatusSpan.classList.add('opacity-0'), 2000);
+            if (syncStatusSpan) syncStatusSpan.textContent = 'Tersimpan ✓';
+            setTimeout(() => {
+                if (syncStatusSpan) syncStatusSpan.classList.add('opacity-0');
+            }, 2000);
         } catch (error) {
             console.error("Error auto-saving data to Firestore: ", error);
-            syncStatusSpan.textContent = 'Gagal menyimpan';
-            syncStatusSpan.classList.add('text-red-500');
+            if (syncStatusSpan) {
+                syncStatusSpan.textContent = 'Gagal menyimpan';
+                syncStatusSpan.classList.add('text-red-500');
+            }
         }
     }, 1500);
 }
@@ -281,15 +289,15 @@ async function loadDataFromFirebase() {
             const data = docSnap.data();
             portfolioLog = data.portfolioLog || [];
             savedSimulations = data.savedSimulations || [];
-            document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+            if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = data.initialEquity || "100000000";
             currentMarketPrices = data.currentMarketPrices || {};
-            document.getElementById('sim-reason').value = data.simulationReason || '';
+            if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = data.simulationReason || '';
             defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
             defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
             
             // Update settings inputs with loaded defaults
-            defaultFeeBeliInput.value = defaultFeeBeli;
-            defaultFeeJualInput.value = defaultFeeJual;
+            if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
+            if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
 
             refreshAllApplicationData();
             showNotification('Data berhasil dimuat dari cloud!', 'Sukses');
@@ -308,9 +316,9 @@ function downloadJSON() {
     const dataToSave = {
         portfolioLog: portfolioLog,
         savedSimulations: savedSimulations,
-        initialEquity: document.getElementById('initial-equity').value,
+        initialEquity: document.getElementById('initial-equity')?.value,
         currentMarketPrices: currentMarketPrices,
-        simulationReason: document.getElementById('sim-reason').value,
+        simulationReason: document.getElementById('sim-reason')?.value,
         defaultFeeBeli: defaultFeeBeli, // Include default fees in backup
         defaultFeeJual: defaultFeeJual, // Include default fees in backup
     };
@@ -344,15 +352,15 @@ function handleFileUpload(event) {
                     if (data && typeof data === 'object') {
                         portfolioLog = data.portfolioLog || [];
                         savedSimulations = data.savedSimulations || [];
-                        document.getElementById('initial-equity').value = data.initialEquity || "100000000";
+                        if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = data.initialEquity || "100000000";
                         currentMarketPrices = data.currentMarketPrices || {};
-                        document.getElementById('sim-reason').value = data.simulationReason || '';
+                        if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = data.simulationReason || '';
                         defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
                         defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
                         
                         // Update settings inputs with loaded defaults
-                        defaultFeeBeliInput.value = defaultFeeBeli;
-                        defaultFeeJualInput.value = defaultFeeJual;
+                        if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
+                        if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
 
                         refreshAllApplicationData();
                         showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
@@ -380,19 +388,19 @@ function resetAllData() {
     portfolioLog = [];
     savedSimulations = [];
     currentMarketPrices = {};
-    document.getElementById('initial-equity').value = "100000000";
-    document.getElementById('sim-reason').value = "";
+    if(document.getElementById('initial-equity')) document.getElementById('initial-equity').value = "100000000";
+    if(document.getElementById('sim-reason')) document.getElementById('sim-reason').value = "";
     defaultFeeBeli = 0.11; // Reset default fees
     defaultFeeJual = 0.11; // Reset default fees
     // Tambahkan baris ini untuk mereset input filter saat reset data
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('filter-date-from').value = today;
-    document.getElementById('filter-date-to').value = today;
-    document.getElementById('filter-status').value = 'all';
-    document.getElementById('filter-stock-code').value = '';
-    document.getElementById('filter-reason').value = '';
-    defaultFeeBeliInput.value = defaultFeeBeli;
-    defaultFeeJualInput.value = defaultFeeJual;
+    if(document.getElementById('filter-date-from')) document.getElementById('filter-date-from').value = today;
+    if(document.getElementById('filter-date-to')) document.getElementById('filter-date-to').value = today;
+    if(document.getElementById('filter-status')) document.getElementById('filter-status').value = 'all';
+    if(document.getElementById('filter-stock-code')) document.getElementById('filter-stock-code').value = '';
+    if(document.getElementById('filter-reason')) document.getElementById('filter-reason').value = '';
+    if(defaultFeeBeliInput) defaultFeeBeliInput.value = defaultFeeBeli;
+    if(defaultFeeJualInput) defaultFeeJualInput.value = defaultFeeJual;
     refreshAllApplicationData();
 }
 
@@ -411,15 +419,23 @@ function refreshAllApplicationData() {
 // --- SIMULATOR CALCULATIONS & DISPLAY ---
 function updateActiveSimDisplay() {
     const displayContainer = document.getElementById('active-sim-params-display');
+    if (!displayContainer) return;
     // NEW: Add strategy to the display
-    const strategy = document.getElementById('avg-strategy').value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
-    const multiplier = document.getElementById('avg-multiplier').value;
+    const avgStrategyElement = document.getElementById('avg-strategy');
+    const avgMultiplierElement = document.getElementById('avg-multiplier');
+    const stockCodeElement = document.getElementById('stock-code');
+    const initialPriceElement = document.getElementById('initial-price');
+    const initialLotElement = document.getElementById('initial-lot');
+    const avgDownPercentElement = document.getElementById('avg-down-percent');
+
+    const strategy = avgStrategyElement?.value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
+    const multiplier = avgMultiplierElement?.value;
 
     displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(document.getElementById('initial-price').value)}</div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>
+        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${stockCodeElement?.value.toUpperCase()}</span></div>
+        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(initialPriceElement?.value)}</div>
+        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${initialLotElement?.value}</div>
+        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${avgDownPercentElement?.value}%</div>
         <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> ${strategy} (x${multiplier})</div>
     `;
 }
@@ -427,13 +443,13 @@ function updateActiveSimDisplay() {
 function updateSimulationReasonDisplay() {
     const reasonCard = document.getElementById('simulation-reason-card');
     const reasonDisplay = document.getElementById('simulation-reason-display');
-    const reasonText = document.getElementById('sim-reason').value;
+    const reasonText = document.getElementById('sim-reason')?.value;
 
     if (reasonText && reasonText.trim() !== '') {
-        reasonDisplay.textContent = reasonText;
-        reasonCard.classList.remove('hidden');
+        if (reasonDisplay) reasonDisplay.textContent = reasonText;
+        if (reasonCard) reasonCard.classList.remove('hidden');
     } else {
-        reasonCard.classList.add('hidden');
+        if (reasonCard) reasonCard.classList.add('hidden');
     }
 }
 
@@ -443,20 +459,21 @@ function updateSimulationReasonDisplay() {
  */
 function calculateDashboard() {
     // Get main parameters
-    const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
-    const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
-    const dividend = parseFloat(document.getElementById('dividend').value) || 0;
-    const avgDownPercent = parseFloat(document.getElementById('avg-down-percent').value) || 0;
-    const avgLevels = parseInt(document.getElementById('avg-levels').value) || 0;
-    const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0;
-    const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0;
+    const initialPrice = parseFloat(document.getElementById('initial-price')?.value) || 0;
+    const initialLot = parseFloat(document.getElementById('initial-lot')?.value) || 0;
+    const dividend = parseFloat(document.getElementById('dividend')?.value) || 0;
+    const avgDownPercent = parseFloat(document.getElementById('avg-down-percent')?.value) || 0;
+    const avgLevels = parseInt(document.getElementById('avg-levels')?.value) || 0;
+    const tp1Percent = parseFloat(document.getElementById('tp1-percent')?.value) || 0;
+    const tp2Percent = parseFloat(document.getElementById('tp2-percent')?.value) || 0;
 
     // Get averaging strategy parameters
-    const avgStrategy = document.getElementById('avg-strategy').value;
-    const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
+    const avgStrategy = document.getElementById('avg-strategy')?.value;
+    const avgMultiplier = parseFloat(document.getElementById('avg-multiplier')?.value) || 1;
     const initialBuyAmount = initialPrice * initialLot * 100;
 
     const tableBody = document.getElementById('scenario-table-body');
+    if (!tableBody) return;
     tableBody.innerHTML = ''; 
     
     let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice;
@@ -527,12 +544,15 @@ function calculateDashboard() {
         currentPrice = entryPrice;
     }
 
+    const summaryTotalInvestment = document.getElementById('summary-total-investment');
+    const summaryTotalLot = document.getElementById('summary-total-lot');
+    const summaryAvgPrice = document.getElementById('summary-avg-price');
     const totalInvestment = cumulativeCost;
     const totalLots = cumulativeShares / 100;
     const finalAvgPrice = totalInvestment / (totalLots * 100) || 0;
-    document.getElementById('summary-total-investment').textContent = formatCurrency(totalInvestment);
-    document.getElementById('summary-total-lot').textContent = totalLots;
-    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice);
+    if(summaryTotalInvestment) summaryTotalInvestment.textContent = formatCurrency(totalInvestment);
+    if(summaryTotalLot) summaryTotalLot.textContent = totalLots;
+    if(summaryAvgPrice) summaryAvgPrice.textContent = formatCurrency(finalAvgPrice);
 }
 
 
@@ -615,8 +635,8 @@ function renderLogTable(logsToRender = []) {
 // --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    prevPageBtn.disabled = currentPage === 1;
-    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+    if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
 
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
     const endItem = Math.min(startItem + itemsPerPage, totalItems);
@@ -679,7 +699,7 @@ function renderFinancialSummaries() {
     if(grandTotalContainer) grandTotalContainer.innerHTML = '';
     if(realizedPlContainer) realizedPlContainer.innerHTML = '';
 
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    const initialEquity = parseFloat(document.getElementById('initial-equity')?.value) || 0;
     let totalBuyCostWithFee = 0;
     let totalSellValueWithFee = 0;
     
@@ -1002,11 +1022,11 @@ function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonT
 // --- EVENT HANDLERS ---
 function handleAddOrEditLog(event) {
     event.preventDefault();
-    const isEdit = logEditIndexInput.value !== '';
-    const index = isEdit ? parseInt(logEditIndexInput.value) : -1;
+    const isEdit = logEditIndexInput?.value !== '';
+    const index = isEdit ? parseInt(logEditIndexInput?.value) : -1;
 
     const newLog = {
-        id: isEdit ? portfolioLog[index].id : Date.now(), // Preserve ID for edits
+        id: isEdit ? portfolioLog[index]?.id : Date.now(), // Preserve ID for edits
         code: document.getElementById('log-stock-code')?.value, 
         date: document.getElementById('log-buy-date')?.value,
         price: parseFloat(document.getElementById('log-buy-price')?.value), 
@@ -1056,7 +1076,7 @@ function handleAddOrEditLog(event) {
         portfolioLog.push(newLog);
     }
     
-    logForm?.reset();
+    if (logForm) logForm.reset();
     closeModal(addLogModal);
     refreshAllApplicationData();
 }
@@ -1373,9 +1393,9 @@ window.addEventListener('scroll', () => {
 // --- EVENT LISTENERS ---
 // The following event listener for the removed profit calculator form is now deleted.
 // document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
-logForm?.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
-simParamsForm?.addEventListener('submit', handleSimParamsSubmit);
-sellForm?.addEventListener('submit', handleSellSubmit);
+if (logForm) logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
+if (simParamsForm) simParamsForm.addEventListener('submit', handleSimParamsSubmit);
+if (sellForm) sellForm.addEventListener('submit', handleSellSubmit);
 document.getElementById('initial-equity')?.addEventListener('input', () => {
     renderFinancialSummaries();
     triggerAutoSave();
@@ -1385,7 +1405,7 @@ document.getElementById('open-add-log-modal-btn')?.addEventListener('click', () 
     if(logModalTitle) logModalTitle.textContent = 'Tambah Catatan Transaksi';
     if(submitLogBtn) submitLogBtn.textContent = 'Tambah';
     if(logEditIndexInput) logEditIndexInput.value = ''; // Clear edit index
-    logForm?.reset(); // Clear form fields
+    if(logForm) logForm.reset(); // Clear form fields
     const today = new Date().toISOString().split('T')[0];
     if(document.getElementById('log-buy-date')) document.getElementById('log-buy-date').value = today; // Set default date
     if(logFeeBeliInput) logFeeBeliInput.value = defaultFeeBeli; // Set default buy fee from settings
@@ -1399,19 +1419,19 @@ document.getElementById('cancel-add-log-btn')?.addEventListener('click', () => c
 
 document.getElementById('open-sim-params-modal-btn')?.addEventListener('click', () => {
     // Load existing main values into modal
-    if(document.getElementById('modal-stock-code')) document.getElementById('modal-stock-code').value = document.getElementById('stock-code')?.value;
-    if(document.getElementById('modal-initial-price')) document.getElementById('modal-initial-price').value = document.getElementById('initial-price')?.value;
-    if(document.getElementById('modal-initial-lot')) document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot')?.value;
-    if(document.getElementById('modal-dividend')) document.getElementById('modal-dividend').value = document.getElementById('dividend')?.value;
-    if(document.getElementById('modal-avg-down-percent')) document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent')?.value;
-    if(document.getElementById('modal-avg-levels')) document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels')?.value;
-    if(document.getElementById('modal-tp1-percent')) document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent')?.value;
-    if(document.getElementById('modal-tp2-percent')) document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent')?.value;
-    if(document.getElementById('modal-sim-reason')) document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason')?.value;
+    if(document.getElementById('modal-stock-code')) document.getElementById('modal-stock-code').value = document.getElementById('stock-code')?.value || '';
+    if(document.getElementById('modal-initial-price')) document.getElementById('modal-initial-price').value = document.getElementById('initial-price')?.value || '';
+    if(document.getElementById('modal-initial-lot')) document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot')?.value || '';
+    if(document.getElementById('modal-dividend')) document.getElementById('modal-dividend').value = document.getElementById('dividend')?.value || '';
+    if(document.getElementById('modal-avg-down-percent')) document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent')?.value || '';
+    if(document.getElementById('modal-avg-levels')) document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels')?.value || '';
+    if(document.getElementById('modal-tp1-percent')) document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent')?.value || '';
+    if(document.getElementById('modal-tp2-percent')) document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent')?.value || '';
+    if(document.getElementById('modal-sim-reason')) document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason')?.value || '';
     
     // NEW: Load existing strategy values into modal
-    if(document.getElementById('modal-avg-strategy')) document.getElementById('modal-avg-strategy').value = document.getElementById('avg-strategy')?.value;
-    if(document.getElementById('modal-avg-multiplier')) document.getElementById('modal-avg-multiplier').value = document.getElementById('avg-multiplier')?.value;
+    if(document.getElementById('modal-avg-strategy')) document.getElementById('modal-avg-strategy').value = document.getElementById('avg-strategy')?.value || '';
+    if(document.getElementById('modal-avg-multiplier')) document.getElementById('modal-avg-multiplier').value = document.getElementById('avg-multiplier')?.value || '';
 
     openModal(simParamsModal);
 });
@@ -1491,16 +1511,16 @@ saveSettingsBtn?.addEventListener('click', saveSettings);
 // Event listeners for Filter section
 filterApplyBtn?.addEventListener('click', applyLogFiltersAndSort);
 filterResetBtn?.addEventListener('click', resetLogFilters);
-filterDateFromInput?.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-filterDateToInput?.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-filterStockCodeInput?.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
-filterReasonInput?.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
-filterStatusSelect?.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+if(filterDateFromInput) filterDateFromInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+if(filterDateToInput) filterDateToInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+if(filterStockCodeInput) filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+if(filterReasonInput) filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+if(filterStatusSelect) filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
 // New listeners for Pagination
-prevPageBtn?.addEventListener('click', goToPrevPage);
-nextPageBtn?.addEventListener('click', goToNextPage);
-pageNumberContainer?.addEventListener('click', (event) => {
+if(prevPageBtn) prevPageBtn.addEventListener('click', goToPrevPage);
+if(nextPageBtn) nextPageBtn.addEventListener('click', goToNextPage);
+if(pageNumberContainer) pageNumberContainer.addEventListener('click', (event) => {
     const page = event.target.dataset.page;
     if (page) {
         goToPage(parseInt(page));
@@ -1509,18 +1529,21 @@ pageNumberContainer?.addEventListener('click', (event) => {
 
 
 // New listeners for Auth, Sync, and Backup
-loginBtn?.addEventListener('click', handleGoogleLogin);
-logoutBtn?.addEventListener('click', handleLogout);
-downloadJsonBtn?.addEventListener('click', downloadJSON);
-uploadJsonInput?.addEventListener('change', handleFileUpload);
+if(loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
+if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+if(downloadJsonBtn) downloadJsonBtn.addEventListener('click', downloadJSON);
+if(uploadJsonInput) uploadJsonInput.addEventListener('change', handleFileUpload);
 
 // --- INITIALIZATION ---
 function initializeUI() {
-    // Perbaikan: Pastikan semua elemen DOM ada sebelum mencoba mengaksesnya.
     const today = new Date().toISOString().split('T')[0];
-    if(document.getElementById('filter-date-from')) document.getElementById('filter-date-from').value = today;
-    if(document.getElementById('filter-date-to')) document.getElementById('filter-date-to').value = today;
-    if(document.getElementById('log-buy-date')) document.getElementById('log-buy-date').value = today;
+    const filterDateFromElement = document.getElementById('filter-date-from');
+    const filterDateToElement = document.getElementById('filter-date-to');
+    const logBuyDateElement = document.getElementById('log-buy-date');
+    
+    if(filterDateFromElement) filterDateFromElement.value = today;
+    if(filterDateToElement) filterDateToElement.value = today;
+    if(logBuyDateElement) logBuyDateElement.value = today;
     
     // Save the initial position of the nav
     const tabNavElement = document.getElementById('tab-nav-wrapper');
