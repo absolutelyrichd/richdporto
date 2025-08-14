@@ -405,11 +405,11 @@ function updateActiveSimDisplay() {
     const multiplier = document.getElementById('avg-multiplier').value;
 
     displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(document.getElementById('initial-price').value)}</div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>
-        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> ${strategy} (x${multiplier})</div>
+        <div><span class="font-semibold text-gray-300">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
+        <div><span class="font-semibold text-gray-300">Harga Awal:</span> <span class="text-gray-200">${formatCurrency(document.getElementById('initial-price').value)}</span></div>
+        <div><span class="font-semibold text-gray-300">Lot Awal:</span> <span class="text-gray-200">${document.getElementById('initial-lot').value}</span></div>
+        <div><span class="font-semibold text-gray-300">Avg. Down:</span> <span class="text-gray-200">${document.getElementById('avg-down-percent').value}%</span></div>
+        <div class="md:col-span-2"><span class="font-semibold text-gray-300">Strategi AVG:</span> <span class="text-gray-200">${strategy} (x${multiplier})</span></div>
     `;
 }
 
@@ -500,11 +500,11 @@ function calculateDashboard() {
         const row = document.createElement('tr');
         row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
         row.innerHTML = `
-            <td class="px-6 py-4 font-medium whitespace-nowrap">${i === 0 ? 'Entry Awal' : `AVG ${i}`}</td>
+            <td class="px-6 py-4 font-medium text-gray-200">${i === 0 ? 'Entry Awal' : `AVG ${i}`}</td>
             <td class="px-6 py-4 font-semibold text-yellow-300">${formatCurrency(entryPrice)}</td>
-            <td class="px-6 py-4">${lotsToBuy}</td>
-            <td class="px-6 py-4">${formatCurrency(totalBuy)}</td>
-            <td class="px-6 py-4 ${dividendYield > 5 ? 'text-green-400' : 'text-gray-300'}">${dividendYield.toFixed(2)}%</td>
+            <td class="px-6 py-4 text-gray-200">${lotsToBuy}</td>
+            <td class="px-6 py-4 text-gray-200">${formatCurrency(totalBuy)}</td>
+            <td class="px-6 py-4 ${dividendYield > 5 ? 'text-green-400' : 'text-gray-200'}">${dividendYield.toFixed(2)}%</td>
             <td class="px-6 py-4 font-semibold text-blue-300">${formatCurrency(avgPrice)}</td>
             <td class="px-6 py-4 text-green-400">${formatCurrency(tp1Price)}</td>
             <td class="px-6 py-4 font-semibold text-green-400">${formatCurrency(profitTp1, true)}</td>
@@ -574,8 +574,8 @@ function renderLogTable(logsToRender = []) {
                                 <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
                                 <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
-                sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
-                feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
+                sellDateHtml = `<td class="px-6 py-4 text-gray-200">${log.sellDate}</td>`;
+                feeJualDisplay = `<td class="px-6 py-4 text-gray-200">${(log.feeJual || 0).toFixed(2)}%</td>`;
             } else {
                 plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
@@ -591,13 +591,13 @@ function renderLogTable(logsToRender = []) {
             }
             
             row.innerHTML = `
-                <td class="px-6 py-4">${log.date}</td>
+                <td class="px-6 py-4 text-gray-200">${log.date}</td>
                 <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
-                <td class="px-6 py-4">${formatCurrency(log.price)}</td>
-                <td class="px-6 py-4">${log.lot}</td>
-                <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
+                <td class="px-6 py-4 text-gray-200">${formatCurrency(log.price)}</td>
+                <td class="px-6 py-4 text-gray-200">${log.lot}</td>
+                <td class="px-6 py-4 text-gray-200">${(log.feeBeli || 0).toFixed(2)}%</td>
                 ${feeJualDisplay}
-                <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
+                <td class="px-6 py-4 text-gray-200">${log.reason || '-'}</td>
                 ${statusHtml}
                 ${sellDateHtml}
                 ${plHtml}
@@ -667,9 +667,13 @@ function renderFinancialSummaries() {
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     const grandTotalContainer = document.getElementById('portfolio-grand-total');
     const realizedPlContainer = document.getElementById('realized-pl-summary');
+    const floatingPlContainer = document.getElementById('floating-pl-summary'); // Tambahkan ini
     const currentEquityDisplay = document.getElementById('current-equity-display');
     
-    summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = '';
+    summaryContainer.innerHTML = ''; 
+    grandTotalContainer.innerHTML = ''; 
+    realizedPlContainer.innerHTML = '';
+    floatingPlContainer.innerHTML = '';
 
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalBuyCostWithFee = 0;
@@ -710,7 +714,7 @@ function renderFinancialSummaries() {
             const priceValue = currentMarketPrices[code] || '';
             const summaryCard = document.createElement('div');
             summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-            summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
+            summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-300">Total Lot:</span><span class="font-semibold text-gray-200">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-300">Harga Rata-rata:</span><span class="font-semibold text-gray-200">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-300">Total Investasi:</span><span class="font-semibold text-gray-200">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-300">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800/50 border border-gray-600 rounded p-1 text-right text-gray-200" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-300">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
             summaryContainer.appendChild(summaryCard);
         });
         const grandTotalCard = document.createElement('div');
@@ -761,11 +765,13 @@ function calculateAndRenderFloatingPL() {
             const floatingPL = (currentPrice - avgPriceWithFee) * data.totalLots * 100;
             totalFloatingPL += floatingPL;
             const plColor = floatingPL >= 0 ? 'text-green-400' : 'text-red-500';
-            floatingPlElement.className = `font-semibold ${plColor}`;
+            floatingPlElement.className = `font-semibold text-gray-200 ${plColor}`;
             floatingPlElement.textContent = formatCurrency(floatingPL, true);
         } else {
             floatingPlElement.textContent = '-';
+            floatingPlElement.className = `font-semibold text-gray-200`; // Ensure text color is still readable
         }
+        
     });
 
     const plColor = totalFloatingPL >= 0 ? 'text-green-400' : 'text-red-500';
@@ -900,7 +906,7 @@ function renderPerformanceTab() {
         const isAllTime = period === 'All Time';
         const portfolioPerformance = isAllTime ? allTimeReturn : NaN;
         const performanceCell = isAllTime && isFinite(portfolioPerformance) ? `<td class="px-6 py-4 font-semibold ${portfolioPerformance >= 0 ? 'text-green-400' : 'text-red-500'}">${portfolioPerformance.toFixed(2)}%</td>` : `<td class="px-6 py-4 text-gray-500">N/A</td>`;
-        row.innerHTML = `<td class="px-6 py-4 font-medium">${period}</td>${performanceCell}<td class="px-6 py-4"><input type="number" class="performance-ihsg-input w-24 bg-gray-700 border border-gray-600 rounded p-1 text-right" data-period="${period}" placeholder="0.00"></td><td class="px-6 py-4 font-semibold" id="performance-diff-${period.replace(/\s+/g, '')}">-</td>`;
+        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-200">${period}</td>${performanceCell}<td class="px-6 py-4"><input type="number" class="performance-ihsg-input w-24 bg-gray-700/50 border border-gray-600 rounded p-1 text-right text-gray-200" data-period="${period}" placeholder="0.00"></td><td class="px-6 py-4 font-semibold text-gray-200" id="performance-diff-${period.replace(/\s+/g, '')}">-</td>`;
         tableBody.appendChild(row);
     });
     renderPerformanceChart();
@@ -943,7 +949,7 @@ function calculatePerformanceDifference() {
             diffCell.textContent = `${difference.toFixed(2)}%`;
         } else {
             diffCell.textContent = '-';
-            diffCell.className = `px-6 py-4 font-semibold`;
+            diffCell.className = `px-6 py-4 font-semibold text-gray-200`;
         }
      });
      renderPerformanceChart();
@@ -1163,64 +1169,6 @@ function handleSaveSimulation(isFromModal = false) {
 
 /**
  * REVISED FUNCTION
- * This function now loads the saved averaging strategy when a simulation is loaded.
- */
-function handleLoadOrDeleteSimulation(event) {
-    const target = event.target;
-    const simId = parseInt(target.dataset.id);
-    if (isNaN(simId)) return;
-
-    if (target.classList.contains('load-sim-btn')) {
-        const simToLoad = savedSimulations.find(s => s.id === simId);
-        if (simToLoad) {
-            // Load standard parameters
-            document.getElementById('stock-code').value = simToLoad.stockCode;
-            document.getElementById('initial-price').value = simToLoad.initialPrice;
-            document.getElementById('initial-lot').value = simToLoad.initialLot;
-            document.getElementById('dividend').value = simToLoad.dividend;
-            document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
-            document.getElementById('avg-levels').value = simToLoad.avgLevels;
-            document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
-            document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
-            document.getElementById('sim-reason').value = simToLoad.reason || '';
-            
-            // NEW: Load strategy parameters and update both hidden and modal inputs
-            const savedStrategy = simToLoad.avgStrategy || 'lot';
-            const savedMultiplier = simToLoad.avgMultiplier || 1;
-            
-            document.getElementById('avg-strategy').value = savedStrategy;
-            document.getElementById('avg-multiplier').value = savedMultiplier;
-            document.getElementById('modal-avg-strategy').value = savedStrategy;
-            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
-
-            calculateDashboard();
-            updateActiveSimDisplay();
-            updateSimulationReasonDisplay();
-            switchTab('simulator');
-            triggerAutoSave();
-        }
-    } else if (target.classList.contains('delete-sim-btn')) {
-        // Use custom confirmation modal for deleting simulations
-        showCustomConfirmModal(
-            'Konfirmasi Hapus Simulasi',
-            'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
-            'Hapus',
-            'Batal',
-            () => {
-                savedSimulations = savedSimulations.filter(s => s.id !== simId);
-                renderSavedSimulationsTable();
-                triggerAutoSave();
-                closeModal(deleteConfirmModal);
-            }, 
-            () => {
-                closeModal(deleteConfirmModal);
-            }
-        );
-    }
-}
-
-/**
- * REVISED FUNCTION
  * This function now displays the saved averaging strategy in the table.
  */
 function renderSavedSimulationsTable() {
@@ -1241,11 +1189,11 @@ function renderSavedSimulationsTable() {
 
         row.innerHTML = `
             <td class="px-6 py-4 font-medium text-cyan-300">${sim.stockCode.toUpperCase()}</td>
-            <td class="px-6 py-4">${formatCurrency(sim.initialPrice)}</td>
-            <td class="px-6 py-4">${sim.initialLot}</td>
-            <td class="px-6 py-4">${sim.avgDownPercent}%</td>
-            <td class="px-6 py-4">${sim.avgLevels}</td>
-            <td class="px-6 py-4">${strategyText}</td>
+            <td class="px-6 py-4 text-gray-200">${formatCurrency(sim.initialPrice)}</td>
+            <td class="px-6 py-4 text-gray-200">${sim.initialLot}</td>
+            <td class="px-6 py-4 text-gray-200">${sim.avgDownPercent}%</td>
+            <td class="px-6 py-4 text-gray-200">${sim.avgLevels}</td>
+            <td class="px-6 py-4 text-gray-200">${strategyText}</td>
             <td class="px-6 py-4 space-x-2">
                 <button class="load-sim-btn text-green-400 hover:text-green-300" data-id="${sim.id}">Muat</button>
                 <button class="delete-sim-btn text-red-500 hover:text-red-400" data-id="${sim.id}">Hapus</button>
