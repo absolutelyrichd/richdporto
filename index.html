@@ -289,63 +289,6 @@
                 position: static;
             }
         }
-
-        /* START NEW: Paginasi Style */
-        .radio-input input {
-            display: none;
-        }
-
-        .radio-input {
-            --container_width: 250px; /* Ukuran yang sedikit lebih besar */
-            position: relative;
-            display: flex;
-            align-items: center;
-            border-radius: 10px;
-            background-color: #1F2937; /* bg-gray-800 */
-            color: #fff;
-            width: var(--container_width);
-            overflow: hidden;
-            border: 2px solid #4B5563; /* bg-gray-600 */
-        }
-
-        .radio-input label {
-            width: 100%;
-            padding: 10px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
-            font-weight: 600;
-            letter-spacing: -1px;
-            font-size: 14px;
-            transition: color 0.3s ease;
-        }
-
-        .selection {
-            display: none;
-            position: absolute;
-            height: 100%;
-            width: calc(var(--container_width) / var(--total_pages));
-            z-index: 0;
-            left: 0;
-            top: 0;
-            transition: 0.15s ease;
-        }
-
-        .radio-input label:has(input:checked) {
-            color: #1F2937; /* Teks gelap agar terlihat di latar belakang sian */
-        }
-
-        .radio-input label:has(input:checked) ~ .selection {
-            background-color: #22D3EE; /* Cyan-400 */
-            display: inline-block;
-        }
-        
-        .radio-input.hidden {
-            display: none;
-        }
-        /* END NEW */
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -506,14 +449,18 @@
                                 </table>
                             </div>
                             <!-- Pagination Controls -->
-                            <!-- START NEW: Pagination Controls -->
-                            <div id="pagination-controls" class="mt-4 flex flex-col sm:flex-row items-center justify-center text-sm text-gray-400 space-y-2 sm:space-y-0">
-                                <div id="page-info" class="text-sm mr-4"></div>
-                                <div id="page-number-container" class="flex">
-                                    <!-- Dynamic pagination buttons will be inserted here by JS -->
+                            <div id="pagination-controls" class="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-400 space-y-2 sm:space-y-0">
+                                <div class="flex items-center space-x-2">
+                                    <button id="prev-page-btn" class="bg-gray-700/50 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Sebelumnya
+                                    </button>
+                                    <div id="page-number-container" class="flex space-x-2"></div>
+                                    <button id="next-page-btn" class="bg-gray-700/50 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Selanjutnya
+                                    </button>
                                 </div>
+                                <div id="page-info" class="text-sm"></div>
                             </div>
-                            <!-- END NEW -->
                         </div>
                     </div>
                     <div class="lg:col-span-1">
@@ -751,7 +698,7 @@
                 </div>
                 <div class="md:col-span-2">
                     <label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                    <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-60-rounded-lg p-2.5"></textarea>
+                    <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5"></textarea>
                 </div>
                 <div id="sell-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2 hidden">
                     <div>

@@ -124,6 +124,8 @@ const filterResetBtn = document.getElementById('filter-reset-btn');
 
 // Pagination Elements
 const paginationControls = document.getElementById('pagination-controls');
+const prevPageBtn = document.getElementById('prev-page-btn');
+const nextPageBtn = document.getElementById('next-page-btn');
 const pageInfoSpan = document.getElementById('page-info');
 const pageNumberContainer = document.getElementById('page-number-container');
 
@@ -554,7 +556,7 @@ function renderLogTable(logsToRender = []) {
         renderLogTable(logsToRender);
         return;
     } else {
-        logsForPage.forEach((log) => {
+        logsForPage.forEach((log, index) => {
             const row = document.createElement('tr');
             row.className = 'bg-gray-800 border-b border-gray-700';
             let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
@@ -582,9 +584,9 @@ function renderLogTable(logsToRender = []) {
                  // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <button class="sell-log-btn btn btn-danger text-xs py-1 px-2 rounded" data-index="${originalIndex}">Jual</button>
-                                <button class="edit-log-btn btn btn-secondary text-xs py-1 px-2 rounded" data-index="${originalIndex}">Edit</button>
-                                <button class="delete-log-btn btn btn-secondary text-xs py-1 px-2 rounded" data-index="${originalIndex}">Hapus</button>
+                                <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
                 sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
@@ -614,74 +616,32 @@ function renderLogTable(logsToRender = []) {
 // --- Pagination Logic ---
 function updatePaginationControls(totalItems) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const pageNumberContainer = document.getElementById('page-number-container');
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+    const endItem = Math.min(startItem + itemsPerPage, totalItems);
+    pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
     
-    // Clear old buttons
     pageNumberContainer.innerHTML = '';
-    
-    if (totalItems <= itemsPerPage || totalPages <= 1) {
+    if (totalPages > 1) {
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.dataset.page = i;
+            pageButton.className = `py-1 px-3 rounded-lg font-bold transition-all duration-200 
+                                     ${i === currentPage ? 'bg-cyan-600 text-white' : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300'}`;
+            pageNumberContainer.appendChild(pageButton);
+        }
+    }
+
+    // Hide pagination controls if there are no entries or only 1 page
+    if (totalItems <= itemsPerPage) {
         paginationControls.classList.add('hidden');
-        return;
     } else {
         paginationControls.classList.remove('hidden');
     }
-
-    // Set CSS custom property for total pages
-    pageNumberContainer.style.setProperty('--total_pages', totalPages);
-
-    // Create the new pagination structure
-    const radioInputDiv = document.createElement('div');
-    radioInputDiv.className = 'radio-input';
-
-    for (let i = 1; i <= totalPages; i++) {
-        const label = document.createElement('label');
-        label.className = `page-btn`;
-        label.dataset.page = i;
-        
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.name = 'page-radio';
-        input.value = `page-${i}`;
-        input.id = `page-${i}`;
-        if (i === currentPage) {
-            input.checked = true;
-        }
-
-        const span = document.createElement('span');
-        span.textContent = i;
-        
-        label.appendChild(input);
-        label.appendChild(span);
-        radioInputDiv.appendChild(label);
-    }
-    
-    const selectionSpan = document.createElement('span');
-    selectionSpan.className = 'selection';
-    radioInputDiv.appendChild(selectionSpan);
-    
-    pageNumberContainer.appendChild(radioInputDiv);
-
-    // Update page info text
-    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-    const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
-    pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
-    
-    // Update the selection indicator position
-    updateSelectionIndicator();
 }
-
-function updateSelectionIndicator() {
-    const radioInput = document.querySelector('#page-number-container .radio-input');
-    const checkedLabel = document.querySelector('#page-number-container input:checked').parentElement;
-    const selection = radioInput.querySelector('.selection');
-    
-    if (checkedLabel && selection) {
-        const checkedIndex = Array.from(radioInput.children).indexOf(checkedLabel);
-        radioInput.style.setProperty('--total_pages', radioInput.children.length - 1); // -1 for the selection span
-        selection.style.transform = `translateX(calc(var(--container_width) * ${checkedIndex} / var(--total_pages)))`;
-    }
-}
-
 
 function goToPage(pageNumber) {
     const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
@@ -691,7 +651,20 @@ function goToPage(pageNumber) {
     }
 }
 
+function goToPrevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderLogTable(filteredLogsData);
+    }
+}
 
+function goToNextPage() {
+    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderLogTable(filteredLogsData);
+    }
+}
 // --- End Pagination Logic ---
 
 
@@ -1195,6 +1168,64 @@ function handleSaveSimulation(isFromModal = false) {
 
 /**
  * REVISED FUNCTION
+ * This function now loads the saved averaging strategy when a simulation is loaded.
+ */
+function handleLoadOrDeleteSimulation(event) {
+    const target = event.target;
+    const simId = parseInt(target.dataset.id);
+    if (isNaN(simId)) return;
+
+    if (target.classList.contains('load-sim-btn')) {
+        const simToLoad = savedSimulations.find(s => s.id === simId);
+        if (simToLoad) {
+            // Load standard parameters
+            document.getElementById('stock-code').value = simToLoad.stockCode;
+            document.getElementById('initial-price').value = simToLoad.initialPrice;
+            document.getElementById('initial-lot').value = simToLoad.initialLot;
+            document.getElementById('dividend').value = simToLoad.dividend;
+            document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
+            document.getElementById('avg-levels').value = simToLoad.avgLevels;
+            document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
+            document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
+            document.getElementById('sim-reason').value = simToLoad.reason || '';
+            
+            // NEW: Load strategy parameters and update both hidden and modal inputs
+            const savedStrategy = simToLoad.avgStrategy || 'lot';
+            const savedMultiplier = simToLoad.avgMultiplier || 1;
+            
+            document.getElementById('avg-strategy').value = savedStrategy;
+            document.getElementById('avg-multiplier').value = savedMultiplier;
+            document.getElementById('modal-avg-strategy').value = savedStrategy;
+            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
+
+            calculateDashboard();
+            updateActiveSimDisplay();
+            updateSimulationReasonDisplay();
+            switchTab('simulator');
+            triggerAutoSave();
+        }
+    } else if (target.classList.contains('delete-sim-btn')) {
+        // Use custom confirmation modal for deleting simulations
+        showCustomConfirmModal(
+            'Konfirmasi Hapus Simulasi',
+            'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
+            'Hapus',
+            'Batal',
+            () => {
+                savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                renderSavedSimulationsTable();
+                triggerAutoSave();
+                closeModal(deleteConfirmModal);
+            }, 
+            () => {
+                closeModal(deleteConfirmModal);
+            }
+        );
+    }
+}
+
+/**
+ * REVISED FUNCTION
  * This function now displays the saved averaging strategy in the table.
  */
 function renderSavedSimulationsTable() {
@@ -1502,13 +1533,12 @@ filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFil
 filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
 
 // New listeners for Pagination
-pageNumberContainer.addEventListener('change', (event) => {
-    if (event.target.type === 'radio' && event.target.name === 'page-radio') {
-        const page = parseInt(event.target.dataset.page);
-        if (page) {
-            goToPage(page);
-            updateSelectionIndicator();
-        }
+prevPageBtn.addEventListener('click', goToPrevPage);
+nextPageBtn.addEventListener('click', goToNextPage);
+pageNumberContainer.addEventListener('click', (event) => {
+    const page = event.target.dataset.page;
+    if (page) {
+        goToPage(parseInt(page));
     }
 });
 
