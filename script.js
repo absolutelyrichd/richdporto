@@ -44,6 +44,12 @@ let deleteLogIndexToConfirm = -1; // New variable to store the index for deletio
 let defaultFeeBeli = 0.11; // Default value for buy fee
 let defaultFeeJual = 0.11; // Default value for sell fee
 
+// --- Paginasi ---
+const itemsPerPage = 10;
+let currentPage = 1;
+let filteredLogsData = []; // Menyimpan data yang sudah difilter
+// ---
+
 // --- Sort state for portfolio log ---
 let sortState = {
     column: 'date',
@@ -116,6 +122,11 @@ const filterStatusSelect = document.getElementById('filter-status');
 const filterApplyBtn = document.getElementById('filter-apply-btn');
 const filterResetBtn = document.getElementById('filter-reset-btn');
 
+// Paginasi Elements
+const paginationControls = document.getElementById('pagination-controls');
+const prevPageBtn = document.getElementById('prev-page-btn');
+const nextPageBtn = document.getElementById('next-page-btn');
+const pageInfoSpan = document.getElementById('page-info');
 
 // Custom Confirmation Modal Elements
 const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
@@ -376,6 +387,7 @@ function resetAllData() {
 }
 
 function refreshAllApplicationData() {
+    currentPage = 1; // Reset halaman ke 1 setiap kali data disegarkan
     applyLogFiltersAndSort(); // Apply filters and sort on refresh
     renderFinancialSummaries();
     renderSavedSimulationsTable();
@@ -526,64 +538,114 @@ function calculateDashboard() {
 
 
 // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
-function renderLogTable(logsToRender = portfolioLog) {
+function renderLogTable(logsToRender = []) {
     const logTableBody = document.getElementById('log-table-body');
     logTableBody.innerHTML = '';
     
+    // Tentukan data yang akan ditampilkan berdasarkan halaman saat ini
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const logsForPage = logsToRender.slice(startIndex, endIndex);
+
     if (logsToRender.length === 0) { 
         logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; 
-        return; 
+    } else if (logsForPage.length === 0) {
+        // Jika halaman saat ini tidak memiliki data, pindah ke halaman terakhir
+        currentPage = Math.ceil(logsToRender.length / itemsPerPage);
+        renderLogTable(logsToRender);
+        return;
+    } else {
+        logsForPage.forEach((log, index) => {
+            const row = document.createElement('tr');
+            row.className = 'bg-gray-800 border-b border-gray-700';
+            let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
+            
+            // Calculate realized P/L if sold
+            const realizedPL = log.sellPrice
+                ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
+                : null;
+            
+            if (log.sellPrice) {
+                const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
+                plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
+                statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
+                // Gunakan index asli dari array `portfolioLog` untuk mengedit/menghapus
+                const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
+                actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                              </td>`;
+                sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
+                feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
+            } else {
+                plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
+                 // Gunakan index asli dari array `portfolioLog` untuk mengedit/menghapus
+                const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
+                actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                              </td>`;
+                sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
+            }
+            
+            row.innerHTML = `
+                <td class="px-6 py-4">${log.date}</td>
+                <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
+                <td class="px-6 py-4">${formatCurrency(log.price)}</td>
+                <td class="px-6 py-4">${log.lot}</td>
+                <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
+                ${feeJualDisplay}
+                <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
+                ${statusHtml}
+                ${sellDateHtml}
+                ${plHtml}
+                ${actionHtml}
+            `;
+            logTableBody.appendChild(row);
+        });
     }
-    
-    logsToRender.forEach((log, index) => {
-        const row = document.createElement('tr');
-        row.className = 'bg-gray-800 border-b border-gray-700';
-        let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
-        
-        // Calculate realized P/L if sold
-        const realizedPL = log.sellPrice
-            ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
-            : null;
-        
-        if (log.sellPrice) {
-            const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
-            plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
-            statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
-            actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                            <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
-                            <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
-                          </td>`;
-            sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
-            feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
-        } else {
-            plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-            statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
-            actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                            <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Jual</button>
-                            <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Edit</button>
-                            <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${portfolioLog.indexOf(log)}">Hapus</button>
-                          </td>`;
-            sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-            feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
-        }
-        
-        row.innerHTML = `
-            <td class="px-6 py-4">${log.date}</td>
-            <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
-            <td class="px-6 py-4">${formatCurrency(log.price)}</td>
-            <td class="px-6 py-4">${log.lot}</td>
-            <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
-            ${feeJualDisplay}
-            <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
-            ${statusHtml}
-            ${sellDateHtml}
-            ${plHtml}
-            ${actionHtml}
-        `;
-        logTableBody.appendChild(row);
-    });
+
+    updatePaginationControls(logsToRender.length);
     updateSortIcons();
 }
+
+// --- Paginasi Logic ---
+function updatePaginationControls(totalItems) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+    const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
+    pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
+    
+    // Sembunyikan kontrol paginasi jika tidak ada entri atau hanya 1 halaman
+    if (totalItems <= itemsPerPage) {
+        paginationControls.classList.add('hidden');
+    } else {
+        paginationControls.classList.remove('hidden');
+    }
+}
+
+function goToPrevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderLogTable(filteredLogsData);
+    }
+}
+
+function goToNextPage() {
+    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderLogTable(filteredLogsData);
+    }
+}
+// --- End Paginasi Logic ---
+
 
 function renderFinancialSummaries() {
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
@@ -1204,6 +1266,7 @@ function handleLogSort(event) {
         sortState.column = null;
     }
     
+    currentPage = 1; // Kembali ke halaman pertama saat mengurutkan
     applyLogFiltersAndSort();
 }
 
@@ -1223,7 +1286,7 @@ function applyLogFiltersAndSort() {
     const reason = filterReasonInput.value.toLowerCase();
     const status = filterStatusSelect.value;
     
-    let filteredLogs = portfolioLog.filter(log => {
+    let filtered = portfolioLog.filter(log => {
         const logDate = log.date;
         const logCode = log.code.toLowerCase();
         const logReason = log.reason ? log.reason.toLowerCase() : '';
@@ -1247,7 +1310,7 @@ function applyLogFiltersAndSort() {
     
     // Apply sorting after filtering
     if (sortState.column) {
-        filteredLogs.sort((a, b) => {
+        filtered.sort((a, b) => {
             let aValue, bValue;
             
             // Handle specific sorting logic for each column
@@ -1293,7 +1356,8 @@ function applyLogFiltersAndSort() {
         });
     }
 
-    renderLogTable(filteredLogs);
+    filteredLogsData = filtered; // Simpan data yang sudah difilter dan diurutkan ke variabel global
+    renderLogTable(filteredLogsData);
 }
 
 function resetLogFilters() {
@@ -1303,6 +1367,7 @@ function resetLogFilters() {
     filterReasonInput.value = '';
     filterStatusSelect.value = 'all';
     sortState = { column: 'date', direction: 'desc' }; // Reset sort state
+    currentPage = 1; // Reset halaman ke 1
     applyLogFiltersAndSort(); // Re-render with all logs
 }
 
@@ -1369,20 +1434,20 @@ document.getElementById('save-simulation-from-modal-btn').addEventListener('clic
 document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
 
 document.getElementById('log-table-body').addEventListener('click', (event) => {
-    if (event.target.classList.contains('delete-log-btn')) {
-        // Find the actual index in portfolioLog array
-        const logIndex = parseInt(event.target.dataset.index);
+    // Cari elemen tombol terdekat untuk memastikan kita mengklik tombol, bukan baris tabel
+    const targetButton = event.target.closest('button');
+    if (!targetButton) return;
+    
+    const logIndex = parseInt(targetButton.dataset.index);
+
+    if (targetButton.classList.contains('delete-log-btn')) {
         handleDeleteLog(logIndex); // Call the new handler
-    } else if (event.target.classList.contains('sell-log-btn')) {
-        // Find the actual index in portfolioLog array
-        const logIndex = parseInt(event.target.dataset.index);
+    } else if (targetButton.classList.contains('sell-log-btn')) {
         document.getElementById('sell-log-index').value = logIndex;
         document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default Fee Jual from settings
         openModal(sellModal);
-    } else if (event.target.classList.contains('edit-log-btn')) { // New event listener for edit button
-        // Find the actual index in portfolioLog array
-        const logIndex = parseInt(event.target.dataset.index);
+    } else if (targetButton.classList.contains('edit-log-btn')) { // New event listener for edit button
         handleEditLog(logIndex);
     }
 });
@@ -1440,11 +1505,15 @@ saveSettingsBtn.addEventListener('click', saveSettings);
 // Event listeners for Filter section
 filterApplyBtn.addEventListener('click', applyLogFiltersAndSort);
 filterResetBtn.addEventListener('click', resetLogFilters);
-filterDateFromInput.addEventListener('change', applyLogFiltersAndSort);
-filterDateToInput.addEventListener('change', applyLogFiltersAndSort);
-filterStockCodeInput.addEventListener('input', applyLogFiltersAndSort); // Apply filter on input for immediate feedback
-filterReasonInput.addEventListener('input', applyLogFiltersAndSort); // Apply filter on input for immediate feedback
-filterStatusSelect.addEventListener('change', applyLogFiltersAndSort);
+filterDateFromInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+filterDateToInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
+filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
+
+// New listeners for Paginasi
+prevPageBtn.addEventListener('click', goToPrevPage);
+nextPageBtn.addEventListener('click', goToNextPage);
 
 
 // New listeners for Auth, Sync, and Backup
