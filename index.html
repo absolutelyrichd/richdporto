@@ -249,61 +249,6 @@
             background-color: #6b7280; /* Tailwind: bg-gray-500 */
         }
         
-        /* --- CSS BARU untuk Form --- */
-        .input-group {
-            position: relative;
-        }
-
-        .input {
-            border: solid 1.5px #4B5563; /* border-gray-600 */
-            border-radius: 1rem;
-            background: none;
-            padding: 1rem;
-            font-size: 1rem;
-            color: #f5f5f5; /* white */
-            transition: border 150ms cubic-bezier(0.4,0,0.2,1);
-            width: 100%;
-        }
-
-        .user-label {
-            position: absolute;
-            left: 15px;
-            color: #9CA3AF; /* gray-400 */
-            pointer-events: none;
-            transform: translateY(1rem);
-            transition: 150ms cubic-bezier(0.4,0,0.2,1);
-        }
-
-        .input:focus, input:valid {
-            outline: none;
-            border: 1.5px solid #22D3EE; /* cyan-400 */
-        }
-
-        .input:focus ~ .user-label, input:valid ~ .user-label {
-            transform: translateY(-50%) scale(0.8);
-            background-color: #111827; /* bg-gray-900 */
-            padding: 0 .2em;
-            color: #22D3EE; /* cyan-400 */
-        }
-
-        /* Styling untuk textarea */
-        textarea.input {
-            resize: vertical;
-        }
-
-        /* Styling untuk select */
-        select.input {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-        }
-        /* --- Akhir CSS BARU --- */
-
         /* Penyesuaian untuk tampilan mobile */
         @media (max-width: 767px) {
             .container {
@@ -344,6 +289,44 @@
                 position: static;
             }
         }
+
+        /* Gaya baru untuk input */
+        .input-group {
+            position: relative;
+        }
+
+        .input {
+            border: solid 1.5px #4b5563; /* Warna border disesuaikan dengan tema gelap */
+            border-radius: 1rem;
+            background: none;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #f5f5f5;
+            transition: border 150ms cubic-bezier(0.4,0,0.2,1);
+            width: 100%;
+        }
+
+        .user-label {
+            position: absolute;
+            left: 15px;
+            color: #9ca3af; /* Warna label disesuaikan dengan tema gelap */
+            pointer-events: none;
+            transform: translateY(1rem);
+            transition: 150ms cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .input:focus, .input:valid {
+            outline: none;
+            border: 1.5px solid #22d3ee; /* Warna border focus disesuaikan dengan warna tab aktif */
+        }
+
+        .input:focus ~ .user-label, .input:valid ~ .user-label {
+            transform: translateY(-50%) scale(0.8);
+            background-color: #1f2937; /* Latar belakang label saat fokus */
+            padding: 0 .2em;
+            color: #22d3ee; /* Warna label saat fokus disesuaikan */
+        }
+        /* Akhir gaya baru */
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -447,35 +430,29 @@
                         <div class="card mb-8">
                             <h2 class="text-2xl font-semibold mb-4">Filter Riwayat Transaksi</h2>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <!-- Filter Tanggal Dari -->
                                 <div class="input-group">
-                                    <input required="" type="date" id="filter-date-from" class="input">
-                                    <label class="user-label" for="filter-date-from">Tanggal Dari</label>
+                                    <input type="date" id="filter-date-from" class="input">
+                                    <label class="user-label">Tanggal Dari</label>
                                 </div>
-                                <!-- Filter Tanggal Sampai -->
                                 <div class="input-group">
-                                    <input required="" type="date" id="filter-date-to" class="input">
-                                    <label class="user-label" for="filter-date-to">Tanggal Sampai</label>
+                                    <input type="date" id="filter-date-to" class="input">
+                                    <label class="user-label">Tanggal Sampai</label>
                                 </div>
-                                <!-- Filter Kode Saham -->
                                 <div class="input-group">
-                                    <input required="" type="text" id="filter-stock-code" class="input" placeholder=" ">
-                                    <label class="user-label" for="filter-stock-code">Kode Saham</label>
+                                    <input type="text" id="filter-stock-code" class="input" autocomplete="off">
+                                    <label class="user-label">Kode Saham</label>
                                 </div>
-                                <!-- Filter Status -->
-                                <div class="input-group">
-                                    <select required="" id="filter-status" class="input">
-                                        <option value="" disabled selected>Pilih Status</option>
+                                <div>
+                                    <label for="filter-status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
+                                    <select id="filter-status" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
                                         <option value="all">Semua</option>
                                         <option value="open">Open</option>
                                         <option value="closed">Closed</option>
                                     </select>
-                                    <label class="user-label" for="filter-status">Status</label>
                                 </div>
-                                <!-- Filter Alasan Pembelian -->
-                                <div class="input-group md:col-span-2 lg:col-span-4">
-                                    <input required="" type="text" id="filter-reason" class="input" placeholder=" ">
-                                    <label class="user-label" for="filter-reason">Alasan Pembelian</label>
+                                <div class="md:col-span-2 lg:col-span-4 input-group">
+                                    <input type="text" id="filter-reason" class="input" autocomplete="off">
+                                    <label class="user-label">Alasan Pembelian</label>
                                 </div>
                                 <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
                                     <button id="filter-reset-btn" class="btn btn-secondary">Reset Filter</button>
@@ -529,8 +506,8 @@
                             <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3">Ringkasan Portofolio</h2>
                             <div id="equity-monitoring" class="mb-4">
                                 <div class="input-group">
-                                    <input required="" type="number" id="initial-equity" value="100000000" class="input" placeholder=" ">
-                                    <label class="user-label" for="initial-equity">Modal Awal</label>
+                                    <input type="number" id="initial-equity" value="100000000" class="input">
+                                    <label class="user-label">Modal Awal</label>
                                 </div>
                                 <div class="p-4 bg-gray-900/30 rounded-lg text-center mt-4">
                                     <h4 class="text-gray-300 font-medium">Equitas / Cash Tersedia</h4>
@@ -628,15 +605,13 @@
                         <h2 class="text-2xl font-semibold mb-4">Pengaturan Default</h2>
                         <p class="text-gray-400 mb-6">Atur nilai fee default untuk transaksi beli dan jual.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Fee Beli -->
                             <div class="input-group">
-                                <input required="" type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="input" placeholder=" ">
-                                <label class="user-label" for="default-fee-beli">Default Fee Beli (%)</label>
+                                <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="input">
+                                <label class="user-label">Default Fee Beli (%)</label>
                             </div>
-                            <!-- Fee Jual -->
                             <div class="input-group">
-                                <input required="" type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input" placeholder=" ">
-                                <label class="user-label" for="default-fee-jual">Default Fee Jual (%)</label>
+                                <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input">
+                                <label class="user-label">Default Fee Jual (%)</label>
                             </div>
                         </div>
                         <div class="flex justify-end mt-6">
@@ -674,68 +649,56 @@
                     <textarea id="sim-reason" class="hidden"></textarea>
                     
                     <!-- Visible inputs in modal -->
-                    <!-- Kode Saham -->
                     <div class="input-group">
-                        <input required="" type="text" id="modal-stock-code" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-stock-code">Kode Saham</label>
+                        <input type="text" id="modal-stock-code" class="input" autocomplete="off" required>
+                        <label class="user-label">Kode Saham</label>
                     </div>
-                    <!-- Harga Entry Awal -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-initial-price" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-initial-price">Harga Entry Awal (Rp)</label>
+                        <input type="number" id="modal-initial-price" class="input" required>
+                        <label class="user-label">Harga Entry Awal (Rp)</label>
                     </div>
-                    <!-- Lot Entry Awal -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-initial-lot" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-initial-lot">Lot Entry Awal</label>
+                        <input type="number" id="modal-initial-lot" class="input" required>
+                        <label class="user-label">Lot Entry Awal</label>
                     </div>
-                    <!-- Dividen per Lembar -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-dividend" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-dividend">Dividen per Lembar (Rp)</label>
+                        <input type="number" id="modal-dividend" class="input">
+                        <label class="user-label">Dividen per Lembar (Rp)</label>
                     </div>
-                    <!-- Avg. Down Setiap Turun -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-avg-down-percent" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-avg-down-percent">Avg. Down Setiap Turun (%)</label>
+                        <input type="number" id="modal-avg-down-percent" class="input">
+                        <label class="user-label">Avg. Down Setiap Turun (%)</label>
                     </div>
-                    <!-- Jumlah Tingkat Averaging -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-avg-levels" min="1" max="10" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-avg-levels">Jumlah Tingkat Averaging</label>
+                        <input type="number" id="modal-avg-levels" min="1" max="10" class="input">
+                        <label class="user-label">Jumlah Tingkat Averaging</label>
                     </div>
 
                     <!-- NEW: Averaging Strategy Controls -->
-                    <!-- Strategi Averaging -->
-                    <div class="input-group">
-                        <select required="" id="modal-avg-strategy" class="input">
-                            <option value="" disabled selected>Pilih Strategi</option>
-                            <option value="lot">Berdasarkan Pengali Lot</option>
+                    <div>
+                        <label for="modal-avg-strategy" class="block text-sm font-medium text-gray-300 mb-1">Strategi Averaging</label>
+                        <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-300 focus:ring-cyan-500 focus:border-cyan-500">
+                            <option value="lot" selected>Berdasarkan Pengali Lot</option>
                             <option value="amount">Berdasarkan Pengali Total Beli</option>
                         </select>
-                        <label class="user-label" for="modal-avg-strategy">Strategi Averaging</label>
                     </div>
-                    <!-- Pengali -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-avg-multiplier" value="1" step="0.1" min="0" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-avg-multiplier">Pengali (Contoh: 1, 1.5, 2)</label>
+                        <input type="number" id="modal-avg-multiplier" value="1" step="0.1" min="0" class="input">
+                        <label class="user-label">Pengali (Contoh: 1, 1.5, 2)</label>
                     </div>
                     <!-- END NEW -->
 
-                    <!-- Target Profit 1 -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-tp1-percent" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-tp1-percent">Target Profit 1 (%)</label>
+                        <input type="number" id="modal-tp1-percent" class="input">
+                        <label class="user-label">Target Profit 1 (%)</label>
                     </div>
-                    <!-- Target Profit 2 -->
                     <div class="input-group">
-                        <input required="" type="number" id="modal-tp2-percent" class="input" placeholder=" ">
-                        <label class="user-label" for="modal-tp2-percent">Target Profit 2 (%)</label>
+                        <input type="number" id="modal-tp2-percent" class="input">
+                        <label class="user-label">Target Profit 2 (%)</label>
                     </div>
-                    <!-- Alasan Simulasi -->
-                    <div class="input-group md:col-span-2">
-                        <textarea required="" id="modal-sim-reason" rows="3" class="input" placeholder=" "></textarea>
-                        <label class="user-label" for="modal-sim-reason">Alasan Simulasi / Pembelian</label>
+                    <div class="md:col-span-2 input-group">
+                        <textarea id="modal-sim-reason" rows="3" class="input" style="resize: vertical;"></textarea>
+                        <label class="user-label">Alasan Simulasi / Pembelian</label>
                     </div>
                 </div>
                 <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -751,51 +714,42 @@
             <h3 class="text-2xl font-semibold mb-6" id="log-modal-title">Tambah Catatan Transaksi</h3>
             <form id="log-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input type="hidden" id="log-edit-index">
-                <!-- Kode Saham -->
                 <div class="input-group">
-                    <input required="" type="text" id="log-stock-code" class="input" placeholder=" ">
-                    <label class="user-label" for="log-stock-code">Kode Saham</label>
+                    <input type="text" id="log-stock-code" class="input" autocomplete="off" required>
+                    <label class="user-label">Kode Saham</label>
                 </div>
-                <!-- Tanggal Beli -->
                 <div class="input-group">
-                    <input required="" type="date" id="log-buy-date" class="input" placeholder=" ">
-                    <label class="user-label" for="log-buy-date">Tanggal Beli</label>
+                    <input type="date" id="log-buy-date" class="input" required>
+                    <label class="user-label">Tanggal Beli</label>
                 </div>
-                <!-- Harga Beli -->
                 <div class="input-group">
-                    <input required="" type="number" id="log-buy-price" class="input" placeholder=" ">
-                    <label class="user-label" for="log-buy-price">Harga Beli (per lembar)</label>
+                    <input type="number" id="log-buy-price" class="input" required>
+                    <label class="user-label">Harga Beli (per lembar)</label>
                 </div>
-                <!-- Jumlah Lot -->
                 <div class="input-group">
-                    <input required="" type="number" id="log-buy-lot" class="input" placeholder=" ">
-                    <label class="user-label" for="log-buy-lot">Jumlah Lot</label>
+                    <input type="number" id="log-buy-lot" class="input" required>
+                    <label class="user-label">Jumlah Lot</label>
                 </div>
-                <!-- Fee Beli -->
                 <div class="input-group">
-                    <input required="" type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="input" placeholder=" ">
-                    <label class="user-label" for="log-fee-beli">Fee Beli (%)</label>
+                    <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="input">
+                    <label class="user-label">Fee Beli (%)</label>
                 </div>
-                <!-- Alasan Pembelian -->
-                <div class="input-group md:col-span-2">
-                    <textarea required="" id="log-reason" rows="3" class="input" placeholder=" "></textarea>
-                    <label class="user-label" for="log-reason">Alasan Pembelian</label>
+                <div class="md:col-span-2 input-group">
+                    <textarea id="log-reason" rows="3" class="input" style="resize: vertical;"></textarea>
+                    <label class="user-label">Alasan Pembelian</label>
                 </div>
                 <div id="sell-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2 hidden">
-                    <!-- Harga Jual -->
                     <div class="input-group">
-                        <input required="" type="number" id="log-sell-price" class="input" placeholder=" ">
-                        <label class="user-label" for="log-sell-price">Harga Jual (per lembar)</label>
+                        <input type="number" id="log-sell-price" class="input">
+                        <label class="user-label">Harga Jual (per lembar)</label>
                     </div>
-                    <!-- Tanggal Jual -->
                     <div class="input-group">
-                        <input required="" type="date" id="log-sell-date" class="input" placeholder=" ">
-                        <label class="user-label" for="log-sell-date">Tanggal Jual</label>
+                        <input type="date" id="log-sell-date" class="input">
+                        <label class="user-label">Tanggal Jual</label>
                     </div>
-                    <!-- Fee Jual -->
                     <div class="input-group">
-                        <input required="" type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input" placeholder=" ">
-                        <label class="user-label" for="log-fee-jual">Fee Jual (%)</label>
+                        <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input">
+                        <label class="user-label">Fee Jual (%)</label>
                     </div>
                 </div>
                 <div class="md:col-span-2 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -810,20 +764,23 @@
             <h3 class="text-2xl font-semibold mb-4">Realisasi Posisi</h3>
             <form id="sell-form">
                 <input type="hidden" id="sell-log-index">
-                <!-- Harga Jual -->
-                <div class="input-group mb-4">
-                    <input required="" type="number" id="sell-price" class="input" placeholder=" ">
-                    <label class="user-label" for="sell-price">Harga Jual (per lembar)</label>
+                <div class="mb-4">
+                    <div class="input-group">
+                        <input type="number" id="sell-price" class="input" required>
+                        <label class="user-label">Harga Jual (per lembar)</label>
+                    </div>
                 </div>
-                <!-- Fee Jual -->
-                <div class="input-group mb-4">
-                    <input required="" type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input" placeholder=" ">
-                    <label class="user-label" for="sell-fee-jual">Fee Jual (%)</label>
+                <div class="mb-4">
+                    <div class="input-group">
+                        <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="input">
+                        <label class="user-label">Fee Jual (%)</label>
+                    </div>
                 </div>
-                <!-- Tanggal Jual -->
-                <div class="input-group mb-6">
-                    <input required="" type="date" id="sell-date" class="input" placeholder=" ">
-                    <label class="user-label" for="sell-date">Tanggal Jual</label>
+                <div class="mb-6">
+                    <div class="input-group">
+                        <input type="date" id="sell-date" class="input" required>
+                        <label class="user-label">Tanggal Jual</label>
+                    </div>
                 </div>
                 <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                     <button type="button" id="cancel-sell-btn" class="btn btn-secondary">Batal</button>
