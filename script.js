@@ -139,7 +139,7 @@ const customCancelBtn = document.getElementById('cancel-delete-btn');
 const tabNavWrapper = document.getElementById('tab-nav-wrapper');
 let tabNavOffsetTop;
 
-// --- DOM Element for Back to Top Button ---
+// --- Back to Top Elements ---
 const backToTopBtn = document.getElementById('back-to-top-btn');
 
 // --- HELPER FUNCTIONS ---
@@ -1171,6 +1171,64 @@ function handleSaveSimulation(isFromModal = false) {
 
 /**
  * REVISED FUNCTION
+ * This function now loads the saved averaging strategy when a simulation is loaded.
+ */
+function handleLoadOrDeleteSimulation(event) {
+    const target = event.target;
+    const simId = parseInt(target.dataset.id);
+    if (isNaN(simId)) return;
+
+    if (target.classList.contains('load-sim-btn')) {
+        const simToLoad = savedSimulations.find(s => s.id === simId);
+        if (simToLoad) {
+            // Load standard parameters
+            document.getElementById('stock-code').value = simToLoad.stockCode;
+            document.getElementById('initial-price').value = simToLoad.initialPrice;
+            document.getElementById('initial-lot').value = simToLoad.initialLot;
+            document.getElementById('dividend').value = simToLoad.dividend;
+            document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
+            document.getElementById('avg-levels').value = simToLoad.avgLevels;
+            document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
+            document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
+            document.getElementById('sim-reason').value = simToLoad.reason || '';
+            
+            // NEW: Load strategy parameters and update both hidden and modal inputs
+            const savedStrategy = simToLoad.avgStrategy || 'lot';
+            const savedMultiplier = simToLoad.avgMultiplier || 1;
+            
+            document.getElementById('avg-strategy').value = savedStrategy;
+            document.getElementById('avg-multiplier').value = savedMultiplier;
+            document.getElementById('modal-avg-strategy').value = savedStrategy;
+            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
+
+            calculateDashboard();
+            updateActiveSimDisplay();
+            updateSimulationReasonDisplay();
+            switchTab('simulator');
+            triggerAutoSave();
+        }
+    } else if (target.classList.contains('delete-sim-btn')) {
+        // Use custom confirmation modal for deleting simulations
+        showCustomConfirmModal(
+            'Konfirmasi Hapus Simulasi',
+            'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
+            'Hapus',
+            'Batal',
+            () => {
+                savedSimulations = savedSimulations.filter(s => s.id !== simId);
+                renderSavedSimulationsTable();
+                triggerAutoSave();
+                closeModal(deleteConfirmModal);
+            }, 
+            () => {
+                closeModal(deleteConfirmModal);
+            }
+        );
+    }
+}
+
+/**
+ * REVISED FUNCTION
  * This function now displays the saved averaging strategy in the table.
  */
 function renderSavedSimulationsTable() {
@@ -1351,22 +1409,22 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// --- Back to Top button logic ---
-function toggleBackToTopButton() {
-    if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+// --- Back to Top Logic ---
+window.addEventListener('scroll', () => {
+    if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
         backToTopBtn.classList.add('show');
     } else {
         backToTopBtn.classList.remove('show');
     }
-}
+});
 
-function scrollToTop() {
+backToTopBtn.addEventListener('click', () => {
     window.scrollTo({
         top: 0,
         behavior: 'smooth'
     });
-}
-
+});
+// --- End Back to Top Logic ---
 
 // --- EVENT LISTENERS ---
 // The following event listener for the removed profit calculator form is now deleted.
@@ -1532,7 +1590,3 @@ window.addEventListener('load', () => {
     refreshAllApplicationData();
     switchTab('simulator');
 });
-
-// NEW: Back to Top button listeners
-window.addEventListener('scroll', toggleBackToTopButton);
-backToTopBtn.addEventListener('click', scrollToTop);
