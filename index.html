@@ -367,15 +367,15 @@
         </header>
 
         <!-- Container untuk Navigasi Tab -->
-        <!-- Perubahan di sini: Mengubah kelas dari sticky menjadi penampung baru -->
         <div id="tab-nav-wrapper" class="default-state">
-            <div class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
-                <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
-                <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
-                <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
-                <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
-                <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Cadangkan / Pulihkan</button>
-                <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Pengaturan</button>
+            <!-- Menambahkan data-tab-name untuk Event Delegation -->
+            <div id="tab-nav-container" class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
+                <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="simulator">Kalkulator & Skenario</button>
+                <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="log">Catatan Portofolio</button>
+                <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="saved">Simulasi Tersimpan</button>
+                <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="performance">Performa</button>
+                <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="backup">Cadangkan / Pulihkan</button>
+                <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200" data-tab-name="settings">Pengaturan</button>
             </div>
         </div>
         <!-- Akhir Perubahan -->
