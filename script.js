@@ -127,7 +127,6 @@ const paginationControls = document.getElementById('pagination-controls');
 const prevPageBtn = document.getElementById('prev-page-btn');
 const nextPageBtn = document.getElementById('next-page-btn');
 const pageInfoSpan = document.getElementById('page-info');
-const pageNumberContainer = document.getElementById('page-number-container');
 
 // Custom Confirmation Modal Elements
 const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
@@ -620,34 +619,14 @@ function updatePaginationControls(totalItems) {
     nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
 
     const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-    const endItem = Math.min(startItem + itemsPerPage, totalItems);
+    const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
     pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
     
-    pageNumberContainer.innerHTML = '';
-    if (totalPages > 1) {
-        for (let i = 1; i <= totalPages; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.dataset.page = i;
-            pageButton.className = `py-1 px-3 rounded-lg font-bold transition-all duration-200 
-                                     ${i === currentPage ? 'bg-cyan-600 text-white' : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300'}`;
-            pageNumberContainer.appendChild(pageButton);
-        }
-    }
-
     // Sembunyikan kontrol paginasi jika tidak ada entri atau hanya 1 halaman
     if (totalItems <= itemsPerPage) {
         paginationControls.classList.add('hidden');
     } else {
         paginationControls.classList.remove('hidden');
-    }
-}
-
-function goToPage(pageNumber) {
-    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-        currentPage = pageNumber;
-        renderLogTable(filteredLogsData);
     }
 }
 
@@ -1535,12 +1514,6 @@ filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogF
 // New listeners for Paginasi
 prevPageBtn.addEventListener('click', goToPrevPage);
 nextPageBtn.addEventListener('click', goToNextPage);
-pageNumberContainer.addEventListener('click', (event) => {
-    const page = event.target.dataset.page;
-    if (page) {
-        goToPage(parseInt(page));
-    }
-});
 
 
 // New listeners for Auth, Sync, and Backup
