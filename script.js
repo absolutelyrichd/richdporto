@@ -1419,10 +1419,7 @@ document.getElementById('initial-equity').addEventListener('input', () => {
 
 document.getElementById('open-add-log-modal-btn').addEventListener('click', () => {
     logModalTitle.textContent = 'Tambah Catatan Transaksi';
-    // Perbarui teks tombol di sini
-    submitLogBtn.querySelector('.text').textContent = 'Tambah';
-    submitLogBtn.querySelector('.arr-1').innerHTML = '<path d="M5 12h14"/><path d="M12 5v14"/>';
-    submitLogBtn.querySelector('.arr-2').innerHTML = '<path d="M5 12h14"/><path d="M12 5v14"/>';
+    submitLogBtn.textContent = 'Tambah';
     logEditIndexInput.value = ''; // Clear edit index
     logForm.reset(); // Clear form fields
     document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
