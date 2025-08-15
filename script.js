@@ -93,9 +93,9 @@ const logoutBtn = document.getElementById('logout-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
-// NEW: Elemen toggle
-const loginToggleContainer = document.getElementById('login-toggle-container');
+const loggedOutUi = document.getElementById('logged-out-ui');
 const loginToggleInput = document.getElementById('toggle');
+const loginToggleContainer = document.getElementById('login-toggle-container');
 
 
 // Backup Elements
@@ -226,7 +226,7 @@ function updateUIForAuthState(user) {
     currentUser = user;
     if (user) {
         // Jika pengguna login
-        loginBtn.classList.add('hidden'); // Sembunyikan tombol login
+        loggedOutUi.classList.add('hidden'); // Sembunyikan tombol login
         loginToggleContainer.classList.remove('hidden'); // Tampilkan toggle
         userInfoDiv.classList.remove('hidden'); // Tampilkan info pengguna
         userInfoDiv.classList.add('flex');
@@ -235,7 +235,7 @@ function updateUIForAuthState(user) {
         loginToggleInput.disabled = true; // Nonaktifkan toggle saat sudah login
     } else {
         // Jika pengguna logout
-        loginBtn.classList.remove('hidden'); // Tampilkan tombol login
+        loggedOutUi.classList.remove('hidden'); // Tampilkan tombol login
         loginToggleContainer.classList.add('hidden'); // Sembunyikan toggle
         userInfoDiv.classList.add('hidden'); // Sembunyikan info pengguna
         userInfoDiv.classList.remove('flex');
@@ -1560,8 +1560,6 @@ loginToggleInput.addEventListener('change', (event) => {
 });
 
 // New listeners for Auth, Sync, and Backup
-loginBtn.addEventListener('click', handleGoogleLogin);
-logoutBtn.addEventListener('click', handleLogout);
 downloadJsonBtn.addEventListener('click', downloadJSON);
 uploadJsonInput.addEventListener('change', handleFileUpload);
 
