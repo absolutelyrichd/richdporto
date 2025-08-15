@@ -406,11 +406,11 @@ function updateActiveSimDisplay() {
 
     // Perubahan di sini: Mengubah kelas warna untuk nilai-nilai dinamis agar sama dengan label
     displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-gray-400">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> <span class="text-gray-400">${formatCurrency(document.getElementById('initial-price').value)}</span></div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> <span class="text-gray-400">${document.getElementById('initial-lot').value}</span></div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> <span class="text-gray-400">${document.getElementById('avg-down-percent').value}%</span></div>
-        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> <span class="text-gray-400">${strategy} (x${multiplier})</span></div>
+        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-gray-400 font-bold">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
+        <div><span class="font-semibold text-gray-400">Harga Awal:</span> <span class="text-gray-400 font-bold">${formatCurrency(document.getElementById('initial-price').value)}</span></div>
+        <div><span class="font-semibold text-gray-400">Lot Awal:</span> <span class="text-gray-400 font-bold">${document.getElementById('initial-lot').value}</span></div>
+        <div><span class="font-semibold text-gray-400">Avg. Down:</span> <span class="text-gray-400 font-bold">${document.getElementById('avg-down-percent').value}%</span></div>
+        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> <span class="text-gray-400 font-bold">${strategy} (x${multiplier})</span></div>
     `;
 }
 
