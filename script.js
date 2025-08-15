@@ -572,8 +572,8 @@ function renderLogTable(logsToRender = []) {
                 // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <button class="edit-log-btn text-blue-400 hover:text-blue-200" data-index="${originalIndex}" aria-label="Edit"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg></button>
-                                <button class="delete-log-btn text-red-400 hover:text-red-200" data-index="${originalIndex}" aria-label="Hapus"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg></button>
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
                 sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
                 feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
@@ -582,11 +582,10 @@ function renderLogTable(logsToRender = []) {
                 statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
                  // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                // Perubahan di sini: Mengganti ikon mata dengan ikon jual ($)
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <button class="sell-log-btn text-green-400 hover:text-green-200" data-index="${originalIndex}" aria-label="Jual"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm1 15h-2v-4H8V9h3V5h2v4h3v4h-3v4z"/></svg></button>
-                                <button class="edit-log-btn text-blue-400 hover:text-blue-200" data-index="${originalIndex}" aria-label="Edit"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg></button>
-                                <button class="delete-log-btn text-red-400 hover:text-red-200" data-index="${originalIndex}" aria-label="Hapus"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg></button>
+                                <button class="sell-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
                 sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
                 feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
