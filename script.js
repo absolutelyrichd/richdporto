@@ -93,10 +93,6 @@ const logoutBtn = document.getElementById('logout-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
-const loggedOutUi = document.getElementById('logged-out-ui');
-const loginToggleInput = document.getElementById('toggle');
-const loginToggleContainer = document.getElementById('login-toggle-container');
-
 
 // Backup Elements
 const downloadJsonBtn = document.getElementById('download-json-btn');
@@ -221,28 +217,19 @@ async function handleLogout() {
     );
 }
 
-// Fungsi untuk memperbarui UI berdasarkan status autentikasi
 function updateUIForAuthState(user) {
     currentUser = user;
     if (user) {
-        // Jika pengguna login
-        loggedOutUi.classList.add('hidden'); // Sembunyikan tombol login
-        loginToggleContainer.classList.remove('hidden'); // Tampilkan toggle
-        userInfoDiv.classList.remove('hidden'); // Tampilkan info pengguna
+        loginBtn.classList.add('hidden');
+        userInfoDiv.classList.remove('hidden');
         userInfoDiv.classList.add('flex');
         userNameSpan.textContent = user.displayName || user.email;
-        loginToggleInput.checked = true; // Set toggle ke posisi "on" (sudah login)
-        loginToggleInput.disabled = true; // Nonaktifkan toggle saat sudah login
     } else {
-        // Jika pengguna logout
-        loggedOutUi.classList.remove('hidden'); // Tampilkan tombol login
-        loginToggleContainer.classList.add('hidden'); // Sembunyikan toggle
-        userInfoDiv.classList.add('hidden'); // Sembunyikan info pengguna
+        loginBtn.classList.remove('hidden');
+        userInfoDiv.classList.add('hidden');
         userInfoDiv.classList.remove('flex');
         userNameSpan.textContent = '';
         syncStatusSpan.classList.add('opacity-0');
-        loginToggleInput.checked = false; // Set toggle ke posisi "off" (logout)
-        loginToggleInput.disabled = false; // Aktifkan toggle saat logout
     }
 }
 
@@ -1548,18 +1535,10 @@ pageNumberContainer.addEventListener('click', (event) => {
     }
 });
 
-// Listener untuk toggle login/logout
-loginToggleInput.addEventListener('change', (event) => {
-    if (event.target.checked) {
-        // Jika toggle dihidupkan, coba login
-        handleGoogleLogin();
-    } else {
-        // Jika toggle dimatikan, coba logout
-        handleLogout();
-    }
-});
 
 // New listeners for Auth, Sync, and Backup
+loginBtn.addEventListener('click', handleGoogleLogin);
+logoutBtn.addEventListener('click', handleLogout);
 downloadJsonBtn.addEventListener('click', downloadJSON);
 uploadJsonInput.addEventListener('change', handleFileUpload);
 
