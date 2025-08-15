@@ -101,7 +101,7 @@ const uploadJsonInput = document.getElementById('upload-json-input');
 // Log Modal specific elements for Edit feature
 const logModalTitle = document.getElementById('log-modal-title');
 const logEditIndexInput = document.getElementById('log-edit-index');
-const submitLogBtn = document.getElementById('submit-log-btn');
+const submitLogBtn = document.getElementById('log-form');
 const logFeeBeliInput = document.getElementById('log-fee-beli');
 const logSellPriceInput = document.getElementById('log-sell-price');
 const logSellDateInput = document.getElementById('log-sell-date');
@@ -404,12 +404,13 @@ function updateActiveSimDisplay() {
     const strategy = document.getElementById('avg-strategy').value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
     const multiplier = document.getElementById('avg-multiplier').value;
 
+    // Perubahan di sini: Mengubah kelas warna untuk nilai-nilai dinamis agar sama dengan label
     displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-cyan-300">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> ${formatCurrency(document.getElementById('initial-price').value)}</div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> ${document.getElementById('initial-lot').value}</div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> ${document.getElementById('avg-down-percent').value}%</div>
-        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> ${strategy} (x${multiplier})</div>
+        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-gray-400">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
+        <div><span class="font-semibold text-gray-400">Harga Awal:</span> <span class="text-gray-400">${formatCurrency(document.getElementById('initial-price').value)}</span></div>
+        <div><span class="font-semibold text-gray-400">Lot Awal:</span> <span class="text-gray-400">${document.getElementById('initial-lot').value}</span></div>
+        <div><span class="font-semibold text-gray-400">Avg. Down:</span> <span class="text-gray-400">${document.getElementById('avg-down-percent').value}%</span></div>
+        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> <span class="text-gray-400">${strategy} (x${multiplier})</span></div>
     `;
 }
 
