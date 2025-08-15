@@ -345,6 +345,71 @@
             color: #f9fafb; /* gray-50 */
         }
         
+        /* Gaya baru untuk tombol (sesuai dengan permintaan) */
+        .button {
+            --main-focus: #22D3EE;
+            --font-color: #e2e8f0; /* text-slate-200 */
+            --bg-color-sub: #1f2937; /* bg-gray-800 */
+            --bg-color: #111827; /* bg-gray-900 */
+            --main-color: #e2e8f0; /* text-slate-200 */
+            position: relative;
+            width: 180px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            border: 2px solid var(--main-color);
+            box-shadow: 4px 4px var(--main-color);
+            background-color: var(--bg-color);
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0; /* Mencegah tombol menyusut */
+        }
+
+        .button, .button__icon, .button__text {
+            transition: all 0.3s;
+        }
+
+        .button .button__text {
+            transform: translateX(12px);
+            color: var(--font-color);
+            font-weight: 600;
+            white-space: nowrap; /* Mencegah teks terpotong */
+        }
+
+        .button .button__icon {
+            position: absolute;
+            transform: translateX(139px);
+            height: 100%;
+            width: 39px;
+            background-color: var(--bg-color-sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button .svg {
+            width: 20px;
+            fill: var(--main-color);
+        }
+
+        .button:hover {
+            background: var(--bg-color);
+        }
+
+        .button:hover .button__text {
+            color: transparent;
+        }
+
+        .button:hover .button__icon {
+            width: 178px;
+            transform: translateX(0);
+        }
+
+        .button:active {
+            transform: translate(3px, 3px);
+            box-shadow: 0px 0px var(--main-color);
+        }
     </style>
 </head>
 <body>
@@ -593,14 +658,26 @@
                                 <h2 class="text-2xl font-semibold mb-4 text-gray-200">Pencadangan & Pemulihan Lokal</h2>
                                 <p class="text-gray-400 mb-6">Simpan data portofolio dan simulasi Anda ke sebuah file di komputer Anda, atau pulihkan dari file yang sudah ada. Ini berguna untuk pencadangan atau transfer data secara manual.</p>
                                 <div class="flex flex-col md:flex-row gap-4">
-                                    <button id="download-json-btn" class="btn btn-primary">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                                        <span>Unduh Cadangan (JSON)</span>
+                                    <button type="button" id="download-json-btn" class="button">
+                                        <span class="button__text">Unduh Cadangan (JSON)</span>
+                                        <span class="button__icon">
+                                            <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                                                <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                                                <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                                            </svg>
+                                        </span>
                                     </button>
                                     <div>
-                                        <label for="upload-json-input" class="btn btn-secondary cursor-pointer w-full">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                                            <span>Muat dari Cadangan (JSON)</span>
+                                        <label for="upload-json-input" class="button">
+                                            <span class="button__text">Muat dari Cadangan (JSON)</span>
+                                            <span class="button__icon">
+                                                <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                                                    <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                                                    <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                                                </svg>
+                                            </span>
                                         </label>
                                         <input type="file" id="upload-json-input" class="hidden" accept=".json">
                                     </div>
