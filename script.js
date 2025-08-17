@@ -101,7 +101,7 @@ const uploadJsonInput = document.getElementById('upload-json-input');
 // Log Modal specific elements for Edit feature
 const logModalTitle = document.getElementById('log-modal-title');
 const logEditIndexInput = document.getElementById('log-edit-index');
-const submitLogBtn = document.getElementById('submit-log-btn'); // Perbaikan: Mengacu pada ID tombol, bukan form
+const submitLogBtn = document.getElementById('submit-log-btn');
 const logFeeBeliInput = document.getElementById('log-fee-beli');
 const logSellPriceInput = document.getElementById('log-sell-price');
 const logSellDateInput = document.getElementById('log-sell-date');
@@ -1531,8 +1531,9 @@ document.getElementById('cancel-sim-params-btn').addEventListener('click', () =>
 document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => handleSaveSimulation(true));
 document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
 
-document.getElementById('log-table-body').addEventListener('click', (event) => {
-    // Find the closest button element to ensure we clicked a button, not a table row
+// Perbaikan: Ganti event listener dari 'log-table-body' ke 'tab-content-log'
+document.getElementById('tab-content-log').addEventListener('click', (event) => {
+    // Find the closest button element to ensure we clicked a button
     const targetButton = event.target.closest('button');
     if (!targetButton) return;
     
@@ -1549,6 +1550,7 @@ document.getElementById('log-table-body').addEventListener('click', (event) => {
         handleEditLog(logIndex);
     }
 });
+
 document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
 
 // Event listeners for the new custom confirmation modal buttons
