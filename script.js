@@ -572,7 +572,7 @@ function renderLogTable(logsToRender = []) {
                 // Use original index from `portfolioLog` array to edit/delete
                 const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
                 actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded">Edit</button>
+                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
                                 <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
                               </td>`;
                 sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
