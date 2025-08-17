@@ -540,7 +540,11 @@ function calculateDashboard() {
 // --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
 function renderLogTable(logsToRender = []) {
     const logTableBody = document.getElementById('log-table-body');
+    const logCardView = document.getElementById('log-card-view');
+    const isMobile = window.innerWidth < 768;
+
     logTableBody.innerHTML = '';
+    logCardView.innerHTML = '';
     
     // Tentukan data yang akan ditampilkan berdasarkan halaman saat ini
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -549,64 +553,140 @@ function renderLogTable(logsToRender = []) {
 
     if (logsToRender.length === 0) { 
         logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; 
+        logCardView.innerHTML = `<p class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</p>`;
     } else if (logsForPage.length === 0) {
         // Jika halaman saat ini tidak memiliki data, pindah ke halaman terakhir
         currentPage = Math.ceil(logsToRender.length / itemsPerPage);
         renderLogTable(logsToRender);
         return;
     } else {
-        logsForPage.forEach((log, index) => {
-            const row = document.createElement('tr');
-            row.className = 'bg-gray-800 border-b border-gray-700';
-            let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
-            
-            // Calculate realized P/L if sold
-            const realizedPL = log.sellPrice
-                ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
-                : null;
-            
-            if (log.sellPrice) {
-                const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
-                plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
-                statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
-                // Use original index from `portfolioLog` array to edit/delete
-                const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                              </td>`;
-                sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
-                feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
-            } else {
-                plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-                statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
-                 // Use original index from `portfolioLog` array to edit/delete
-                const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                <!-- Perbarui kelas di sini untuk mengubah warna tombol Jual -->
-                                <button class="sell-log-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
-                                <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                              </td>`;
-                sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-                feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
+        if (isMobile) {
+            // Render card view for mobile
+            // Kelompokkan log berdasarkan tanggal
+            const groupedLogs = logsForPage.reduce((acc, log) => {
+                const date = log.date;
+                if (!acc[date]) {
+                    acc[date] = [];
+                }
+                acc[date].push(log);
+                return acc;
+            }, {});
+
+            // Render setiap grup tanggal sebagai satu card
+            for (const date in groupedLogs) {
+                let cardHtml = `
+                    <div class="card mb-4 p-4">
+                        <h4 class="text-lg font-bold text-cyan-300 mb-4">${date}</h4>
+                        <div class="space-y-4">
+                `;
+                groupedLogs[date].forEach(log => {
+                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
+                    const statusText = log.sellPrice ? 'Closed' : 'Open';
+                    const statusColor = log.sellPrice ? 'text-gray-300' : 'text-blue-300';
+                    const statusBg = log.sellPrice ? 'bg-gray-700' : 'bg-blue-900';
+                    const realizedPL = log.sellPrice
+                        ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
+                        : null;
+                    const plColor = realizedPL !== null ? (realizedPL >= 0 ? 'text-green-400' : 'text-red-500') : 'text-gray-500';
+                    const plText = realizedPL !== null ? formatCurrency(realizedPL, true) : '-';
+                    const sellDateText = log.sellDate || '-';
+                    const feeJualText = log.feeJual !== null ? `${log.feeJual.toFixed(2)}%` : '-';
+                    
+                    cardHtml += `
+                            <div class="bg-gray-700/50 p-3 rounded-lg border border-gray-600">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h5 class="text-lg font-semibold text-gray-200">${log.code.toUpperCase()}</h5>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${statusBg} ${statusColor}">${statusText}</span>
+                                </div>
+                                <div class="text-sm space-y-1 text-gray-400">
+                                    <div class="flex justify-between"><span>Harga Beli:</span><span class="font-semibold">${formatCurrency(log.price)}</span></div>
+                                    <div class="flex justify-between"><span>Lot:</span><span class="font-semibold">${log.lot}</span></div>
+                                    <div class="flex justify-between"><span>Fee Beli:</span><span class="font-semibold">${(log.feeBeli || 0).toFixed(2)}%</span></div>
+                                    <div class="flex justify-between"><span>Tgl Jual:</span><span class="font-semibold">${sellDateText}</span></div>
+                                    <div class="flex justify-between"><span>Fee Jual:</span><span class="font-semibold">${feeJualText}</span></div>
+                                    <div class="flex justify-between"><span>Alasan:</span><span class="font-semibold">${log.reason || '-'}</span></div>
+                                    <div class="flex justify-between"><span>Realisasi P/L:</span><span class="font-semibold ${plColor}">${plText}</span></div>
+                                </div>
+                                <div class="flex justify-end space-x-2 mt-4">
+                    `;
+
+                    if (log.sellPrice) {
+                        cardHtml += `
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                        `;
+                    } else {
+                        cardHtml += `
+                                    <button class="sell-log-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                        `;
+                    }
+
+                    cardHtml += `
+                                </div>
+                            </div>
+                    `;
+                });
+
+                cardHtml += `
+                        </div>
+                    </div>
+                `;
+                logCardView.innerHTML += cardHtml;
             }
-            
-            row.innerHTML = `
-                <td class="px-6 py-4">${log.date}</td>
-                <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
-                <td class="px-6 py-4">${formatCurrency(log.price)}</td>
-                <td class="px-6 py-4">${log.lot}</td>
-                <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
-                ${feeJualDisplay}
-                <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
-                ${statusHtml}
-                ${sellDateHtml}
-                ${plHtml}
-                ${actionHtml}
-            `;
-            logTableBody.appendChild(row);
-        });
+
+        } else {
+            // Render table view for desktop
+            logsForPage.forEach((log) => {
+                const row = document.createElement('tr');
+                row.className = 'bg-gray-800 border-b border-gray-700';
+                let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
+                
+                const realizedPL = log.sellPrice
+                    ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
+                    : null;
+                
+                if (log.sellPrice) {
+                    const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
+                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
+                    statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
+                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
+                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                                  </td>`;
+                    sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
+                    feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
+                } else {
+                    plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                    statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
+                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
+                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
+                                    <button class="sell-log-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
+                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
+                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
+                                  </td>`;
+                    sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
+                    feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4">${log.date}</td>
+                    <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
+                    <td class="px-6 py-4">${formatCurrency(log.price)}</td>
+                    <td class="px-6 py-4">${log.lot}</td>
+                    <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
+                    ${feeJualDisplay}
+                    <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
+                    ${statusHtml}
+                    ${sellDateHtml}
+                    ${plHtml}
+                    ${actionHtml}
+                `;
+                logTableBody.appendChild(row);
+            });
+        }
     }
 
     updatePaginationControls(logsToRender.length);

@@ -530,7 +530,7 @@
                                         </div>
                                         <div>
                                             <label for="filter-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                            <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                            <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                                         </div>
                                         <div>
                                             <label for="filter-status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
@@ -542,7 +542,7 @@
                                         </div>
                                         <div class="md:col-span-2 lg:col-span-4">
                                             <label for="filter-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                                            <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                            <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                                         </div>
                                         <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
                                             <button id="filter-reset-btn" class="btn btn-secondary">Reset Filter</button>
@@ -556,7 +556,8 @@
                                         <h2 class="text-2xl font-semibold mb-4 sm:mb-0 text-gray-200">Riwayat Transaksi</h2>
                                         <button id="open-add-log-modal-btn" class="btn btn-primary">Tambah Transaksi</button>
                                     </div>
-                                    <div class="table-wrapper">
+                                    <!-- Tampilan tabel untuk desktop -->
+                                    <div class="table-wrapper hidden md:block">
                                         <table class="w-full text-sm text-left text-gray-300">
                                             <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
                                                 <tr>
@@ -576,6 +577,11 @@
                                             <tbody id="log-table-body"></tbody>
                                         </table>
                                     </div>
+                                    <!-- Tampilan kartu untuk mobile -->
+                                    <div id="log-card-view" class="md:hidden">
+                                        <!-- Konten akan diisi oleh JavaScript -->
+                                    </div>
+
                                     <!-- Pagination Controls -->
                                     <div id="pagination-controls" class="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-400 space-y-2 sm:space-y-0">
                                         <div id="page-number-container" class="pagination-container"></div>
@@ -589,7 +595,7 @@
                                     <div id="equity-monitoring" class="mb-4">
                                         <div class="mb-2">
                                             <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
-                                            <input type="number" id="initial-equity" value="100000000" class="w-full bg-gray-800/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                            <input type="number" id="initial-equity" value="100000000" class="w-full bg-gray-800/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                                         </div>
                                         <div class="p-4 bg-gray-900/30 rounded-lg text-center">
                                             <h4 class="text-gray-300 font-medium">Equitas / Cash Tersedia</h4>
@@ -702,11 +708,11 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="default-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Beli (%)</label>
-                                        <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                        <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                                     </div>
                                     <div>
                                         <label for="default-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Jual (%)</label>
-                                        <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                        <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                                     </div>
                                 </div>
                                 <div class="flex justify-end mt-6">
@@ -746,54 +752,54 @@
                             <!-- Visible inputs in modal -->
                             <div>
                                 <label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                <input type="text" id="modal-stock-code" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="text" id="modal-stock-code" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label>
-                                <input type="number" id="modal-initial-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-initial-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label>
-                                <input type="number" id="modal-initial-lot" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-initial-lot" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label>
-                                <input type="number" id="modal-dividend" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-dividend" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label>
-                                <input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label>
-                                <input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
 
                             <!-- NEW: Averaging Strategy Controls -->
                             <div>
                                 <label for="modal-avg-strategy" class="block text-sm font-medium text-gray-300 mb-1">Strategi Averaging</label>
-                                <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500"> <!-- Diubah dari text-gray-300 -->
+                                <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
                                     <option value="lot" selected>Berdasarkan Pengali Lot</option>
                                     <option value="amount">Berdasarkan Pengali Total Beli</option>
                                 </select>
                             </div>
                             <div>
                                 <label for="modal-avg-multiplier" class="block text-sm font-medium text-gray-300 mb-1">Pengali (Contoh: 1, 1.5, 2)</label>
-                                <input type="number" id="modal-avg-multiplier" value="1" step="0.1" min="0" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-avg-multiplier" value="1" step="0.1" min="0" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <!-- END NEW -->
 
                             <div>
                                 <label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label>
-                                <input type="number" id="modal-tp1-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-tp1-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label>
-                                <input type="number" id="modal-tp2-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="modal-tp2-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div class="md:col-span-2">
                                 <label for="modal-sim-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Simulasi / Pembelian</label>
-                                <textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea> <!-- Diubah dari text-gray-400 -->
+                                <textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea>
                             </div>
                         </div>
                         <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -811,40 +817,40 @@
                         <input type="hidden" id="log-edit-index">
                         <div>
                             <label for="log-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                            <input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div>
                             <label for="log-buy-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Beli</label>
-                            <input type="date" id="log-buy-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="date" id="log-buy-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div>
                             <label for="log-buy-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Beli (per lembar)</label>
-                            <input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div>
                             <label for="log-buy-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label>
-                            <input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div>
                             <label for="log-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Fee Beli (%)</label>
-                            <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div class="md:col-span-2">
                             <label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                            <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea> <!-- Diubah dari text-gray-400 -->
+                            <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea>
                         </div>
                         <div id="sell-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2 hidden">
                             <div>
                                 <label for="log-sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                                <input type="number" id="log-sell-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="log-sell-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="log-sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                                <input type="date" id="log-sell-date" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="date" id="log-sell-date" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                             <div>
                                 <label for="log-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                                <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                                <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                             </div>
                         </div>
                         <div class="md:col-span-2 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
@@ -861,15 +867,15 @@
                         <input type="hidden" id="sell-log-index">
                         <div class="mb-4">
                             <label for="sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                            <input type="number" id="sell-price" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="number" id="sell-price" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div class="mb-4">
                             <label for="sell-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                            <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div class="mb-6">
                             <label for="sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                            <input type="date" id="sell-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"> <!-- Diubah dari text-gray-400 -->
+                            <input type="date" id="sell-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
                         </div>
                         <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                             <button type="button" id="cancel-sell-btn" class="btn btn-secondary">Batal</button>
