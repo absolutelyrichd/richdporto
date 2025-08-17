@@ -101,7 +101,7 @@ const uploadJsonInput = document.getElementById('upload-json-input');
 // Log Modal specific elements for Edit feature
 const logModalTitle = document.getElementById('log-modal-title');
 const logEditIndexInput = document.getElementById('log-edit-index');
-const submitLogBtn = document.getElementById('log-form');
+const submitLogBtn = document.getElementById('submit-log-btn'); // Perbaikan: Mengacu pada ID tombol, bukan form
 const logFeeBeliInput = document.getElementById('log-fee-beli');
 const logSellPriceInput = document.getElementById('log-sell-price');
 const logSellDateInput = document.getElementById('log-sell-date');
