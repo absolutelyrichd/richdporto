@@ -132,7 +132,7 @@
             color: #374151;
         }
 
-        /* --- TABS --- */
+        /* --- TABS & NAVBAR --- */
         #tab-nav-wrapper.sticky-state {
             position: fixed;
             top: 1rem;
@@ -152,6 +152,14 @@
             overflow-x: auto;
             display: flex;
             gap: 0.5rem;
+            transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+        }
+
+        /* PERBAIKAN: Navbar Transparan saat Sticky */
+        #tab-nav-wrapper.sticky-state .tab-nav-container {
+            background-color: rgba(253, 251, 247, 0.65); /* Semi-transparan (sesuai bg-main) */
+            backdrop-filter: blur(12px); /* Efek kaca */
+            box-shadow: 4px 4px 0px 0px rgba(24, 24, 27, 0.1); /* Shadow lebih halus */
         }
 
         .tab-button {
@@ -394,8 +402,9 @@
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
                     <!-- Sidebar Filters -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <div class="card sticky top-24">
+                    <!-- PERBAIKAN 1: Pindahkan 'sticky top-24' ke wrapper parent sidebar -->
+                    <div class="lg:col-span-1 space-y-6 sticky top-24 self-start h-fit z-30">
+                        <div class="card"> <!-- Hapus sticky dari elemen card ini -->
                             <h3 class="text-lg font-bold mb-4 border-b-2 border-gray-200 pb-2">Ringkasan Portofolio</h3>
                             <div class="space-y-4">
                                 <div>
