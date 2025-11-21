@@ -457,6 +457,40 @@ function triggerAutoSave() { if(!currentUser) return; syncStatusSpan.style.opaci
 async function loadCloudData() { if(!currentUser) return; const docSnap = await getDoc(doc(db, "portfolios", currentUser.uid)); if(docSnap.exists()) { const data = docSnap.data(); portfolioLog = data.portfolioLog || []; savedSimulations = data.savedSimulations || []; currentMarketPrices = data.currentMarketPrices || {}; refreshData(); } }
 function refreshData() { filteredLogsData = portfolioLog; renderLogTable(); renderSavedSimulations(); calculateDashboard(); renderPerformanceTable(); }
 
+// --- MOBILE ACCORDION LOGIC ---
+function initMobileAccordion() {
+    const toggleSummary = document.getElementById('toggle-summary-btn');
+    const contentSummary = document.getElementById('summary-content');
+    const arrowSummary = document.getElementById('arrow-summary');
+
+    const toggleFilter = document.getElementById('toggle-filter-btn');
+    const contentFilter = document.getElementById('filter-content');
+    const arrowFilter = document.getElementById('arrow-filter');
+
+    // Helper to check if mobile
+    const isMobile = () => window.innerWidth < 1024;
+
+    if(toggleSummary) {
+        toggleSummary.addEventListener('click', () => {
+            if(isMobile()) {
+                contentSummary.classList.toggle('hidden');
+                arrowSummary.classList.toggle('rotate-180');
+            }
+        });
+        // Initialize open on mobile? Let's keep summary open, filter closed by default maybe?
+        // For now, let's keep them consistent with HTML (default visible)
+    }
+
+    if(toggleFilter) {
+        toggleFilter.addEventListener('click', () => {
+            if(isMobile()) {
+                contentFilter.classList.toggle('hidden');
+                arrowFilter.classList.toggle('rotate-180');
+            }
+        });
+    }
+}
+
 window.addEventListener('load', () => {
     initChart(); calculateDashboard(); 
     document.querySelectorAll('.tab-button').forEach(btn => { btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', ''))); });
@@ -497,4 +531,7 @@ window.addEventListener('load', () => {
     });
 
     const nav = document.getElementById('tab-nav-wrapper'); const navOffset = nav.offsetTop; window.addEventListener('scroll', () => { if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); else nav.classList.remove('sticky-state'); });
+
+    // Init Accordion
+    initMobileAccordion();
 });
