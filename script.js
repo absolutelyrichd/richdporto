@@ -1,9 +1,9 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Your web app's Firebase configuration
+// --- FIREBASE CONFIGURATION ---
+// Konfigurasi manual sesuai permintaan
 const firebaseConfig = {
     apiKey: "AIzaSyDXXt1ZI9WjZhJ0zoKsfInsjWfECK4dWoI",
     authDomain: "richdporto.firebaseapp.com",
@@ -20,7 +20,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Make functions available globally
+// Make functions available globally (optional but useful for debug)
 window.firebase = {
     auth,
     db,
@@ -33,111 +33,56 @@ window.firebase = {
     getDoc
 };
 
-// --- DATA STORAGE ---
+// --- DATA VARIABLES ---
 let portfolioLog = [];
 let savedSimulations = [];
 let performanceChart;
 let currentMarketPrices = {};
 let currentUser = null;
 let autoSaveTimer = null;
-let deleteLogIndexToConfirm = -1; // New variable to store the index for deletion confirmation
-let defaultFeeBeli = 0.11; // Default value for buy fee
-let defaultFeeJual = 0.11; // Default value for sell fee
+let defaultFeeBeli = 0.15; 
+let defaultFeeJual = 0.25; 
 
-// --- Pagination ---
+// Pagination
 const itemsPerPage = 10;
 let currentPage = 1;
-let filteredLogsData = []; // Stores the filtered data
-// ---
+let filteredLogsData = [];
+let sortState = { column: 'date', direction: 'desc' };
 
-// --- Sort state for portfolio log ---
-let sortState = {
-    column: 'date',
-    direction: 'desc'
-};
-
-
-// --- DOM Elements ---
+// --- DOM ELEMENTS ---
+// Tabs
 const tabButtons = { 
     simulator: document.getElementById('tab-btn-simulator'), 
     log: document.getElementById('tab-btn-log'), 
     saved: document.getElementById('tab-btn-saved'), 
     performance: document.getElementById('tab-btn-performance'),
-    backup: document.getElementById('tab-btn-backup'),
-    settings: document.getElementById('tab-btn-settings') // New settings tab button
+    settings: document.getElementById('tab-btn-settings')
 };
 const tabContents = { 
     simulator: document.getElementById('tab-content-simulator'), 
     log: document.getElementById('tab-content-log'), 
     saved: document.getElementById('tab-content-saved'), 
     performance: document.getElementById('tab-content-performance'),
-    backup: document.getElementById('tab-content-backup'),
-    settings: document.getElementById('tab-content-settings') // New settings tab content
+    settings: document.getElementById('tab-content-settings')
 };
 
-// Modal Elements
-const simParamsModal = document.getElementById('sim-params-modal');
-const addLogModal = document.getElementById('add-log-modal');
-const sellModal = document.getElementById('sell-modal');
-const notificationModal = document.getElementById('notification-modal');
-const deleteConfirmModal = document.getElementById('delete-confirm-modal'); // New delete confirmation modal
-
-// Form Elements
-const simParamsForm = document.getElementById('sim-params-form');
-const logForm = document.getElementById('log-form');
-const sellForm = document.getElementById('sell-form');
-
-// Auth & Sync Elements
+// Auth UI
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
 
-// Backup Elements
-const downloadJsonBtn = document.getElementById('download-json-btn');
-const uploadJsonInput = document.getElementById('upload-json-input');
+// Modals
+const modals = {
+    simParams: document.getElementById('sim-params-modal'),
+    addLog: document.getElementById('add-log-modal'),
+    sell: document.getElementById('sell-modal'),
+    notification: document.getElementById('notification-modal'),
+    deleteConfirm: document.getElementById('delete-confirm-modal')
+};
 
-// Log Modal specific elements for Edit feature
-const logModalTitle = document.getElementById('log-modal-title');
-const logEditIndexInput = document.getElementById('log-edit-index');
-const submitLogBtn = document.getElementById('submit-log-btn');
-const logFeeBeliInput = document.getElementById('log-fee-beli');
-const logSellPriceInput = document.getElementById('log-sell-price');
-const logSellDateInput = document.getElementById('log-sell-date');
-const logFeeJualInput = document.getElementById('log-fee-jual');
-const sellFieldsContainer = document.getElementById('sell-fields-container');
-
-// Settings Elements
-const defaultFeeBeliInput = document.getElementById('default-fee-beli');
-const defaultFeeJualInput = document.getElementById('default-fee-jual');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
-
-// Filter Elements
-const filterDateFromInput = document.getElementById('filter-date-from');
-const filterDateToInput = document.getElementById('filter-date-to');
-const filterStockCodeInput = document.getElementById('filter-stock-code');
-const filterReasonInput = document.getElementById('filter-reason');
-const filterStatusSelect = document.getElementById('filter-status');
-const filterApplyBtn = document.getElementById('filter-apply-btn');
-const filterResetBtn = document.getElementById('filter-reset-btn');
-
-// Pagination Elements
-const paginationControls = document.getElementById('pagination-controls');
-const pageInfoSpan = document.getElementById('page-info');
-const pageNumberContainer = document.getElementById('page-number-container');
-
-// Custom Confirmation Modal Elements
-const customConfirmTitle = document.getElementById('delete-confirm-modal').querySelector('h3');
-const customConfirmMessage = document.getElementById('delete-confirm-modal').querySelector('p');
-const customConfirmBtn = document.getElementById('confirm-delete-btn');
-const customCancelBtn = document.getElementById('cancel-delete-btn');
-
-// --- DOM Elements for Sticky Nav ---
-const tabNavWrapper = document.getElementById('tab-nav-wrapper');
-let tabNavOffsetTop;
-
-// --- HELPER FUNCTIONS ---
+// --- HELPERS ---
 function formatCurrency(value, withSign = false) {
     const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(value));
     if (!withSign) return formatted;
@@ -146,293 +91,85 @@ function formatCurrency(value, withSign = false) {
     return formatted;
 }
 
-// --- TAB MANAGEMENT ---
-function switchTab(tabName) {
-    console.log('Switching to tab:', tabName);
-    // Remove 'active' from all tab buttons
-    Object.values(tabButtons).forEach(btn => {
-        if (btn) { // Ensure the button element exists
-            btn.classList.remove('active');
-        }
-    });
+function openModal(modal) { modal.classList.add('active'); }
+function closeModal(modal) { modal.classList.remove('active'); }
 
-    // Remove 'active' from all tab content divs
-    Object.values(tabContents).forEach(content => {
-        if (content) { // Ensure the content element exists
-            content.classList.remove('active');
-        }
-    });
+function showNotification(msg, title = 'INFO') {
+    document.getElementById('notification-title').textContent = title;
+    document.getElementById('notification-message').textContent = msg;
+    openModal(modals.notification);
+}
+
+// Custom Confirm
+let onConfirmAction = null;
+function showConfirm(action) {
+    onConfirmAction = action;
+    openModal(modals.deleteConfirm);
+}
+
+// --- TABS LOGIC ---
+function switchTab(name) {
+    Object.values(tabButtons).forEach(b => b.classList.remove('active'));
+    Object.values(tabContents).forEach(c => c.classList.remove('active'));
+    if(tabButtons[name]) tabButtons[name].classList.add('active');
+    if(tabContents[name]) tabContents[name].classList.add('active');
+}
+
+// --- CHART JS SETUP ---
+function initChart() {
+    const ctx = document.getElementById('performanceChart').getContext('2d');
     
-    // Get the target button and content
-    const targetButton = tabButtons[tabName];
-    const targetContent = tabContents[tabName];
+    if (performanceChart) performanceChart.destroy();
 
-    // Add 'active' to the selected tab button and content
-    if (targetButton && targetContent) {
-        targetButton.classList.add('active');
-        targetContent.classList.add('active');
-        console.log(`Successfully activated tab: ${tabName}`);
-    } else {
-        console.error(`Error: Tab button or content not found for tabName: ${tabName}. Check if the ID is correct in index.html and script.js.`);
-    }
-}
-
-// --- AUTHENTICATION ---
-async function handleGoogleLogin() {
-    try {
-        await window.firebase.signInWithPopup(window.firebase.auth, window.firebase.provider);
-    } catch (error) {
-        console.error("Error during login:", error);
-        showNotification(`Login gagal: ${error.message}`, 'Error');
-    }
-}
-
-async function handleLogout() {
-    console.log('Logout button clicked.');
-    // Use custom confirmation modal instead of browser's confirm()
-    showCustomConfirmModal(
-        'Konfirmasi Logout',
-        'Apakah Anda yakin ingin logout? Data yang belum tersimpan mungkin hilang.',
-        'Logout',
-        'Batal',
-        async () => { // onConfirm callback
-            console.log('Logout confirmed.');
-            try {
-                await window.firebase.signOut(window.firebase.auth);
-                showNotification('Logout berhasil.', 'Sukses');
-                resetAllData();
-                closeModal(deleteConfirmModal); // Close the modal after successful logout
-                console.log('Logout successful, modal closed.');
-            } catch (error) {
-                console.error("Error during logout:", error);
-                showNotification(`Logout gagal: ${error.message}`, 'Error');
-                closeModal(deleteConfirmModal); // Ensure modal closes even on error
-                console.log('Logout error, modal closed.');
-            }
-        },
-        () => { // onCancel callback
-            console.log('Logout cancelled.');
-            closeModal(deleteConfirmModal); // Close the modal if cancelled
-        }
-    );
-}
-
-function updateUIForAuthState(user) {
-    currentUser = user;
-    if (user) {
-        loginBtn.classList.add('hidden');
-        userInfoDiv.classList.remove('hidden');
-        userInfoDiv.classList.add('flex');
-        userNameSpan.textContent = user.displayName || user.email;
-    } else {
-        loginBtn.classList.remove('hidden');
-        userInfoDiv.classList.add('hidden');
-        userInfoDiv.classList.remove('flex');
-        userNameSpan.textContent = '';
-        syncStatusSpan.classList.add('opacity-0');
-    }
-}
-
-// --- FIREBASE DATA SYNC (AUTOMATED) ---
-function triggerAutoSave() {
-    if (!currentUser) return;
-    
-    syncStatusSpan.textContent = 'Menyimpan...';
-    syncStatusSpan.classList.remove('opacity-0');
-
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(async () => {
-        const dataToSave = {
-            portfolioLog: portfolioLog,
-            savedSimulations: savedSimulations,
-            initialEquity: document.getElementById('initial-equity').value,
-            currentMarketPrices: currentMarketPrices,
-            simulationReason: document.getElementById('sim-reason').value,
-            defaultFeeBeli: defaultFeeBeli, // Save default buy fee
-            defaultFeeJual: defaultFeeJual, // Save default sell fee
-            updatedAt: new Date().toISOString()
-        };
-
-        try {
-            const userDocRef = window.firebase.doc(window.firebase.db, "portfolios", currentUser.uid);
-            await window.firebase.setDoc(userDocRef, dataToSave);
-            syncStatusSpan.textContent = 'Tersimpan ✓';
-            setTimeout(() => syncStatusSpan.classList.add('opacity-0'), 2000);
-        } catch (error) {
-            console.error("Error auto-saving data to Firestore: ", error);
-            syncStatusSpan.textContent = 'Gagal menyimpan';
-            syncStatusSpan.classList.add('text-red-500');
-        }
-    }, 1500);
-}
-
-async function loadDataFromFirebase() {
-    if (!currentUser) return;
-
-    try {
-        const userDocRef = window.firebase.doc(window.firebase.db, "portfolios", currentUser.uid);
-        const docSnap = await window.firebase.getDoc(userDocRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            portfolioLog = data.portfolioLog || [];
-            savedSimulations = data.savedSimulations || [];
-            document.getElementById('initial-equity').value = data.initialEquity || "100000000";
-            currentMarketPrices = data.currentMarketPrices || {};
-            document.getElementById('sim-reason').value = data.simulationReason || '';
-            defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
-            defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
-            
-            // Update settings inputs with loaded defaults
-            defaultFeeBeliInput.value = defaultFeeBeli;
-            defaultFeeJualInput.value = defaultFeeJual;
-
-            refreshAllApplicationData();
-            showNotification('Data berhasil dimuat dari cloud!', 'Sukses');
-        } else {
-            showNotification('Selamat datang! Tidak ada data cloud yang ditemukan, Anda bisa mulai dari awal.');
-            resetAllData();
-        }
-    } catch (error) {
-        console.error("Error loading data from Firestore: ", error);
-        showNotification(`Gagal memuat data: ${error.message}`, 'Error');
-    }
-}
-
-// --- LOCAL JSON BACKUP/RESTORE ---
-function downloadJSON() {
-    const dataToSave = {
-        portfolioLog: portfolioLog,
-        savedSimulations: savedSimulations,
-        initialEquity: document.getElementById('initial-equity').value,
-        currentMarketPrices: currentMarketPrices,
-        simulationReason: document.getElementById('sim-reason').value,
-        defaultFeeBeli: defaultFeeBeli, // Include default fees in backup
-        defaultFeeJual: defaultFeeJual, // Include default fees in backup
-    };
-    const dataStr = JSON.stringify(dataToSave, null, 2);
-    const dataBlob = new Blob([dataStr], {type: "application/json"});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `portfolio_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-}
-
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Use custom confirmation modal instead of browser's confirm()
-    showCustomConfirmModal(
-        'Konfirmasi Pemulihan Data',
-        'Ini akan menimpa data Anda saat ini. Lanjutkan?',
-        'Lanjutkan',
-        'Batal',
-        () => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data && typeof data === 'object') {
-                        portfolioLog = data.portfolioLog || [];
-                        savedSimulations = data.savedSimulations || [];
-                        document.getElementById('initial-equity').value = data.initialEquity || "100000000";
-                        currentMarketPrices = data.currentMarketPrices || {};
-                        document.getElementById('sim-reason').value = data.simulationReason || '';
-                        defaultFeeBeli = data.defaultFeeBeli !== undefined ? data.defaultFeeBeli : 0.11; // Load default buy fee
-                        defaultFeeJual = data.defaultFeeJual !== undefined ? data.defaultFeeJual : 0.11; // Load default sell fee
-                        
-                        // Update settings inputs with loaded defaults
-                        defaultFeeBeliInput.value = defaultFeeBeli;
-                        defaultFeeJualInput.value = defaultFeeJual;
-
-                        refreshAllApplicationData();
-                        showNotification('Data berhasil dimuat dari file JSON!', 'Sukses');
-                    } else {
-                        throw new Error('Invalid JSON structure');
-                    }
-                } catch (error) {
-                    showNotification(`Gagal memuat file: ${error.message}`, 'Error');
-                } finally {
-                    event.target.value = '';
-                    closeModal(deleteConfirmModal); // Ensure modal closes after file load attempt
+    performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'],
+            datasets: [
+                {
+                    label: 'Portfolio',
+                    data: [0,0,0,0,0,0],
+                    backgroundColor: '#10b981',
+                    borderColor: '#18181b',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    borderSkipped: false
+                },
+                {
+                    label: 'IHSG',
+                    data: [0,0,0,0,0,0],
+                    backgroundColor: '#fb923c',
+                    borderColor: '#18181b',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    borderSkipped: false
                 }
-            };
-            reader.readAsText(file);
-        }, 
-        () => {
-            event.target.value = ''; // Clear the file input if cancelled
-            closeModal(deleteConfirmModal); // Close the modal if cancelled
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { font: { family: 'Space Grotesk', weight: 'bold' }, color: '#18181b' }
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: '#e5e7eb', borderDash: [4, 4] },
+                    ticks: { color: '#374151', font: { family: 'Inter' } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#374151', font: { family: 'Inter', weight: 'bold' } }
+                }
+            }
         }
-    );
+    });
 }
 
-// --- DATA MANAGEMENT ---
-function resetAllData() {
-    portfolioLog = [];
-    savedSimulations = [];
-    currentMarketPrices = {};
-    document.getElementById('initial-equity').value = "100000000";
-    document.getElementById('sim-reason').value = "";
-    defaultFeeBeli = 0.11; // Reset default fees
-    defaultFeeJual = 0.11; // Reset default fees
-    defaultFeeBeliInput.value = defaultFeeBeli;
-    defaultFeeJualInput.value = defaultFeeJual;
-    refreshAllApplicationData();
-}
-
-function refreshAllApplicationData() {
-    currentPage = 1; // Reset halaman ke 1 setiap kali data disegarkan
-    applyLogFiltersAndSort(); // Apply filters and sort on refresh
-    renderFinancialSummaries();
-    renderSavedSimulationsTable();
-    calculateDashboard();
-    updateSimulationReasonDisplay();
-    renderPerformanceTab(); // Call renderPerformanceTab directly
-    triggerAutoSave();
-}
-
-
-// --- SIMULATOR CALCULATIONS & DISPLAY ---
-function updateActiveSimDisplay() {
-    const displayContainer = document.getElementById('active-sim-params-display');
-    // NEW: Add strategy to the display
-    const strategy = document.getElementById('avg-strategy').value === 'lot' ? 'Pengali Lot' : 'Pengali Total Beli';
-    const multiplier = document.getElementById('avg-multiplier').value;
-
-    // Perubahan di sini: Mengubah kelas warna untuk nilai-nilai dinamis agar sama dengan label
-    displayContainer.innerHTML = `
-        <div><span class="font-semibold text-gray-400">Kode:</span> <span class="text-gray-400 font-bold">${document.getElementById('stock-code').value.toUpperCase()}</span></div>
-        <div><span class="font-semibold text-gray-400">Harga Awal:</span> <span class="text-gray-400 font-bold">${formatCurrency(document.getElementById('initial-price').value)}</span></div>
-        <div><span class="font-semibold text-gray-400">Lot Awal:</span> <span class="text-gray-400 font-bold">${document.getElementById('initial-lot').value}</span></div>
-        <div><span class="font-semibold text-gray-400">Avg. Down:</span> <span class="text-gray-400 font-bold">${document.getElementById('avg-down-percent').value}%</span></div>
-        <div class="md:col-span-2"><span class="font-semibold text-gray-400">Strategi AVG:</span> <span class="text-gray-400 font-bold">${strategy} (x${multiplier})</span></div>
-    `;
-}
-
-function updateSimulationReasonDisplay() {
-    const reasonCard = document.getElementById('simulation-reason-card');
-    const reasonDisplay = document.getElementById('simulation-reason-display');
-    const reasonText = document.getElementById('sim-reason').value;
-
-    if (reasonText && reasonText.trim() !== '') {
-        reasonDisplay.textContent = reasonText;
-        reasonCard.classList.remove('hidden');
-    } else {
-        reasonCard.classList.add('hidden');
-    }
-}
-
-/**
- * REVISED FUNCTION
- * This function now calculates and displays the nominal profit for TP1 and TP2.
- */
+// --- LOGIC: SIMULATOR ---
 function calculateDashboard() {
-    // Get main parameters
     const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
     const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
     const dividend = parseFloat(document.getElementById('dividend').value) || 0;
@@ -440,1210 +177,584 @@ function calculateDashboard() {
     const avgLevels = parseInt(document.getElementById('avg-levels').value) || 0;
     const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0;
     const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0;
-
-    // Get averaging strategy parameters
     const avgStrategy = document.getElementById('avg-strategy').value;
     const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
-    const initialBuyAmount = initialPrice * initialLot * 100;
+
+    // Update Display Panel
+    const strategyText = avgStrategy === 'lot' ? 'Lot Multiplier' : 'Fixed Amount';
+    document.getElementById('active-sim-params-display').innerHTML = `
+        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">CODE</div><div class="font-bold text-lg text-blue-600">${document.getElementById('stock-code').value}</div></div>
+        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">ENTRY</div><div class="font-bold">${formatCurrency(initialPrice)}</div></div>
+        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">LOT AWAL</div><div class="font-bold">${initialLot}</div></div>
+        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">GAP</div><div class="font-bold">-${avgDownPercent}%</div></div>
+        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">STRATEGY</div><div class="font-bold">${strategyText} x${avgMultiplier}</div></div>
+    `;
 
     const tableBody = document.getElementById('scenario-table-body');
     tableBody.innerHTML = ''; 
-    
+
     let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice;
+    const initialBuyAmount = initialPrice * initialLot * 100;
 
     for (let i = 0; i <= avgLevels; i++) {
         let entryPrice, lotsToBuy;
 
         if (i === 0) {
-            // Initial Entry
             entryPrice = initialPrice;
             lotsToBuy = initialLot;
         } else {
-            // Averaging Down Levels
             entryPrice = currentPrice * (1 - avgDownPercent / 100);
-            
             if (avgStrategy === 'lot') {
-                // Strategy 1: Multiply the initial lot count
-                lotsToBuy = initialLot * avgMultiplier;
-            } else if (avgStrategy === 'amount') {
-                // Strategy 2: Multiply the initial buy amount (in Rupiah)
-                const targetAmount = initialBuyAmount * avgMultiplier;
-                if (entryPrice > 0) {
-                    const sharesToBuy = targetAmount / entryPrice;
-                    lotsToBuy = Math.round(sharesToBuy / 100); // Round to the nearest whole lot
-                } else {
-                    lotsToBuy = 0;
-                }
+                lotsToBuy = initialLot * Math.pow(avgMultiplier, i);
             } else {
-                // Fallback to original logic
-                lotsToBuy = initialLot;
+                const targetAmount = initialBuyAmount * avgMultiplier;
+                lotsToBuy = Math.round((targetAmount / entryPrice) / 100);
             }
         }
-
-        if (lotsToBuy <= 0 || entryPrice <= 0) continue;
-
+        
+        if (lotsToBuy <= 0) lotsToBuy = 1;
+        
         const sharesToBuy = lotsToBuy * 100;
         const totalBuy = entryPrice * sharesToBuy;
         cumulativeCost += totalBuy; 
         cumulativeShares += sharesToBuy;
         
         const avgPrice = cumulativeCost / cumulativeShares;
-        const dividendYield = dividend > 0 && entryPrice > 0 ? (dividend / entryPrice) * 100 : 0;
+        const dividendYield = dividend > 0 ? (dividend / entryPrice) * 100 : 0;
         
-        // TP Price Calculation
         const tp1Price = avgPrice * (1 + tp1Percent / 100);
         const tp2Price = avgPrice * (1 + tp2Percent / 100);
-
-        // NEW: Nominal Profit Calculation
         const profitTp1 = (tp1Price - avgPrice) * cumulativeShares;
         const profitTp2 = (tp2Price - avgPrice) * cumulativeShares;
-        
-        const row = document.createElement('tr');
-        row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
-        row.innerHTML = `
-            <td class="px-6 py-4 font-medium whitespace-nowrap">${i === 0 ? 'Entry Awal' : `AVG ${i}`}</td>
-            <td class="px-6 py-4 font-semibold text-yellow-300">${formatCurrency(entryPrice)}</td>
-            <td class="px-6 py-4">${lotsToBuy}</td>
-            <td class="px-6 py-4">${formatCurrency(totalBuy)}</td>
-            <td class="px-6 py-4 ${dividendYield > 5 ? 'text-green-400' : 'text-gray-300'}">${dividendYield.toFixed(2)}%</td>
-            <td class="px-6 py-4 font-semibold text-blue-300">${formatCurrency(avgPrice)}</td>
-            <td class="px-6 py-4 text-green-400">${formatCurrency(tp1Price)}</td>
-            <td class="px-6 py-4 font-semibold text-green-400">${formatCurrency(profitTp1, true)}</td>
-            <td class="px-6 py-4 text-green-500">${formatCurrency(tp2Price)}</td>
-            <td class="px-6 py-4 font-semibold text-green-500">${formatCurrency(profitTp2, true)}</td>
+
+        const row = `
+            <tr>
+                <td class="font-bold text-gray-400">LVL ${i}</td>
+                <td class="font-mono">${formatCurrency(entryPrice)}</td>
+                <td class="font-mono">${lotsToBuy}</td>
+                <td class="font-mono text-gray-600">${formatCurrency(totalBuy)}</td>
+                <td class="${dividendYield > 5 ? 'text-green-600 font-bold' : 'text-gray-400'}">${dividendYield.toFixed(1)}%</td>
+                <td class="font-bold text-blue-600 bg-blue-50">${formatCurrency(avgPrice)}</td>
+                <td>
+                    <div class="text-xs text-gray-500">${formatCurrency(tp1Price)}</div>
+                    <div class="font-bold text-green-600">+${formatCurrency(profitTp1)}</div>
+                </td>
+                <td>
+                    <div class="text-xs text-gray-500">${formatCurrency(tp2Price)}</div>
+                    <div class="font-bold text-green-600">+${formatCurrency(profitTp2)}</div>
+                </td>
+            </tr>
         `;
-        tableBody.appendChild(row);
-        
+        tableBody.innerHTML += row;
         currentPrice = entryPrice;
     }
-
-    const totalInvestment = cumulativeCost;
+    
     const totalLots = cumulativeShares / 100;
-    const finalAvgPrice = totalInvestment / (totalLots * 100) || 0;
-    document.getElementById('summary-total-investment').textContent = formatCurrency(totalInvestment);
+    const finalAvg = cumulativeCost / cumulativeShares;
+
+    document.getElementById('summary-total-investment').textContent = formatCurrency(cumulativeCost);
     document.getElementById('summary-total-lot').textContent = totalLots;
-    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvgPrice);
-}
-
-// Function to handle the removed "Kalkulator Target Profit" section
-// This function is now removed.
-// function calculateEntryForProfit() {
-//     const targetProfitRp = parseFloat(document.getElementById('target-profit-rp').value) || 0;
-//     const targetProfitLot = parseFloat(document.getElementById('target-profit-lot').value) || 0;
-//     const targetProfitPercent = parseFloat(document.getElementById('target-profit-percent').value) || 0;
-//     if (targetProfitLot <= 0 || targetProfitPercent <= 0) { document.getElementById('entry-price-result').textContent = 'Input tidak valid'; return; }
-//     const entryPrice = targetProfitRp / (targetProfitLot * 100 * (targetProfitPercent / 100));
-//     document.getElementById('entry-price-result').textContent = formatCurrency(entryPrice);
-// }
-
-
-// --- PORTFOLIO LOG & SUMMARY MANAGEMENT ---
-function renderLogTable(logsToRender = []) {
-    const logTableBody = document.getElementById('log-table-body');
-    const logCardView = document.getElementById('log-card-view');
-    const isMobile = window.innerWidth < 768;
-
-    logTableBody.innerHTML = '';
-    logCardView.innerHTML = '';
+    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvg);
     
-    // Tentukan data yang akan ditampilkan berdasarkan halaman saat ini
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const logsForPage = logsToRender.slice(startIndex, endIndex);
-
-    if (logsToRender.length === 0) { 
-        logTableBody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</td></tr>`; 
-        logCardView.innerHTML = `<p class="text-center py-8 text-gray-500">Tidak ada catatan transaksi yang sesuai dengan filter.</p>`;
-    } else if (logsForPage.length === 0) {
-        // Jika halaman saat ini tidak memiliki data, pindah ke halaman terakhir
-        currentPage = Math.ceil(logsToRender.length / itemsPerPage);
-        renderLogTable(logsToRender);
-        return;
+    const reason = document.getElementById('sim-reason').value;
+    const reasonCard = document.getElementById('simulation-reason-card');
+    if(reason) {
+        document.getElementById('simulation-reason-display').textContent = reason;
+        reasonCard.classList.remove('hidden');
     } else {
-        if (isMobile) {
-            // Render card view for mobile
-            // Kelompokkan log berdasarkan tanggal
-            const groupedLogs = logsForPage.reduce((acc, log) => {
-                const date = log.date;
-                if (!acc[date]) {
-                    acc[date] = [];
-                }
-                acc[date].push(log);
-                return acc;
-            }, {});
-
-            // Render setiap grup tanggal sebagai satu card
-            for (const date in groupedLogs) {
-                let cardHtml = `
-                    <div class="card mb-4 p-4">
-                        <h4 class="text-lg font-bold text-cyan-300 mb-4">${date}</h4>
-                        <div class="space-y-4">
-                `;
-                groupedLogs[date].forEach(log => {
-                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                    const statusText = log.sellPrice ? 'Closed' : 'Open';
-                    const statusColor = log.sellPrice ? 'text-gray-300' : 'text-blue-300';
-                    const statusBg = log.sellPrice ? 'bg-gray-700' : 'bg-blue-900';
-                    const realizedPL = log.sellPrice
-                        ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
-                        : null;
-                    const plColor = realizedPL !== null ? (realizedPL >= 0 ? 'text-green-400' : 'text-red-500') : 'text-gray-500';
-                    const plText = realizedPL !== null ? formatCurrency(realizedPL, true) : '-';
-                    const sellDateText = log.sellDate || '-';
-                    const feeJualText = log.feeJual !== null ? `${log.feeJual.toFixed(2)}%` : '-';
-                    
-                    cardHtml += `
-                            <div class="bg-gray-700/50 p-3 rounded-lg border border-gray-600">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h5 class="text-lg font-semibold text-gray-200">${log.code.toUpperCase()}</h5>
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${statusBg} ${statusColor}">${statusText}</span>
-                                </div>
-                                <div class="text-sm space-y-1 text-gray-400">
-                                    <div class="flex justify-between"><span>Harga Beli:</span><span class="font-semibold">${formatCurrency(log.price)}</span></div>
-                                    <div class="flex justify-between"><span>Lot:</span><span class="font-semibold">${log.lot}</span></div>
-                                    <div class="flex justify-between"><span>Fee Beli:</span><span class="font-semibold">${(log.feeBeli || 0).toFixed(2)}%</span></div>
-                                    <div class="flex justify-between"><span>Tgl Jual:</span><span class="font-semibold">${sellDateText}</span></div>
-                                    <div class="flex justify-between"><span>Fee Jual:</span><span class="font-semibold">${feeJualText}</span></div>
-                                    <div class="flex justify-between"><span>Alasan:</span><span class="font-semibold">${log.reason || '-'}</span></div>
-                                    <div class="flex justify-between"><span>Realisasi P/L:</span><span class="font-semibold ${plColor}">${plText}</span></div>
-                                </div>
-                                <div class="flex justify-end space-x-2 mt-4">
-                    `;
-
-                    if (log.sellPrice) {
-                        cardHtml += `
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                        `;
-                    } else {
-                        cardHtml += `
-                                    <button class="sell-log-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                        `;
-                    }
-
-                    cardHtml += `
-                                </div>
-                            </div>
-                    `;
-                });
-
-                cardHtml += `
-                        </div>
-                    </div>
-                `;
-                logCardView.innerHTML += cardHtml;
-            }
-
-        } else {
-            // Render table view for desktop
-            logsForPage.forEach((log) => {
-                const row = document.createElement('tr');
-                row.className = 'bg-gray-800 border-b border-gray-700';
-                let plHtml, statusHtml, actionHtml, sellDateHtml, feeJualDisplay;
-                
-                const realizedPL = log.sellPrice
-                    ? ((log.sellPrice * (1 - (log.feeJual || 0) / 100)) - (log.price * (1 + (log.feeBeli || 0) / 100))) * log.lot * 100
-                    : null;
-                
-                if (log.sellPrice) {
-                    const plColor = realizedPL >= 0 ? 'text-green-400' : 'text-red-500';
-                    plHtml = `<td class="px-6 py-4 font-semibold ${plColor}">${formatCurrency(realizedPL, true)}</td>`;
-                    statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">Closed</span></td>`;
-                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                                  </td>`;
-                    sellDateHtml = `<td class="px-6 py-4">${log.sellDate}</td>`;
-                    feeJualDisplay = `<td class="px-6 py-4">${(log.feeJual || 0).toFixed(2)}%</td>`;
-                } else {
-                    plHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-                    statusHtml = `<td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-900 text-blue-300">Open</span></td>`;
-                    const originalIndex = portfolioLog.findIndex(item => item.id === log.id);
-                    actionHtml = `<td class="px-6 py-4 flex space-x-2">
-                                    <button class="sell-log-btn bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Jual</button>
-                                    <button class="edit-log-btn bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Edit</button>
-                                    <button class="delete-log-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded" data-index="${originalIndex}">Hapus</button>
-                                  </td>`;
-                    sellDateHtml = `<td class="px-6 py-4 text-gray-500">-</td>`;
-                    feeJualDisplay = `<td class="px-6 py-4 text-gray-500">-</td>`; // Display '-' for open positions
-                }
-                
-                row.innerHTML = `
-                    <td class="px-6 py-4">${log.date}</td>
-                    <td class="px-6 py-4 font-medium text-cyan-300">${log.code.toUpperCase()}</td>
-                    <td class="px-6 py-4">${formatCurrency(log.price)}</td>
-                    <td class="px-6 py-4">${log.lot}</td>
-                    <td class="px-6 py-4">${(log.feeBeli || 0).toFixed(2)}%</td>
-                    ${feeJualDisplay}
-                    <td class="px-6 py-4 text-gray-400">${log.reason || '-'}</td>
-                    ${statusHtml}
-                    ${sellDateHtml}
-                    ${plHtml}
-                    ${actionHtml}
-                `;
-                logTableBody.appendChild(row);
-            });
-        }
+        reasonCard.classList.add('hidden');
     }
-
-    updatePaginationControls(logsToRender.length);
-    updateSortIcons();
 }
 
-// --- Pagination Logic ---
-function updatePaginationControls(totalItems) {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-    const endItem = Math.min(startItem + itemsPerPage, totalItems);
-    pageInfoSpan.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} entri`;
+// --- LOGIC: LOG TABLE ---
+function renderLogTable(logs = portfolioLog) {
+    const tbody = document.getElementById('log-table-body');
+    const cardView = document.getElementById('log-card-view');
+    if(!tbody || !cardView) return;
     
-    pageNumberContainer.innerHTML = '';
-    if (totalPages > 1) {
-        for (let i = 1; i <= totalPages; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.dataset.page = i;
-            // Update class to use the new CSS styles
-            pageButton.className = `pagination-button ${i === currentPage ? 'active' : ''}`;
-            pageNumberContainer.appendChild(pageButton);
-        }
-    }
+    tbody.innerHTML = '';
+    cardView.innerHTML = '';
 
-    // Hide pagination controls if there are no entries or only 1 page
-    if (totalItems <= itemsPerPage) {
-        paginationControls.classList.add('hidden');
-    } else {
-        paginationControls.classList.remove('hidden');
-    }
-}
-
-function goToPage(pageNumber) {
-    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-        currentPage = pageNumber;
-        renderLogTable(filteredLogsData);
-    }
-}
-
-function goToPrevPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        renderLogTable(filteredLogsData);
-    }
-}
-
-function goToNextPage() {
-    const totalPages = Math.ceil(filteredLogsData.length / itemsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        renderLogTable(filteredLogsData);
-    }
-}
-// --- End Pagination Logic ---
-
-
-function renderFinancialSummaries() {
-    const summaryContainer = document.getElementById('portfolio-summary-by-stock');
-    const grandTotalContainer = document.getElementById('portfolio-grand-total');
-    const realizedPlContainer = document.getElementById('realized-pl-summary');
-    const currentEquityDisplay = document.getElementById('current-equity-display');
+    // Pagination
+    const start = (currentPage - 1) * itemsPerPage;
+    const pagedLogs = logs.slice(start, start + itemsPerPage);
     
-    summaryContainer.innerHTML = ''; grandTotalContainer.innerHTML = ''; realizedPlContainer.innerHTML = '';
-
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalBuyCostWithFee = 0;
-    let totalSellValueWithFee = 0;
-    
-    portfolioLog.forEach(log => {
-        const buyCost = log.price * log.lot * 100;
-        totalBuyCostWithFee += buyCost * (1 + (log.feeBeli || 0) / 100);
-        if(log.sellPrice) {
-            const sellValue = log.sellPrice * log.lot * 100;
-            totalSellValueWithFee += sellValue * (1 - (log.feeJual || 0) / 100);
-        }
-    });
-
-    // Equity calculation now considers Fee for both buy and sell
-    const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-    currentEquityDisplay.textContent = formatCurrency(currentEquity);
-
-    const openPositions = portfolioLog.filter(log => !log.sellPrice);
-    const closedPositions = portfolioLog.filter(log => log.sellPrice);
-    
-    if (openPositions.length === 0) {
-        summaryContainer.innerHTML = `<p class="text-gray-500 text-center">Tidak ada posisi terbuka.</p>`;
-        grandTotalContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(0)}</p></div>`;
-    } else {
-        const summary = openPositions.reduce((acc, log) => {
-            const code = log.code.toUpperCase();
-            if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
-            acc[code].totalLots += log.lot;
-            // Store total cost with Fee for open positions
-            acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-            return acc;
-        }, {});
-        let grandTotalCost = 0;
-        Object.entries(summary).forEach(([code, data]) => {
-            grandTotalCost += data.totalCost;
-            const avgPriceWithFee = data.totalCost / (data.totalLots * 100); // This avgPrice now includes Fee
-            const priceValue = currentMarketPrices[code] || '';
-            const summaryCard = document.createElement('div');
-            summaryCard.className = 'p-4 bg-gray-700/50 rounded-lg';
-            summaryCard.innerHTML = `<h4 class="font-bold text-lg text-cyan-300">${code}</h4><div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Total Lot:</span><span class="font-semibold text-gray-400">${data.totalLots}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Harga Rata-rata:</span><span class="font-semibold text-gray-400">${formatCurrency(avgPriceWithFee)}</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Total Investasi:</span><span class="font-semibold text-gray-400">${formatCurrency(data.totalCost)}</span></div><div class="flex justify-between items-center text-sm mt-2"><label for="current-price-${code}" class="text-gray-400">Harga Saat Ini:</label><input type="number" id="current-price-${code}" data-code="${code}" class="current-price-input w-24 bg-gray-800 border border-gray-600 rounded p-1 text-right text-gray-400 font-semibold" placeholder="0" value="${priceValue}"></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Floating P/L:</span><span id="floating-pl-${code}" class="font-semibold">-</span></div>`;
-            summaryContainer.appendChild(summaryCard);
-        });
-        const grandTotalCard = document.createElement('div');
-        grandTotalCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
-        grandTotalCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Investasi (Open)</h4><p class="text-2xl font-bold text-yellow-400 mt-1">${formatCurrency(grandTotalCost)}</p></div>`;
-        grandTotalContainer.appendChild(grandTotalCard);
+    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, logs.length)} of ${logs.length}`;
+    const totalPages = Math.ceil(logs.length / itemsPerPage);
+    const pageCont = document.getElementById('page-number-container');
+    pageCont.innerHTML = '';
+    for(let i=1; i<=totalPages; i++){
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = `pagination-button ${i === currentPage ? 'active' : ''}`;
+        btn.onclick = () => { currentPage = i; renderLogTable(filteredLogsData); };
+        pageCont.appendChild(btn);
     }
 
-    const totalRealizedPL = closedPositions.reduce((acc, log) => {
-        const buyCostPerShare = log.price * (1 + (log.feeBeli || 0) / 100);
-        const sellValuePerShare = log.sellPrice * (1 - (log.feeJual || 0) / 100);
-        return acc + ((sellValuePerShare - buyCostPerShare) * log.lot * 100);
-    }, 0);
-    const realizedPlCard = document.createElement('div');
-    realizedPlCard.className = 'p-4 bg-gray-600 rounded-lg text-center';
-    const plColor = totalRealizedPL >= 0 ? 'text-green-400' : 'text-red-500';
-    realizedPlCard.innerHTML = `<h4 class="text-gray-300 font-medium">Total Realisasi P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalRealizedPL, true)}</p>`;
-    realizedPlContainer.appendChild(realizedPlCard);
-    
-    calculateAndRenderFloatingPL();
-    // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
-    renderPerformanceTab();
-}
-
-function calculateAndRenderFloatingPL() {
-    const openPositions = portfolioLog.filter(log => !log.sellPrice);
-    const floatingPlContainer = document.getElementById('floating-pl-summary');
-    if (openPositions.length === 0) { floatingPlContainer.innerHTML = ''; renderPerformanceTab(); return; }
-    
-    const summary = openPositions.reduce((acc, log) => {
-        const code = log.code.toUpperCase();
-        if (!acc[code]) { acc[code] = { totalLots: 0, totalCost: 0 }; }
-        acc[code].totalLots += log.lot;
-        // Use actual buy price (including Fee Beli) for floating P/L calculation
-        acc[code].totalCost += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-        return acc;
-    }, {});
-
-    let totalFloatingPL = 0;
-    Object.entries(summary).forEach(([code, data]) => {
-        const currentPriceInput = document.getElementById(`current-price-${code}`);
-        if (!currentPriceInput) return;
-        const currentPrice = parseFloat(currentPriceInput.value) || 0;
-        const floatingPlElement = document.getElementById(`floating-pl-${code}`);
-        if (currentPrice > 0) {
-            const avgPriceWithFee = data.totalCost / (data.totalLots * 100);
-            // Floating P/L is (current market price - average buy price with Fee) * shares
-            const floatingPL = (currentPrice - avgPriceWithFee) * data.totalLots * 100;
-            totalFloatingPL += floatingPL;
-            const plColor = floatingPL >= 0 ? 'text-green-400' : 'text-red-500';
-            floatingPlElement.className = `font-semibold ${plColor}`;
-            floatingPlElement.textContent = formatCurrency(floatingPL, true);
-        } else {
-            floatingPlElement.textContent = '-';
-        }
-    });
-
-    const plColor = totalFloatingPL >= 0 ? 'text-green-400' : 'text-red-500';
-    floatingPlContainer.innerHTML = `<div class="p-4 bg-gray-600 rounded-lg text-center"><h4 class="text-gray-300 font-medium">Total Floating P/L</h4><p class="text-2xl font-bold ${plColor} mt-1">${formatCurrency(totalFloatingPL, true)}</p></div>`;
-    // renderPerformanceTab is called here, which in turn calls renderPerformanceChart
-    renderPerformanceTab();
-}
-
-// --- PERFORMANCE TAB MANAGEMENT ---
-// Moved renderPerformanceChart definition before its calls
-function renderPerformanceChart() {
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time'];
-    
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let allTimeReturn = NaN;
-    if (initialEquity > 0) {
-        let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
-        portfolioLog.forEach(log => {
-            totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-            if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
-        });
-        const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-        const openPositions = portfolioLog.filter(log => !log.sellPrice);
-        let valueOfOpenPositions = 0;
-        const summary = openPositions.reduce((acc, log) => {
-            const code = log.code.toUpperCase();
-            if (!acc[code]) acc[code] = { totalLots: 0 };
-            acc[code].totalLots += log.lot;
-            return acc;
-        }, {});
-        Object.entries(summary).forEach(([code, data]) => {
-            const currentPrice = currentMarketPrices[code] || 0;
-            if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
-        });
-        const currentTotalValue = currentEquity + valueOfOpenPositions;
-        allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
-    }
-
-    const portfolioData = periods.map(p => p === 'All Time' && isFinite(allTimeReturn) ? allTimeReturn : null);
-    const ihsgData = periods.map(p => {
-        const input = document.querySelector(`.performance-ihsg-input[data-period="${p}"]`);
-        return input ? (parseFloat(input.value) || null) : null;
-    });
-
-    if (performanceChart) {
-        performanceChart.destroy();
-    }
-
-    performanceChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: periods,
-            datasets: [
-                {
-                    label: 'Performa Portofolio (%)',
-                    data: portfolioData,
-                    backgroundColor: 'rgba(34, 211, 238, 0.6)',
-                    borderColor: 'rgba(34, 211, 238, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Performa IHSG (%)',
-                    data: ihsgData,
-                    backgroundColor: 'rgba(74, 85, 104, 0.6)',
-                    borderColor: 'rgba(74, 85, 104, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#9CA3AF' },
-                    grid: { color: '#374151' }
-                },
-                x: {
-                    ticks: { color: '#9CA3AF' },
-                    grid: { color: '#374151' }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: { color: '#D1D5DB' }
-                }
-            }
-        }
-    });
-}
-
-function renderPerformanceTab() {
-    const tableBody = document.getElementById('performance-table-body');
-    tableBody.innerHTML = '';
-
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    if (initialEquity <= 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-500">Masukkan modal awal untuk menghitung performa.</td></tr>`;
-        if (performanceChart) performanceChart.destroy();
-        return;
-    }
-
-    let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
-    portfolioLog.forEach(log => {
-        totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-        if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
-    });
-    const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-
-    const openPositions = portfolioLog.filter(log => !log.sellPrice);
-    let valueOfOpenPositions = 0;
-    const summary = openPositions.reduce((acc, log) => {
-        const code = log.code.toUpperCase();
-        if (!acc[code]) acc[code] = { totalLots: 0 };
-        acc[code].totalLots += log.lot;
-        return acc;
-    }, {});
-
-    Object.entries(summary).forEach(([code, data]) => {
-        const currentPrice = currentMarketPrices[code] || 0;
-        if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
-    });
-
-    const currentTotalValue = currentEquity + valueOfOpenPositions;
-    const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
-
-    const periods = ['1 Bulan', '3 Bulan', '6 Bulan', '9 Bulan', '12 Bulan', 'YTD', '3 Tahun', '5 Tahun', 'All Time'];
-
-    periods.forEach(period => {
-        const row = document.createElement('tr');
-        row.className = 'bg-gray-800 border-b border-gray-700';
-        const isAllTime = period === 'All Time';
-        const portfolioPerformance = isAllTime ? allTimeReturn : NaN;
-        const performanceCell = isAllTime && isFinite(portfolioPerformance) ? `<td class="px-6 py-4 font-semibold ${portfolioPerformance >= 0 ? 'text-green-400' : 'text-red-500'}">${portfolioPerformance.toFixed(2)}%</td>` : `<td class="px-6 py-4 text-gray-500">N/A</td>`;
-        row.innerHTML = `<td class="px-6 py-4 font-medium">${period}</td>${performanceCell}<td class="px-6 py-4"><input type="number" class="performance-ihsg-input w-24 bg-gray-700 border border-gray-600 rounded p-1 text-right" data-period="${period}" placeholder="0.00"></td><td class="px-6 py-4 font-semibold" id="performance-diff-${period.replace(/\s+/g, '')}">-</td>`;
-        tableBody.appendChild(row);
-    });
-    renderPerformanceChart();
-}
-
-function calculatePerformanceDifference() {
-     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-     if (initialEquity <= 0) return;
-
-     let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
-     portfolioLog.forEach(log => {
-        totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-        if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
-     });
-     const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-
-     const openPositions = portfolioLog.filter(log => !log.sellPrice);
-     let valueOfOpenPositions = 0;
-     const summary = openPositions.reduce((acc, log) => {
-        const code = log.code.toUpperCase();
-        if (!acc[code]) acc[code] = { totalLots: 0 };
-        acc[code].totalLots += log.lot;
-        return acc;
-     }, {});
-     Object.entries(summary).forEach(([code, data]) => {
-        const currentPrice = currentMarketPrices[code] || 0;
-        if (currentPrice > 0) valueOfOpenPositions += parseFloat(currentPrice) * data.totalLots * 100;
-     });
-     const currentTotalValue = currentEquity + valueOfOpenPositions;
-     const allTimeReturn = ((currentTotalValue / initialEquity) - 1) * 100;
-
-     document.querySelectorAll('.performance-ihsg-input').forEach(input => {
-        const period = input.dataset.period;
-        const diffCell = document.getElementById(`performance-diff-${period.replace(/\s+/g, '')}`);
-        const ihsgPerf = parseFloat(input.value);
-
-        if (!isNaN(ihsgPerf) && period === 'All Time' && isFinite(allTimeReturn)) {
-            const difference = allTimeReturn - ihsgPerf;
-            diffCell.className = `px-6 py-4 font-semibold ${difference >= 0 ? 'text-green-400' : 'text-red-500'}`;
-            diffCell.textContent = `${difference.toFixed(2)}%`;
-        } else {
-            diffCell.textContent = '-';
-            diffCell.className = `px-6 py-4 font-semibold`;
-        }
-     });
-     renderPerformanceChart();
-}
-
-// --- MODAL MANAGEMENT ---
-function openModal(modal) { modal.classList.add('active'); }
-function closeModal(modal) { modal.classList.remove('active'); }
-
-function showNotification(message, title = 'Pemberitahuan') {
-    document.getElementById('notification-title').textContent = title;
-    document.getElementById('notification-message').textContent = message;
-    openModal(notificationModal);
-}
-
-// Custom confirmation modal function
-let confirmCallback = null;
-let cancelCallback = null;
-
-function showCustomConfirmModal(title, message, confirmButtonText, cancelButtonText, onConfirm, onCancel) {
-    customConfirmTitle.textContent = title;
-    customConfirmMessage.textContent = message;
-    customConfirmBtn.textContent = confirmButtonText;
-    customCancelBtn.textContent = cancelButtonText;
-    confirmCallback = onConfirm;
-    cancelCallback = onCancel;
-    openModal(deleteConfirmModal); // Reusing the delete-confirm-modal structure
-}
-
-// --- EVENT HANDLERS ---
-function handleAddOrEditLog(event) {
-    event.preventDefault();
-    const isEdit = logEditIndexInput.value !== '';
-    const index = isEdit ? parseInt(logEditIndexInput.value) : -1;
-
-    const newLog = {
-        id: isEdit ? portfolioLog[index].id : Date.now(), // Preserve ID for edits
-        code: document.getElementById('log-stock-code').value, 
-        date: document.getElementById('log-buy-date').value,
-        price: parseFloat(document.getElementById('log-buy-price').value), 
-        lot: parseInt(document.getElementById('log-buy-lot').value),
-        feeBeli: parseFloat(logFeeBeliInput.value), // Get Fee Beli
-        reason: document.getElementById('log-reason').value, 
-        sellPrice: null, 
-        sellDate: null,
-        feeJual: null // Initialize Fee Jual
-    };
-
-    // If editing a sold transaction, get sell details from the modal
-    if (isEdit && portfolioLog[index].sellPrice !== null) {
-        newLog.sellPrice = parseFloat(logSellPriceInput.value);
-        newLog.sellDate = logSellDateInput.value;
-        newLog.feeJual = parseFloat(logFeeJualInput.value);
-    } else if (isEdit) { // If editing an open transaction, ensure sell details are cleared if they somehow exist
-         newLog.sellPrice = null;
-         newLog.sellDate = null;
-         newLog.feeJual = null;
-    }
-
-
-    if (!newLog.code || !newLog.date || !newLog.price || !newLog.lot) { showNotification('Harap isi semua kolom yang wajib diisi.'); return; }
-    
-    // Calculate transaction cost including Fee Beli
-    const transactionCost = newLog.price * newLog.lot * 100 * (1 + (newLog.feeBeli || 0) / 100);
-    
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalBuyCostWithFee = 0, totalSellValueWithFee = 0;
-    portfolioLog.forEach((log, i) => {
-        if (isEdit && i === index) return; // Exclude current log being edited from calculation
-        totalBuyCostWithFee += (log.price * (1 + (log.feeBeli || 0) / 100)) * log.lot * 100;
-        if (log.sellPrice) totalSellValueWithFee += (log.sellPrice * (1 - (log.feeJual || 0) / 100)) * log.lot * 100;
-    });
-    const currentEquity = initialEquity - totalBuyCostWithFee + totalSellValueWithFee;
-
-    // Check if adding this new transaction would exceed available equity
-    if (!isEdit && transactionCost > currentEquity) {
-        showNotification(`Transaksi gagal. Total pembelian (${formatCurrency(transactionCost)}) melebihi ekuitas yang tersedia (${formatCurrency(currentEquity)}).`);
-        return;
-    }
-
-    if (isEdit) {
-        portfolioLog[index] = newLog;
-    } else {
-        portfolioLog.push(newLog);
-    }
-    
-    logForm.reset();
-    closeModal(addLogModal);
-    refreshAllApplicationData();
-}
-
-function handleDeleteLog(index) {
-    showCustomConfirmModal(
-        'Konfirmasi Hapus',
-        'Apakah Anda yakin ingin menghapus catatan ini? Tindakan ini tidak dapat dibatalkan.',
-        'Hapus',
-        'Batal',
-        () => {
-            portfolioLog.splice(index, 1);
-            refreshAllApplicationData();
-            closeModal(deleteConfirmModal); // Close the confirmation modal after deletion
-        }, 
-        () => {
-            closeModal(deleteConfirmModal); // Close the confirmation modal if cancelled
-        }
-    );
-}
-
-function handleEditLog(index) {
-    const logToEdit = portfolioLog[index];
-    if (logToEdit) {
-        logModalTitle.textContent = 'Edit Catatan Transaksi';
-        submitLogBtn.textContent = 'Simpan Perubahan';
-        logEditIndexInput.value = index;
-
-        // Populate common fields
-        document.getElementById('log-stock-code').value = logToEdit.code;
-        document.getElementById('log-buy-date').value = logToEdit.date;
-        document.getElementById('log-buy-price').value = logToEdit.price;
-        document.getElementById('log-buy-lot').value = logToEdit.lot;
-        logFeeBeliInput.value = logToEdit.feeBeli || defaultFeeBeli; // Default Fee Beli
-
-        document.getElementById('log-reason').value = logToEdit.reason;
-
-        // Handle sell-specific fields visibility and population
-        if (logToEdit.sellPrice !== null) {
-            sellFieldsContainer.classList.remove('hidden');
-            logSellPriceInput.value = logToEdit.sellPrice;
-            logSellDateInput.value = logToEdit.sellDate;
-            logFeeJualInput.value = logToEdit.feeJual || defaultFeeJual; // Default Fee Jual
-        } else {
-            sellFieldsContainer.classList.add('hidden');
-            logSellPriceInput.value = '';
-            logSellDateInput.value = '';
-            logFeeJualInput.value = defaultFeeJual; // Set default for new sell
-        }
-        openModal(addLogModal);
-    }
-}
-
-function handleSellSubmit(event) {
-    event.preventDefault();
-    const index = parseInt(document.getElementById('sell-log-index').value);
-    const sellPrice = parseFloat(document.getElementById('sell-price').value);
-    const sellDate = document.getElementById('sell-date').value;
-    const feeJual = parseFloat(document.getElementById('sell-fee-jual').value); // Get Fee Jual from sell modal
-
-    if (!isNaN(index) && sellPrice > 0 && sellDate) {
-        portfolioLog[index].sellPrice = sellPrice;
-        portfolioLog[index].sellDate = sellDate;
-        portfolioLog[index].feeJual = feeJual; // Store Fee Jual
-        closeModal(sellModal);
-        refreshAllApplicationData();
-    } else {
-        showNotification('Harga jual dan tanggal tidak valid.');
-    }
-}
-
-/**
- * REVISED FUNCTION
- * This function now also saves the new averaging strategy parameters.
- */
-function handleSimParamsSubmit(event) {
-    event.preventDefault();
-    // Copy standard values
-    document.getElementById('stock-code').value = document.getElementById('modal-stock-code').value;
-    document.getElementById('initial-price').value = document.getElementById('modal-initial-price').value;
-    document.getElementById('initial-lot').value = document.getElementById('modal-initial-lot').value;
-    document.getElementById('dividend').value = document.getElementById('modal-dividend').value;
-    document.getElementById('avg-down-percent').value = document.getElementById('modal-avg-down-percent').value;
-    document.getElementById('avg-levels').value = document.getElementById('modal-avg-levels').value;
-    document.getElementById('tp1-percent').value = document.getElementById('modal-tp1-percent').value;
-    document.getElementById('tp2-percent').value = document.getElementById('modal-tp2-percent').value;
-    document.getElementById('sim-reason').value = document.getElementById('modal-sim-reason').value;
-
-    // NEW: Copy averaging strategy values
-    document.getElementById('avg-strategy').value = document.getElementById('modal-avg-strategy').value;
-    document.getElementById('avg-multiplier').value = document.getElementById('modal-avg-multiplier').value;
-    
-    calculateDashboard();
-    updateActiveSimDisplay();
-    updateSimulationReasonDisplay();
-    closeModal(simParamsModal);
-    triggerAutoSave();
-}
-
-/**
- * REVISED FUNCTION
- * This function now saves the averaging strategy along with other simulation parameters.
- */
-function handleSaveSimulation(isFromModal = false) {
-    const simulation = {
-        id: Date.now(),
-        stockCode: document.getElementById(isFromModal ? 'modal-stock-code' : 'stock-code').value,
-        initialPrice: parseFloat(document.getElementById(isFromModal ? 'modal-initial-price' : 'initial-price').value),
-        initialLot: parseFloat(document.getElementById(isFromModal ? 'modal-initial-lot' : 'initial-lot').value),
-        dividend: parseFloat(document.getElementById(isFromModal ? 'modal-dividend' : 'dividend').value),
-        avgDownPercent: parseFloat(document.getElementById(isFromModal ? 'modal-avg-down-percent' : 'avg-down-percent').value),
-        avgLevels: parseInt(document.getElementById(isFromModal ? 'modal-avg-levels' : 'avg-levels').value),
-        // NEW: Save strategy parameters
-        avgStrategy: document.getElementById(isFromModal ? 'modal-avg-strategy' : 'avg-strategy').value,
-        avgMultiplier: parseFloat(document.getElementById(isFromModal ? 'modal-avg-multiplier' : 'avg-multiplier').value),
-        tp1Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp1-percent' : 'tp1-percent').value),
-        tp2Percent: parseFloat(document.getElementById(isFromModal ? 'modal-tp2-percent' : 'tp2-percent').value),
-        reason: document.getElementById(isFromModal ? 'modal-sim-reason' : 'sim-reason').value,
-    };
-    if (!simulation.stockCode) { 
-        showNotification('Kode saham tidak boleh kosong untuk menyimpan simulasi.'); 
-        return; 
-    }
-    savedSimulations.push(simulation);
-    renderSavedSimulationsTable();
-    if (isFromModal) closeModal(simParamsModal);
-    switchTab('saved');
-    triggerAutoSave();
-}
-
-/**
- * REVISED FUNCTION
- * This function now loads the saved averaging strategy when a simulation is loaded.
- */
-function handleLoadOrDeleteSimulation(event) {
-    const target = event.target;
-    const simId = parseInt(target.dataset.id);
-    if (isNaN(simId)) return;
-
-    if (target.classList.contains('load-sim-btn')) {
-        const simToLoad = savedSimulations.find(s => s.id === simId);
-        if (simToLoad) {
-            // Load standard parameters
-            document.getElementById('stock-code').value = simToLoad.stockCode;
-            document.getElementById('initial-price').value = simToLoad.initialPrice;
-            document.getElementById('initial-lot').value = simToLoad.initialLot;
-            document.getElementById('dividend').value = simToLoad.dividend;
-            document.getElementById('avg-down-percent').value = simToLoad.avgDownPercent;
-            document.getElementById('avg-levels').value = simToLoad.avgLevels;
-            document.getElementById('tp1-percent').value = simToLoad.tp1Percent;
-            document.getElementById('tp2-percent').value = simToLoad.tp2Percent;
-            document.getElementById('sim-reason').value = simToLoad.reason || '';
-            
-            // NEW: Load strategy parameters and update both hidden and modal inputs
-            const savedStrategy = simToLoad.avgStrategy || 'lot';
-            const savedMultiplier = simToLoad.avgMultiplier || 1;
-            
-            document.getElementById('avg-strategy').value = savedStrategy;
-            document.getElementById('avg-multiplier').value = savedMultiplier;
-            document.getElementById('modal-avg-strategy').value = savedStrategy;
-            document.getElementById('modal-avg-multiplier').value = savedMultiplier;
-
-            calculateDashboard();
-            updateActiveSimDisplay();
-            updateSimulationReasonDisplay();
-            switchTab('simulator');
-            triggerAutoSave();
-        }
-    } else if (target.classList.contains('delete-sim-btn')) {
-        // Use custom confirmation modal for deleting simulations
-        showCustomConfirmModal(
-            'Konfirmasi Hapus Simulasi',
-            'Apakah Anda yakin ingin menghapus simulasi ini? Tindakan ini tidak dapat dibatalkan.',
-            'Hapus',
-            'Batal',
-            () => {
-                savedSimulations = savedSimulations.filter(s => s.id !== simId);
-                renderSavedSimulationsTable();
-                triggerAutoSave();
-                closeModal(deleteConfirmModal);
-            }, 
-            () => {
-                closeModal(deleteConfirmModal);
-            }
-        );
-    }
-}
-
-/**
- * REVISED FUNCTION
- * This function now displays the saved averaging strategy in the table.
- */
-function renderSavedSimulationsTable() {
-    const tableBody = document.getElementById('saved-simulations-table-body');
-    tableBody.innerHTML = '';
-    if (savedSimulations.length === 0) { 
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">Belum ada simulasi yang disimpan.</td></tr>`; 
-        return; 
-    }
-    savedSimulations.forEach(sim => {
-        const row = document.createElement('tr');
-        row.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-600';
+    pagedLogs.forEach((log, index) => {
+        const realIndex = portfolioLog.indexOf(log);
+        const isOpen = !log.sellPrice;
         
-        // NEW: Format the strategy text for display
-        const strategy = sim.avgStrategy || 'lot'; // Default to 'lot' if not defined
-        const multiplier = sim.avgMultiplier || 1; // Default to 1 if not defined
-        const strategyText = strategy === 'lot' ? `Lot x${multiplier}` : `Rp x${multiplier}`;
+        const buyCost = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+        let pl = 0;
+        
+        if(!isOpen) {
+            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+            pl = sellVal - buyCost;
+        }
 
-        row.innerHTML = `
-            <td class="px-6 py-4 font-medium text-cyan-300">${sim.stockCode.toUpperCase()}</td>
-            <td class="px-6 py-4">${formatCurrency(sim.initialPrice)}</td>
-            <td class="px-6 py-4">${sim.initialLot}</td>
-            <td class="px-6 py-4">${sim.avgDownPercent}%</td>
-            <td class="px-6 py-4">${sim.avgLevels}</td>
-            <td class="px-6 py-4">${strategyText}</td>
-            <td class="px-6 py-4 space-x-2">
-                <button class="load-sim-btn text-green-400 hover:text-green-300" data-id="${sim.id}">Muat</button>
-                <button class="delete-sim-btn text-red-500 hover:text-red-400" data-id="${sim.id}">Hapus</button>
+        // Desktop Row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="font-mono text-xs">${log.date}</td>
+            <td class="font-bold text-blue-700">${log.code}</td>
+            <td class="text-right font-mono">${formatCurrency(log.price)}</td>
+            <td class="text-right font-mono">${log.lot}</td>
+            <td class="text-center"><span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span></td>
+            <td class="text-right font-bold ${isOpen ? 'text-gray-400' : (pl >= 0 ? 'text-green-600' : 'text-red-500')}">
+                ${isOpen ? '-' : formatCurrency(pl, true)}
+            </td>
+            <td class="text-center">
+                <div class="flex justify-center gap-1">
+                    ${isOpen ? `<button class="btn-sell btn btn-accent px-2 py-0 text-xs border-black" data-index="${realIndex}">JUAL</button>` : ''}
+                    <button class="btn-edit btn btn-secondary px-2 py-0 text-xs border-black" data-index="${realIndex}">EDIT</button>
+                    <button class="btn-delete text-red-500 hover:text-red-700 px-2" data-index="${realIndex}">✕</button>
+                </div>
             </td>
         `;
-        tableBody.appendChild(row);
-    });
-}
+        tbody.appendChild(tr);
 
-// --- LOG SORTING FUNCTIONS ---
-function updateSortIcons() {
-    document.querySelectorAll('#tab-content-log .sort-icon').forEach(icon => icon.textContent = '');
-    if (sortState.column) {
-        const currentHeader = document.querySelector(`#tab-content-log [data-sort="${sortState.column}"] .sort-icon`);
-        if (currentHeader) {
-            currentHeader.textContent = sortState.direction === 'asc' ? ' ▲' : ' ▼';
-        }
-    }
-}
-
-function handleLogSort(event) {
-    const header = event.target.closest('.sortable');
-    if (!header) return;
-
-    const column = header.dataset.sort;
-    if (sortState.column === column) {
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : (sortState.direction === 'desc' ? null : 'asc');
-    } else {
-        sortState.column = column;
-        sortState.direction = 'asc';
-    }
-
-    if (sortState.direction === null) {
-        sortState.column = null;
-    }
-    
-    currentPage = 1; // Return to the first page when sorting
-    applyLogFiltersAndSort();
-}
-
-// --- SETTINGS MANAGEMENT ---
-function saveSettings() {
-    defaultFeeBeli = parseFloat(defaultFeeBeliInput.value);
-    defaultFeeJual = parseFloat(defaultFeeJualInput.value);
-    showNotification('Default settings saved successfully!', 'Success');
-    triggerAutoSave(); // Save settings to Firebase
-}
-
-// --- FILTER LOGIC ---
-function applyLogFiltersAndSort() {
-    const dateFrom = filterDateFromInput.value;
-    const dateTo = filterDateToInput.value;
-    const stockCode = filterStockCodeInput.value.toLowerCase();
-    const reason = filterReasonInput.value.toLowerCase();
-    const status = filterStatusSelect.value;
-    
-    let filtered = portfolioLog.filter(log => {
-        const logDate = log.date;
-        const logCode = log.code.toLowerCase();
-        const logReason = log.reason ? log.reason.toLowerCase() : '';
-        const logStatus = log.sellPrice ? 'closed' : 'open';
-
-        // Date filter
-        if (dateFrom && logDate < dateFrom) return false;
-        if (dateTo && logDate > dateTo) return false;
-
-        // Stock Code filter
-        if (stockCode && !logCode.includes(stockCode)) return false;
-
-        // Reason filter
-        if (reason && !logReason.includes(reason)) return false;
-
-        // Status filter
-        if (status !== 'all' && logStatus !== status) return false;
-
-        return true;
+        // Mobile Card
+        const card = document.createElement('div');
+        card.className = 'card p-4 relative';
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <span class="text-xs font-mono text-gray-500">${log.date}</span>
+                    <h4 class="text-xl font-black text-blue-700">${log.code}</h4>
+                </div>
+                <span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                <div><span class="text-xs text-gray-400">Buy</span> <span class="font-mono font-bold">${formatCurrency(log.price)}</span></div>
+                <div><span class="text-xs text-gray-400">Lot</span> <span class="font-mono font-bold">${log.lot}</span></div>
+                ${!isOpen ? `<div class="col-span-2 pt-1 border-t border-gray-100 flex justify-between"><span class="text-gray-500">P/L</span> <span class="font-bold ${pl>=0?'text-green-500':'text-red-500'}">${formatCurrency(pl, true)}</span></div>` : ''}
+            </div>
+            <div class="flex gap-2 mt-2 border-t border-gray-100 pt-2">
+                ${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-1" data-index="${realIndex}">JUAL</button>` : ''}
+                <button class="btn-edit flex-1 btn btn-secondary text-xs py-1" data-index="${realIndex}">EDIT</button>
+                <button class="btn-delete btn btn-danger text-xs py-1" data-index="${realIndex}">DEL</button>
+            </div>
+        `;
+        cardView.appendChild(card);
     });
     
-    // Apply sorting after filtering
-    if (sortState.column) {
-        filtered.sort((a, b) => {
-            let aValue, bValue;
-            
-            // Handle specific sorting logic for each column
-            switch (sortState.column) {
-                case 'realizedPL':
-                    aValue = a.sellPrice ? ((a.sellPrice * (1 - (a.feeJual || 0) / 100)) - (a.price * (1 + (a.feeBeli || 0) / 100))) * a.lot * 100 : (sortState.direction === 'asc' ? -Infinity : Infinity);
-                    bValue = b.sellPrice ? ((b.sellPrice * (1 - (b.feeJual || 0) / 100)) - (b.price * (1 + (b.feeBeli || 0) / 100))) * b.lot * 100 : (sortState.direction === 'asc' ? -Infinity : Infinity);
-                    break;
-                case 'status':
-                    aValue = a.sellPrice ? 'closed' : 'open';
-                    bValue = b.sellPrice ? 'closed' : 'open';
-                    break;
-                case 'date':
-                case 'sellDate':
-                    // Handle cases where date is null
-                    aValue = a[sortState.column] ? new Date(a[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
-                    bValue = b[sortState.column] ? new Date(b[sortState.column]) : (sortState.direction === 'asc' ? new Date(0) : new Date(8640000000000000));
-                    break;
-                case 'code':
-                case 'reason':
-                    aValue = a[sortState.column];
-                    bValue = b[sortState.column];
-                    // Handle cases where reason is null
-                    if (aValue === undefined || aValue === null) aValue = '';
-                    if (bValue === undefined || bValue === null) bValue = '';
-                    break;
-                default: // Numeric columns like price and lot
-                    aValue = a[sortState.column];
-                    bValue = b[sortState.column];
-                    if (aValue === undefined || aValue === null) aValue = 0;
-                    if (bValue === undefined || bValue === null) bValue = 0;
-                    break;
-            }
+    // Attach event listeners to dynamic buttons
+    document.querySelectorAll('.btn-sell').forEach(b => b.onclick = () => openSellModal(b.dataset.index));
+    document.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => editLog(b.dataset.index));
+    document.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => deleteLog(b.dataset.index));
 
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                return sortState.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            } else if (aValue instanceof Date && bValue instanceof Date) {
-                 return sortState.direction === 'asc' ? aValue.getTime() - bValue.getTime() : bValue.getTime() - aValue.getTime();
-            }
-             else {
-                return sortState.direction === 'asc' ? aValue - bValue : b-a;
-            }
-        });
-    }
-
-    filteredLogsData = filtered; // Save the filtered and sorted data to a global variable
-    renderLogTable(filteredLogsData);
+    calculatePortfolioSummary();
 }
 
-function resetLogFilters() {
-    filterDateFromInput.value = '';
-    filterDateToInput.value = '';
-    filterStockCodeInput.value = '';
-    filterReasonInput.value = '';
-    filterStatusSelect.value = 'all';
-    sortState = { column: 'date', direction: 'desc' }; // Reset sort state
-    currentPage = 1; // Reset to page 1
-    applyLogFiltersAndSort(); // Re-render with all logs
-}
+function calculatePortfolioSummary() {
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    let totalBuy = 0, totalSell = 0, realizedPL = 0;
+    let stockHoldings = {};
 
-// --- Event listener for sticky nav ---
-window.addEventListener('scroll', () => {
-    // Check if tabNavWrapper is initialized
-    if (tabNavWrapper && tabNavOffsetTop !== undefined) {
-        if (window.scrollY >= tabNavOffsetTop) {
-            tabNavWrapper.classList.remove('default-state');
-            tabNavWrapper.classList.add('sticky-state');
+    portfolioLog.forEach(log => {
+        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+        totalBuy += buyVal;
+
+        if(log.sellPrice) {
+            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+            totalSell += sellVal;
+            realizedPL += (sellVal - buyVal);
         } else {
-            tabNavWrapper.classList.remove('sticky-state');
-            tabNavWrapper.classList.add('default-state');
+            if(!stockHoldings[log.code]) stockHoldings[log.code] = { lot: 0, cost: 0 };
+            stockHoldings[log.code].lot += log.lot;
+            stockHoldings[log.code].cost += buyVal;
         }
-    }
-});
+    });
 
-// --- EVENT LISTENERS ---
-// The following event listener for the removed profit calculator form is now deleted.
-// document.getElementById('profit-calc-form').addEventListener('input', calculateEntryForProfit);
-logForm.addEventListener('submit', handleAddOrEditLog); // Changed to handleAddOrEditLog
-simParamsForm.addEventListener('submit', handleSimParamsSubmit);
-sellForm.addEventListener('submit', handleSellSubmit);
-document.getElementById('initial-equity').addEventListener('input', () => {
-    renderFinancialSummaries();
+    const currentEquity = initialEquity - totalBuy + totalSell;
+    document.getElementById('current-equity-display').textContent = formatCurrency(currentEquity);
+    
+    const plEl = document.getElementById('realized-pl-summary');
+    plEl.innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
+
+    // Floating PL
+    const summaryContainer = document.getElementById('portfolio-summary-by-stock');
+    summaryContainer.innerHTML = '';
+    let totalFloating = 0;
+
+    Object.keys(stockHoldings).forEach(code => {
+        const data = stockHoldings[code];
+        const avgPrice = data.cost / (data.lot * 100);
+        const currPrice = parseFloat(currentMarketPrices[code]) || 0;
+        
+        let floating = 0;
+        if(currPrice > 0) {
+            floating = (currPrice * data.lot * 100) - data.cost;
+            totalFloating += floating;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'card bg-white p-3 border-2 border-gray-200';
+        div.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-black text-lg">${code}</span>
+                <span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span>
+            </div>
+            <div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs">Market:</span>
+                <input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}">
+            </div>
+            <div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">
+                ${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}
+            </div>
+        `;
+        summaryContainer.appendChild(div);
+    });
+    
+    // Event listener for dynamic price inputs
+    document.querySelectorAll('.price-input').forEach(input => {
+        input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value);
+    });
+
+    document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
+    
+    updateChart(realizedPL + totalFloating, initialEquity);
+}
+
+function updatePrice(code, price) {
+    currentMarketPrices[code] = price;
+    calculatePortfolioSummary();
+    triggerAutoSave();
+}
+
+// --- ACTIONS ---
+function deleteLog(index) {
+    showConfirm(() => {
+        portfolioLog.splice(index, 1);
+        refreshData();
+        closeModal(modals.deleteConfirm);
+    });
+}
+
+function openSellModal(index) {
+    document.getElementById('sell-log-index').value = index;
+    document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('sell-fee-jual').value = defaultFeeJual;
+    openModal(modals.sell);
+}
+
+function editLog(index) {
+    const log = portfolioLog[index];
+    document.getElementById('log-edit-index').value = index;
+    document.getElementById('log-stock-code').value = log.code;
+    document.getElementById('log-buy-date').value = log.date;
+    document.getElementById('log-buy-price').value = log.price;
+    document.getElementById('log-buy-lot').value = log.lot;
+    document.getElementById('log-fee-beli').value = log.feeBeli || defaultFeeBeli;
+    document.getElementById('log-reason').value = log.reason || '';
+    
+    const sellContainer = document.getElementById('sell-fields-container');
+    if(log.sellPrice) {
+        sellContainer.classList.remove('hidden');
+        document.getElementById('log-sell-price').value = log.sellPrice;
+        document.getElementById('log-sell-date').value = log.sellDate;
+        document.getElementById('log-fee-jual').value = log.feeJual;
+    } else {
+        sellContainer.classList.add('hidden');
+    }
+    openModal(modals.addLog);
+}
+
+// --- FORM HANDLERS ---
+document.getElementById('sim-params-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 
+     'avg-levels', 'avg-strategy', 'avg-multiplier', 'tp1-percent', 'tp2-percent', 'sim-reason']
+     .forEach(id => {
+         document.getElementById(id).value = document.getElementById(`modal-${id}`).value;
+     });
+    
+    calculateDashboard();
+    closeModal(modals.simParams);
     triggerAutoSave();
 });
 
-document.getElementById('open-add-log-modal-btn').addEventListener('click', () => {
-    logModalTitle.textContent = 'Tambah Catatan Transaksi';
-    submitLogBtn.textContent = 'Tambah';
-    logEditIndexInput.value = ''; // Clear edit index
-    logForm.reset(); // Clear form fields
-    document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; // Set default date
-    logFeeBeliInput.value = defaultFeeBeli; // Set default buy fee from settings
-    sellFieldsContainer.classList.add('hidden'); // Hide sell fields when adding new
-    logSellPriceInput.value = '';
-    logSellDateInput.value = '';
-    logFeeJualInput.value = defaultFeeJual; // Set default sell fee from settings
-    openModal(addLogModal);
-});
-document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(addLogModal));
+document.getElementById('log-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const idxVal = document.getElementById('log-edit-index').value;
+    const isEdit = idxVal !== '';
+    const newLog = {
+        id: isEdit ? portfolioLog[idxVal].id : Date.now(),
+        code: document.getElementById('log-stock-code').value.toUpperCase(),
+        date: document.getElementById('log-buy-date').value,
+        price: parseFloat(document.getElementById('log-buy-price').value),
+        lot: parseInt(document.getElementById('log-buy-lot').value),
+        feeBeli: parseFloat(document.getElementById('log-fee-beli').value),
+        reason: document.getElementById('log-reason').value,
+        sellPrice: null, sellDate: null, feeJual: null
+    };
 
-document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => {
-    // Load existing main values into modal
-    document.getElementById('modal-stock-code').value = document.getElementById('stock-code').value;
-    document.getElementById('modal-initial-price').value = document.getElementById('initial-price').value;
-    document.getElementById('modal-initial-lot').value = document.getElementById('initial-lot').value;
-    document.getElementById('modal-dividend').value = document.getElementById('dividend').value;
-    document.getElementById('modal-avg-down-percent').value = document.getElementById('avg-down-percent').value;
-    document.getElementById('modal-avg-levels').value = document.getElementById('avg-levels').value;
-    document.getElementById('modal-tp1-percent').value = document.getElementById('tp1-percent').value;
-    document.getElementById('modal-tp2-percent').value = document.getElementById('tp2-percent').value;
-    document.getElementById('modal-sim-reason').value = document.getElementById('sim-reason').value;
+    const sellP = document.getElementById('log-sell-price').value;
+    if(sellP && !document.getElementById('sell-fields-container').classList.contains('hidden')) {
+        newLog.sellPrice = parseFloat(sellP);
+        newLog.sellDate = document.getElementById('log-sell-date').value;
+        newLog.feeJual = parseFloat(document.getElementById('log-fee-jual').value);
+    }
+
+    if(isEdit) portfolioLog[idxVal] = newLog;
+    else portfolioLog.push(newLog);
+
+    closeModal(modals.addLog);
+    refreshData();
+});
+
+document.getElementById('sell-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const idx = document.getElementById('sell-log-index').value;
+    const log = portfolioLog[idx];
+    log.sellPrice = parseFloat(document.getElementById('sell-price').value);
+    log.sellDate = document.getElementById('sell-date').value;
+    log.feeJual = parseFloat(document.getElementById('sell-fee-jual').value);
+    closeModal(modals.sell);
+    refreshData();
+});
+
+// --- SAVED SIMULATIONS ---
+document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => {
+     const sim = {
+        id: Date.now(),
+        stockCode: document.getElementById('modal-stock-code').value,
+        initialPrice: document.getElementById('modal-initial-price').value,
+        initialLot: document.getElementById('modal-initial-lot').value,
+        avgStrategy: document.getElementById('modal-avg-strategy').value,
+        avgMultiplier: document.getElementById('modal-avg-multiplier').value,
+        avgDownPercent: document.getElementById('modal-avg-down-percent').value,
+        avgLevels: document.getElementById('modal-avg-levels').value
+     };
+     savedSimulations.push(sim);
+     renderSavedSimulations();
+     triggerAutoSave();
+     showNotification('Simulasi tersimpan!');
+});
+
+function renderSavedSimulations() {
+    const tbody = document.getElementById('saved-simulations-table-body');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    savedSimulations.forEach((sim, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="font-bold">${sim.stockCode}</td>
+            <td>${formatCurrency(sim.initialPrice)}</td>
+            <td>${sim.initialLot}</td>
+            <td>${sim.avgStrategy} x${sim.avgMultiplier}</td>
+            <td>${sim.avgDownPercent}%</td>
+            <td>${sim.avgLevels}</td>
+            <td>
+                <button class="btn-load btn btn-secondary py-0 px-2 text-xs border-black" data-index="${idx}">LOAD</button>
+                <button class="btn-del-sim text-red-500 ml-2" data-index="${idx}">✕</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
     
-    // NEW: Load existing strategy values into modal
-    document.getElementById('modal-avg-strategy').value = document.getElementById('avg-strategy').value;
-    document.getElementById('modal-avg-multiplier').value = document.getElementById('avg-multiplier').value;
+    document.querySelectorAll('.btn-load').forEach(b => b.onclick = () => loadSim(b.dataset.index));
+    document.querySelectorAll('.btn-del-sim').forEach(b => b.onclick = () => deleteSim(b.dataset.index));
+}
 
-    openModal(simParamsModal);
-});
-document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(simParamsModal));
-document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => handleSaveSimulation(true));
-document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(notificationModal));
-
-// Perbaikan: Ganti event listener dari 'log-table-body' ke 'tab-content-log'
-document.getElementById('tab-content-log').addEventListener('click', (event) => {
-    // Find the closest button element to ensure we clicked a button
-    const targetButton = event.target.closest('button');
-    if (!targetButton) return;
+function loadSim(idx) {
+    const sim = savedSimulations[idx];
+    document.getElementById('stock-code').value = sim.stockCode;
+    document.getElementById('initial-price').value = sim.initialPrice;
+    document.getElementById('initial-lot').value = sim.initialLot;
+    document.getElementById('avg-strategy').value = sim.avgStrategy;
+    document.getElementById('avg-multiplier').value = sim.avgMultiplier;
+    document.getElementById('avg-down-percent').value = sim.avgDownPercent;
+    document.getElementById('avg-levels').value = sim.avgLevels;
     
-    const logIndex = parseInt(targetButton.dataset.index);
+    document.getElementById('modal-stock-code').value = sim.stockCode;
+    document.getElementById('modal-initial-price').value = sim.initialPrice;
+    document.getElementById('modal-initial-lot').value = sim.initialLot;
+    document.getElementById('modal-avg-strategy').value = sim.avgStrategy;
+    document.getElementById('modal-avg-multiplier').value = sim.avgMultiplier;
+    document.getElementById('modal-avg-down-percent').value = sim.avgDownPercent;
+    document.getElementById('modal-avg-levels').value = sim.avgLevels;
 
-    if (targetButton.classList.contains('delete-log-btn')) {
-        handleDeleteLog(logIndex); // Call the new handler
-    } else if (targetButton.classList.contains('sell-log-btn')) {
-        document.getElementById('sell-log-index').value = logIndex;
-        document.getElementById('sell-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('sell-fee-jual').value = portfolioLog[logIndex].feeJual || defaultFeeJual; // Set default sell fee from settings
-        openModal(sellModal);
-    } else if (targetButton.classList.contains('edit-log-btn')) { // New event listener for edit button
-        handleEditLog(logIndex);
-    }
-});
+    calculateDashboard();
+    switchTab('simulator');
+};
 
-document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(sellModal));
-
-// Event listeners for the new custom confirmation modal buttons
-document.getElementById('confirm-delete-btn').addEventListener('click', () => {
-    if (confirmCallback) {
-        confirmCallback();
-        confirmCallback = null; // Reset callback
-        cancelCallback = null;
-    }
-});
-
-document.getElementById('cancel-delete-btn').addEventListener('click', () => {
-    if (cancelCallback) {
-        cancelCallback();
-        cancelCallback = null; // Reset callback
-        confirmCallback = null;
-    }
-});
-
-document.getElementById('saved-simulations-table-body').addEventListener('click', handleLoadOrDeleteSimulation);
-
-Object.keys(tabButtons).forEach(key => {
-    tabButtons[key].addEventListener('click', () => switchTab(key));
-});
-
-document.getElementById('portfolio-summary-by-stock').addEventListener('input', (event) => {
-    if (event.target.classList.contains('current-price-input')) {
-        const code = event.target.dataset.code;
-        currentMarketPrices[code] = event.target.value;
-        calculateAndRenderFloatingPL();
+function deleteSim(idx) {
+    showConfirm(() => {
+        savedSimulations.splice(idx, 1);
+        renderSavedSimulations();
         triggerAutoSave();
-    }
-});
+        closeModal(modals.deleteConfirm);
+    });
+}
 
-document.getElementById('tab-content-performance').addEventListener('input', (event) => {
-     if (event.target.classList.contains('performance-ihsg-input')) {
-        calculatePerformanceDifference();
-    }
-});
-
-// --- SORTING EVENT LISTENER ---
-document.querySelector('#tab-content-log table thead').addEventListener('click', (event) => {
-    const header = event.target.closest('.sortable');
-    if (header) {
-        handleLogSort(event);
-    }
-});
-
-// Event listeners for Settings tab
-saveSettingsBtn.addEventListener('click', saveSettings);
-
-// Event listeners for Filter section
-filterApplyBtn.addEventListener('click', applyLogFiltersAndSort);
-filterResetBtn.addEventListener('click', resetLogFilters);
-filterDateFromInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-filterDateToInput.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-filterStockCodeInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
-filterReasonInput.addEventListener('input', () => { currentPage = 1; applyLogFiltersAndSort(); }); // Apply filter on input for immediate feedback
-filterStatusSelect.addEventListener('change', () => { currentPage = 1; applyLogFiltersAndSort(); });
-
-// New listeners for Pagination
-pageNumberContainer.addEventListener('click', (event) => {
-    const page = event.target.dataset.page;
-    if (page) {
-        goToPage(parseInt(page));
-    }
-});
-
-
-// New listeners for Auth, Sync, and Backup
-loginBtn.addEventListener('click', handleGoogleLogin);
-logoutBtn.addEventListener('click', handleLogout);
-downloadJsonBtn.addEventListener('click', downloadJSON);
-uploadJsonInput.addEventListener('change', handleFileUpload);
-
-// --- INITIALIZATION ---
-window.addEventListener('load', () => {
-    document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
+// --- FILTER & SORT ---
+document.getElementById('filter-apply-btn').addEventListener('click', () => {
+    const code = document.getElementById('filter-stock-code').value.toUpperCase();
+    const status = document.getElementById('filter-status').value;
     
-    // Save the initial position of the nav
-    const tabNavElement = document.getElementById('tab-nav-wrapper');
-    if (tabNavElement) {
-        tabNavOffsetTop = tabNavElement.offsetTop;
-    }
-    
-    window.firebase.onAuthStateChanged(window.firebase.auth, (user) => {
-        const wasNotLoggedIn = !currentUser;
-        updateUIForAuthState(user);
-        if (user && wasNotLoggedIn) {
-            loadDataFromFirebase();
+    filteredLogsData = portfolioLog.filter(log => {
+        if(code && !log.code.includes(code)) return false;
+        if(status === 'open' && log.sellPrice) return false;
+        if(status === 'closed' && !log.sellPrice) return false;
+        return true;
+    });
+    currentPage = 1;
+    renderLogTable(filteredLogsData);
+});
+
+document.getElementById('filter-reset-btn').addEventListener('click', () => {
+    document.getElementById('filter-stock-code').value = '';
+    filteredLogsData = portfolioLog;
+    renderLogTable(filteredLogsData);
+});
+
+// --- BACKUP/RESTORE ---
+document.getElementById('download-json-btn').addEventListener('click', () => {
+    const data = { portfolioLog, savedSimulations, currentMarketPrices, defaultFeeBeli, defaultFeeJual };
+    const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'portfolio_backup.json';
+    a.click();
+});
+
+document.getElementById('upload-json-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const data = JSON.parse(ev.target.result);
+        portfolioLog = data.portfolioLog || [];
+        savedSimulations = data.savedSimulations || [];
+        currentMarketPrices = data.currentMarketPrices || {};
+        refreshData();
+        showNotification('Data Restore Berhasil!');
+    };
+    reader.readAsText(file);
+});
+
+// --- AUTH & SYNC ---
+function triggerAutoSave() {
+    if(!currentUser) return;
+    syncStatusSpan.style.opacity = 1;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(async () => {
+        const data = { portfolioLog, savedSimulations, currentMarketPrices, updatedAt: new Date().toISOString() };
+        try {
+            await setDoc(doc(db, "portfolios", currentUser.uid), data);
+            syncStatusSpan.textContent = 'SAVED';
+            setTimeout(() => syncStatusSpan.style.opacity = 0, 2000);
+        } catch(e) {
+            syncStatusSpan.textContent = 'ERROR';
         }
+    }, 1000);
+}
+
+async function loadCloudData() {
+    if(!currentUser) return;
+    const docSnap = await getDoc(doc(db, "portfolios", currentUser.uid));
+    if(docSnap.exists()) {
+        const data = docSnap.data();
+        portfolioLog = data.portfolioLog || [];
+        savedSimulations = data.savedSimulations || [];
+        currentMarketPrices = data.currentMarketPrices || {};
+        refreshData();
+    }
+}
+
+// --- INIT & EVENT LISTENERS ---
+function refreshData() {
+    filteredLogsData = portfolioLog;
+    renderLogTable();
+    renderSavedSimulations();
+    calculateDashboard();
+}
+
+function updateChart(profit, equity) {
+    if(performanceChart) {
+        const percentage = (profit / equity) * 100;
+        performanceChart.data.datasets[0].data[5] = percentage;
+        performanceChart.update();
+    }
+}
+
+window.addEventListener('load', () => {
+    initChart();
+    calculateDashboard(); 
+    
+    // Navigation
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', '')));
+    });
+    
+    // Modal Triggers
+    document.getElementById('open-add-log-modal-btn').addEventListener('click', () => {
+            document.getElementById('log-form').reset();
+            document.getElementById('log-edit-index').value = '';
+            document.getElementById('sell-fields-container').classList.add('hidden');
+            document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('log-fee-beli').value = defaultFeeBeli;
+            openModal(modals.addLog);
+    });
+    document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(modals.addLog));
+    
+    document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => {
+        ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'tp1-percent', 'tp2-percent', 'sim-reason']
+        .forEach(id => document.getElementById(`modal-${id}`).value = document.getElementById(id).value);
+        openModal(modals.simParams);
+    });
+    document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(modals.simParams));
+    
+    document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(modals.sell));
+    document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
+    
+    document.getElementById('cancel-delete-btn').addEventListener('click', () => closeModal(modals.deleteConfirm));
+    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+        if(onConfirmAction) onConfirmAction();
     });
 
-    refreshAllApplicationData();
-    switchTab('simulator');
+    // Auth Events
+    loginBtn.addEventListener('click', async () => {
+        try { await signInWithPopup(auth, provider); } 
+        catch(e) { showNotification(e.message); }
+    });
+    logoutBtn.addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if(user) {
+            loginBtn.classList.add('hidden');
+            userInfoDiv.classList.remove('hidden');
+            userInfoDiv.classList.add('flex');
+            userNameSpan.textContent = user.displayName;
+            loadCloudData();
+        } else {
+            loginBtn.classList.remove('hidden');
+            userInfoDiv.classList.add('hidden');
+            userInfoDiv.classList.remove('flex');
+            portfolioLog = []; savedSimulations = []; 
+            refreshData();
+        }
+    });
+    
+    // Sticky Nav logic
+    const nav = document.getElementById('tab-nav-wrapper');
+    const navOffset = nav.offsetTop;
+    window.addEventListener('scroll', () => {
+        if(window.scrollY >= navOffset) nav.classList.add('sticky-state');
+        else nav.classList.remove('sticky-state');
+    });
 });

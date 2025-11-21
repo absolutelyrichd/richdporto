@@ -3,912 +3,734 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dasbor Manajemen Portofolio</title>
+    <title>Portfolio Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Firebase SDK -->
-    <script type="module" src="/script.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <style>
+        /* --- DESIGN SYSTEM: SOFT NEO-BRUTALISM --- */
+        :root {
+            --bg-main: #fdfbf7; /* Warm Paper Color */
+            --bg-card: #ffffff;
+            --border-color: #18181b; /* Zinc 900 - Almost Black */
+            --shadow-color: #18181b;
+            --primary: #18181b; 
+            --accent-yellow: #facc15; /* Mustard */
+            --accent-green: #10b981; /* Emerald */
+            --accent-red: #f43f5e; /* Rose */
+            --accent-orange: #fb923c;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden; /* Mencegah scrollbar horizontal */
+            background-color: var(--bg-main);
+            color: #18181b;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 24px 24px; /* Dot Grid Pattern */
         }
 
-        /* --- Gaya Latar Belakang Blue Radial Glow (Baru) --- */
-        .app-background {
-            min-height: 100vh;
-            width: 100%;
-            background-color: #0f172a;
-            position: relative;
+        h1, h2, h3, h4, h5, .font-display {
+            font-family: 'Space Grotesk', sans-serif;
         }
 
-        .app-background::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            background-image: radial-gradient(circle 600px at 50% 50%, rgba(59,130,246,0.3), transparent);
-        }
-        /* --- Akhir Gaya Latar Belakang Baru --- */
-
-        .content-container {
-            position: relative; /* Menempatkan konten di atas latar belakang */
-            z-index: 1;
-        }
-        
+        /* --- BRUTAL CARDS --- */
         .card {
-            /* Efek Glassmorphism: Latar belakang transparan dengan gradasi dan blur */
-            background-color: rgba(31, 41, 55, 0.5); /* bg-gray-800 dengan transparansi */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 0.75rem; /* rounded-xl */
-            padding: 1.5rem; /* p-6 */
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Border tipis untuk menonjolkan efek kaca */
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            background-color: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem; /* 8px */
+            box-shadow: 4px 4px 0px 0px var(--shadow-color);
+            padding: 1.5rem;
+            transition: transform 0.1s ease-in-out;
         }
-        .table-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+
+        .card:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 6px 6px 0px 0px var(--shadow-color);
         }
-        /* Perbaikan untuk Latar Belakang Baris Tabel */
-        tbody tr {
-            background-color: transparent !important; /* Override kelas bg-gray-800 dari JS */
-            border-bottom-width: 1px;
-            border-color: rgba(255, 255, 255, 0.1);
-            transition: background-color 0.2s ease-in-out;
+
+        /* --- BRUTAL BUTTONS --- */
+        .btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            padding: 0.6em 1.5em;
+            border: 2px solid var(--border-color);
+            border-radius: 0.375rem;
+            box-shadow: 2px 2px 0px 0px var(--shadow-color);
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-        tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.05) !important; /* Efek hover yang lebih lembut */
+
+        .btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px 0px var(--shadow-color);
         }
-        input[type="number"] {
-            -moz-appearance: textfield;
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px 0px var(--shadow-color);
         }
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+
+        /* Color Variants */
+        .btn-primary {
+            background-color: var(--border-color);
+            color: #ffffff;
         }
-        /* Tab Styles */
-        .tab-button {
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
-            /* Perubahan di sini: Mengizinkan tombol untuk mengisi ruang */
-            flex-grow: 1; 
-            text-align: center;
-            white-space: nowrap;
+        .btn-primary:hover { background-color: #27272a; }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: var(--border-color);
         }
-        .tab-button.active {
-            /* Gradasi untuk border tab aktif */
-            border-image: linear-gradient(to right, #22D3EE, #0EA5E9) 1;
-            color: #E5E7EB; /* gray-200 */
+        .btn-secondary:hover { background-color: #f3f4f6; }
+
+        .btn-accent {
+            background-color: var(--accent-yellow);
+            color: var(--border-color);
         }
-        .tab-content {
-            display: none;
+
+        .btn-danger {
+            background-color: var(--accent-red);
+            color: white;
+            border-color: #881337;
         }
-        .tab-content.active {
+
+        .btn-success {
+            background-color: var(--accent-green);
+            color: white;
+            border-color: #064e3b;
+        }
+
+        /* --- INPUTS --- */
+        input, select, textarea {
+            width: 100%;
+            background-color: #ffffff;
+            border: 2px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.6rem;
+            color: #18181b;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--border-color);
+            box-shadow: 3px 3px 0px 0px #d1d5db;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
             display: block;
+            color: #374151;
         }
-        /* Modal Styles */
+
+        /* --- TABS --- */
+        #tab-nav-wrapper.sticky-state {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 2rem);
+            max-width: 1280px;
+            z-index: 50;
+        }
+
+        .tab-nav-container {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border: 2px solid transparent;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            color: #6b7280;
+            white-space: nowrap;
+            transition: all 0.2s;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .tab-button:hover {
+            color: var(--border-color);
+            background-color: #f3f4f6;
+        }
+
+        .tab-button.active {
+            background-color: var(--accent-yellow);
+            color: var(--border-color);
+            border: 2px solid var(--border-color);
+            box-shadow: 2px 2px 0px 0px var(--border-color);
+            transform: translate(-1px, -1px);
+        }
+
+        /* --- TABLES --- */
+        .table-brutal {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background: white;
+        }
+
+        .table-brutal thead tr {
+            background-color: #f3f4f6;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .table-brutal th {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+            color: #374151;
+        }
+
+        .table-brutal td {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+        .table-brutal tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-brutal tr:hover td {
+            background-color: #fffbeb; /* Warm hover */
+        }
+
+        /* --- MODALS --- */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.8); /* Light overlay */
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 50;
+            z-index: 100;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            transition: all 0.3s;
         }
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
         .modal-content {
-            /* Efek Glassmorphism untuk modal */
-            background-color: rgba(31, 41, 55, 0.6); /* bg-gray-800 dengan lebih banyak transparansi */
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 2rem;
+            background: white;
+            border: 3px solid var(--border-color);
+            box-shadow: 8px 8px 0px 0px var(--border-color);
             border-radius: 0.75rem;
+            padding: 2rem;
             width: 95%;
             max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-        }
-        #sync-status {
-            transition: opacity 0.5s;
         }
 
-        /* Sortable table headers */
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-        .sort-icon {
+        /* Utility overrides */
+        .text-highlight { color: var(--border-color); font-weight: 700; }
+        .bg-paper { background-color: var(--bg-main); }
+        
+        /* Status Badges */
+        .badge {
             display: inline-block;
-            margin-left: 0.5rem;
-            width: 1em;
+            padding: 0.25rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
         }
-        
-        /* NEW: Custom Select Dropdown Style */
-        select {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem; /* Make space for the arrow */
-        }
-        /* END NEW */
-        
-        /* NEW: Custom Scrollbar Styles */
-        /* Untuk WebKit (Chrome, Safari, Edge, Opera) */
-        ::-webkit-scrollbar {
-            width: 12px;
-            height: 12px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(31, 41, 55, 0.5); /* bg-gray-800 semi-transparan */
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background-color: #4B5563; /* bg-gray-600 */
-            border-radius: 10px;
-            border: 3px solid rgba(31, 41, 55, 0.5);
-        }
+        .badge-open { background-color: #dbeafe; color: #1e40af; border-color: #1e40af; }
+        .badge-closed { background-color: #f3f4f6; color: #374151; border-color: #374151; }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background-color: #6B7280; /* bg-gray-500 */
-        }
+        /* Hide Scrollbar but keep functionality */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-        /* Untuk Firefox */
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: #4B5563 rgba(31, 41, 55, 0.5);
-        }
-        /* END NEW */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Gaya Baru untuk Sticky Nav --- */
-        /* Tambahkan padding dan margin agar seperti "kartu melayang" */
-        #tab-nav-wrapper {
-            margin-bottom: 2rem; /* Ruang di bawah nav */
-            z-index: 100;
-        }
+        .sort-icon { display: inline-block; width: 1em; }
+        .pagination-button { @apply btn btn-secondary px-3 py-1 mx-1; }
+        .pagination-button.active { @apply btn-primary; box-shadow: none; transform: translate(2px,2px); }
 
-        /* Gaya default saat tidak sticky (sama seperti sebelumnya) */
-        #tab-nav-wrapper.default-state {
-            padding: 0;
-            border-radius: 0;
-            border: none;
-            background-color: transparent;
-            box-shadow: none;
-            transition: all 0.3s ease-in-out;
-        }
-
-        /* Gaya saat dalam mode sticky */
-        #tab-nav-wrapper.sticky-state {
-            padding: 0.5rem 1rem; /* Tambahkan padding */
-            border-radius: 0.75rem; /* Gunakan border-radius dari kelas card */
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background-color: rgba(31, 41, 55, 0.5); /* Gunakan warna latar belakang dari kelas card */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 1rem; /* Jarak dari atas layar saat sticky */
-            left: 50%;
-            transform: translateX(-50%); /* Posisikan di tengah secara horizontal */
-            width: calc(100% - 2rem); /* Lebar agar ada margin di samping */
-            max-width: 1280px; /* **Perubahan: Mengembalikan lebar maksimum** */
-            transition: all 0.3s ease-in-out;
-        }
-
-        /* Perubahan di sini: tambahkan `justify-center` untuk teks agar lebih terpusat */
-        #tab-nav-wrapper.sticky-state .tab-nav {
-            justify-content: center;
-        }
-        /* --- Akhir Gaya Baru --- */
-
-        /* CSS BARU untuk Tombol */
-        .btn {
-            font-size: 17px;
-            padding: 0.5em 2em;
-            border: transparent;
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
-            color: white;
-            border-radius: 8px; 
-            transition: all 0.3s ease;
-        }
-
-        .btn:hover {
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn:active {
-            transform: translate(0em, 0.2em);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-        }
-
-        /* Tombol Utama (Biru Tua) */
-        .btn-primary {
-            background-color: #0c4a6e; /* Tailwind: bg-sky-900 */
-        }
-        
-        .btn-primary:hover {
-            background-color: #075985; /* Tailwind: bg-sky-800 */
-        }
-
-        /* Tombol Jual/Hapus (Merah) */
-        .btn-danger {
-            background-color: #ef4444; /* Tailwind: bg-red-500 */
-        }
-
-        .btn-danger:hover {
-            background-color: #dc2626; /* Tailwind: bg-red-700 */
-        }
-
-        /* Tombol Sekunder (Abu-abu) */
-        .btn-secondary {
-            background-color: #4b5563; /* Tailwind: bg-gray-600 */
-        }
-        
-        .btn-secondary:hover {
-            background-color: #6b7280; /* Tailwind: bg-gray-500 */
-        }
-        
-        /* Penyesuaian untuk tampilan mobile */
-        @media (max-width: 767px) {
-            .container {
-                padding: 1rem;
-            }
-            .header-content {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .auth-container {
-                margin-top: 1rem;
-                width: 100%;
-                justify-content: flex-start;
-            }
-            .tab-nav {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .tab-button {
-                flex-grow: 1;
-                text-align: center;
-                padding: 0.75rem 0.5rem;
-                font-size: 0.875rem;
-            }
-            .card {
-                padding: 1rem;
-            }
-            .grid-cols-1-mobile {
-                grid-template-columns: 1fr;
-            }
-            .md\:col-span-2 {
-                grid-column: span 1 / span 1;
-            }
-            .lg\:col-span-1, .lg\:col-span-2 {
-                grid-column: span 1 / span 1;
-            }
-            .sticky {
-                position: static;
-            }
-        }
-
-        /* Gaya Paginasi yang diperbarui */
-        .pagination-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            border-radius: 10px;
-            background-color: rgba(31, 41, 55, 0.5); /* Sesuai dengan card background */
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-            width: fit-content;
-        }
-        
-        .pagination-button {
-            padding: 10px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
-            font-weight: 600;
-            font-size: 14px;
-            color: #d1d5db; /* gray-300 */
-            background-color: transparent;
-            border: none;
-            transition: all 0.2s ease;
-        }
-
-        .pagination-button.active {
-            background-color: #0891b2; /* bg-cyan-600 */
-            color: #f9fafb; /* gray-50 */
-        }
-        
-        /* Gaya baru untuk tombol (sesuai dengan permintaan) */
-        .button {
-            --main-focus: #22D3EE;
-            --font-color: #e2e8f0; /* text-slate-200 */
-            --bg-color-sub: #1f2937; /* bg-gray-800 */
-            --bg-color: #111827; /* bg-gray-900 */
-            --main-color: #e2e8f0; /* text-slate-200 */
-            position: relative;
-            width: 180px;
-            height: 40px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            border: 2px solid var(--main-color);
-            box-shadow: 4px 4px var(--main-color);
-            background-color: var(--bg-color);
-            border-radius: 10px;
-            overflow: hidden;
-            flex-shrink: 0; /* Mencegah tombol menyusut */
-        }
-
-        .button, .button__icon, .button__text {
-            transition: all 0.3s;
-        }
-
-        .button .button__text {
-            transform: translateX(12px);
-            color: var(--font-color);
-            font-weight: 600;
-            white-space: nowrap; /* Mencegah teks terpotong */
-        }
-
-        .button .button__icon {
-            position: absolute;
-            transform: translateX(139px);
-            height: 100%;
-            width: 39px;
-            background-color: var(--bg-color-sub);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .button .svg {
-            width: 20px;
-            fill: var(--main-color);
-        }
-
-        .button:hover {
-            background: var(--bg-color);
-        }
-
-        .button:hover .button__text {
-            color: transparent;
-        }
-
-        .button:hover .button__icon {
-            width: 178px;
-            transform: translateX(0);
-        }
-
-        .button:active {
-            transform: translate(3px, 3px);
-            box-shadow: 0px 0px var(--main-color);
-        }
-
-        /* --- CSS Baru untuk Membalik Ikon Upload --- */
-        #upload-button-svg {
-            transform: scaleY(-1);
-        }
-        /* --- Akhir CSS Baru --- */
     </style>
 </head>
-<body>
+<body class="pb-20">
 
-    <div class="app-background">
-        <div class="content-container">
-            <div class="container mx-auto p-4 md:p-8">
-                <header class="mb-8">
-                    <div class="flex flex-col md:flex-row justify-between items-start sm:items-center header-content">
-                        <div class="text-left mb-4 md:mb-0">
-                            <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">Dasbor Portofolio</h1>
-                            <p class="text-gray-400 mt-2">Simulasikan, catat, dan analisis portofolio Anda.</p>
-                        </div>
-                        <div id="auth-container" class="text-right flex items-center space-x-4 auth-container">
-                            <span id="sync-status" class="text-sm text-gray-400 opacity-0"></span>
-                            <button id="login-btn" class="btn btn-primary">Login dengan Google</button>
-                            <div id="user-info" class="hidden items-center">
-                                <span id="user-name" class="mr-4 text-gray-300 truncate max-w-[150px] sm:max-w-none"></span>
-                                <button id="logout-btn" class="btn btn-secondary">Logout</button>
-                            </div>
-                        </div>
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-2">PORTFOLIO<span class="text-yellow-500">.</span>MANAGER</h1>
+                <p class="text-gray-600 font-medium border-l-4 border-yellow-400 pl-3">Simulate. Track. Analyze. Grow.</p>
+            </div>
+            
+            <div class="flex flex-col items-end gap-2">
+                 <!-- Auth UI -->
+                 <div id="auth-container" class="flex items-center gap-3">
+                    <span id="sync-status" class="text-xs font-bold text-gray-500 uppercase tracking-wide opacity-0 transition-opacity">Syncing...</span>
+                    <div id="user-info" class="hidden items-center gap-3 bg-white border-2 border-black rounded-full px-4 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span id="user-name" class="font-bold text-sm truncate max-w-[100px]">User</span>
+                        <button id="logout-btn" class="text-xs font-bold text-red-500 hover:underline">LOGOUT</button>
                     </div>
-                </header>
-
-                <!-- Container untuk Navigasi Tab -->
-                <div id="tab-nav-wrapper" class="default-state">
-                    <div class="flex space-x-1 md:space-x-4 flex-wrap overflow-x-auto pb-2 tab-nav" aria-label="Tabs">
-                        <button id="tab-btn-simulator" class="tab-button active py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Kalkulator & Skenario</button>
-                        <button id="tab-btn-log" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Catatan Portofolio</button>
-                        <button id="tab-btn-saved" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Simulasi Tersimpan</button>
-                        <button id="tab-btn-performance" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Performa</button>
-                        <button id="tab-btn-backup" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Cadangkan / Pulihkan</button>
-                        <button id="tab-btn-settings" class="tab-button py-4 px-1 text-sm md:text-lg font-medium text-gray-400 hover:text-gray-200">Pengaturan</button>
-                    </div>
+                    <button id="login-btn" class="btn btn-primary py-2 text-sm">
+                        Login Google
+                    </button>
                 </div>
-                <!-- Akhir Perubahan -->
+            </div>
+        </header>
 
-                <!-- Tab Content -->
-                <div>
-                    <!-- Simulator Tab -->
-                    <div id="tab-content-simulator" class="tab-content active">
-                        <div class="card mb-8">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                                <h2 class="text-2xl font-semibold mb-4 sm:mb-0 text-gray-200">Parameter Simulasi Aktif</h2>
-                                <button id="open-sim-params-modal-btn" class="btn btn-primary">Ubah Parameter</button>
+        <!-- Sticky Navigation -->
+        <div id="tab-nav-wrapper" class="mb-8 z-40">
+            <nav class="tab-nav-container">
+                <button id="tab-btn-simulator" class="tab-button active">Kalkulator</button>
+                <button id="tab-btn-log" class="tab-button">Jurnal Transaksi</button>
+                <button id="tab-btn-saved" class="tab-button">Simulasi</button>
+                <button id="tab-btn-performance" class="tab-button">Performa</button>
+                <button id="tab-btn-settings" class="tab-button">Settings</button>
+            </nav>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <main>
+            
+            <!-- 1. TAB SIMULATOR -->
+            <div id="tab-content-simulator" class="tab-content active">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Summary Card -->
+                    <div class="lg:col-span-3">
+                        <div class="card bg-yellow-50 border-yellow-400">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-xl font-bold flex items-center gap-2">
+                                    <span class="w-3 h-3 bg-black rounded-full"></span>
+                                    SIMULASI AKTIF
+                                </h2>
+                                <button id="open-sim-params-modal-btn" class="btn btn-primary text-xs">Ubah Parameter</button>
                             </div>
-                            <div id="active-sim-params-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm border-t border-gray-700/50 pt-4">
-                            </div>
-                        </div>
-
-                        <div class="card mb-8">
-                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Ringkasan Portofolio (Equitas)</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                                <div>
-                                    <h3 class="text-gray-400 text-sm font-medium">Total Investasi</h3>
-                                    <p id="summary-total-investment" class="text-2xl font-bold text-green-400">IDR 0</p>
-                                </div>
-                                <div>
-                                    <h3 class="text-gray-400 text-sm font-medium">Total Lot</h3>
-                                    <p id="summary-total-lot" class="text-2xl font-bold text-gray-200">0</p>
-                                </div>
-                                <div>
-                                    <h3 class="text-gray-400 text-sm font-medium">Harga Rata-rata (NAV per Lembar)</h3>
-                                    <p id="summary-avg-price" class="text-2xl font-bold text-yellow-400">IDR 0</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card mb-8">
-                            <h2 class="text-2xl font-semibold mb-4 text-gray-200">Tabel Skenario Averaging</h2>
-                            <div class="table-wrapper">
-                                <table class="w-full text-sm text-left text-gray-300">
-                                    <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3">Level</th>
-                                            <th scope="col" class="px-6 py-3">Harga Beli (Rp)</th>
-                                            <th scope="col" class="px-6 py-3">Lot Beli</th>
-                                            <th scope="col" class="px-6 py-3">Total Beli (Rp)</th>
-                                            <th scope="col" class="px-6 py-3">Yield Dividen</th>
-                                            <th scope="col" class="px-6 py-3">Harga Rata-rata (Rp)</th>
-                                            <th scope="col" class="px-6 py-3">Harga TP 1</th>
-                                            <th scope="col" class="px-6 py-3">Profit TP 1</th>
-                                            <th scope="col" class="px-6 py-3">Harga TP 2</th>
-                                            <th scope="col" class="px-6 py-3">Profit TP 2</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="scenario-table-body"></tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div id="simulation-reason-card" class="card mb-8 hidden">
-                            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Alasan Simulasi</h2>
-                            <p id="simulation-reason-display" class="text-gray-300 whitespace-pre-wrap"></p>
-                        </div>
-                    </div>
-
-                    <!-- Portfolio Log Tab -->
-                    <div id="tab-content-log" class="tab-content">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div class="lg:col-span-2">
-                                <div class="card mb-8">
-                                    <h2 class="text-2xl font-semibold mb-4 text-gray-200">Filter Riwayat Transaksi</h2>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div>
-                                            <label for="filter-date-from" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Dari</label>
-                                            <input type="date" id="filter-date-from" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                        </div>
-                                        <div>
-                                            <label for="filter-date-to" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Sampai</label>
-                                            <input type="date" id="filter-date-to" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                        </div>
-                                        <div>
-                                            <label for="filter-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                            <input type="text" id="filter-stock-code" placeholder="Contoh: BBRI" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                                        </div>
-                                        <div>
-                                            <label for="filter-status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                                            <select id="filter-status" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-400">
-                                                <option value="all">Semua</option>
-                                                <option value="open">Open</option>
-                                                <option value="closed">Closed</option>
-                                            </select>
-                                        </div>
-                                        <div class="md:col-span-2 lg:col-span-4">
-                                            <label for="filter-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                                            <input type="text" id="filter-reason" placeholder="Cari alasan..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                                        </div>
-                                        <div class="md:col-span-2 lg:col-span-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
-                                            <button id="filter-reset-btn" class="btn btn-secondary">Reset Filter</button>
-                                            <button id="filter-apply-btn" class="btn btn-primary">Terapkan Filter</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card">
-                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                                        <h2 class="text-2xl font-semibold mb-4 sm:mb-0 text-gray-200">Riwayat Transaksi</h2>
-                                        <button id="open-add-log-modal-btn" class="btn btn-primary">Tambah Transaksi</button>
-                                    </div>
-                                    <!-- Tampilan tabel untuk desktop -->
-                                    <div class="table-wrapper hidden md:block">
-                                        <table class="w-full text-sm text-left text-gray-300">
-                                            <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
-                                                <tr>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="date">Tgl Beli <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="code">Kode <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="price">Harga Beli <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="lot">Lot <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3">Fee Beli</th>
-                                                    <th scope="col" class="px-6 py-3">Fee Jual</th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="reason">Alasan Beli <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="sellDate">Tgl Jual <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3 sortable" data-sort="realizedPL">Realisasi P/L <span class="sort-icon"></span></th>
-                                                    <th scope="col" class="px-6 py-3">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="log-table-body"></tbody>
-                                        </table>
-                                    </div>
-                                    <!-- Tampilan kartu untuk mobile -->
-                                    <div id="log-card-view" class="md:hidden">
-                                        <!-- Konten akan diisi oleh JavaScript -->
-                                    </div>
-
-                                    <!-- Pagination Controls -->
-                                    <div id="pagination-controls" class="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-400 space-y-2 sm:space-y-0">
-                                        <div id="page-number-container" class="pagination-container"></div>
-                                        <div id="page-info" class="text-sm"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="lg:col-span-1">
-                                <div class="card sticky top-8">
-                                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700/50 pb-3 text-gray-200">Ringkasan Portofolio</h2>
-                                    <div id="equity-monitoring" class="mb-4">
-                                        <div class="mb-2">
-                                            <label for="initial-equity" class="block text-sm font-medium text-gray-300 mb-1">Modal Awal</label>
-                                            <input type="number" id="initial-equity" value="100000000" class="w-full bg-gray-800/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                                        </div>
-                                        <div class="p-4 bg-gray-900/30 rounded-lg text-center">
-                                            <h4 class="text-gray-300 font-medium">Equitas / Cash Tersedia</h4>
-                                            <p id="current-equity-display" class="text-2xl font-bold text-cyan-400 mt-1">IDR 0</p>
-                                        </div>
-                                    </div>
-                                    <div id="portfolio-grand-total" class="mb-4"></div>
-                                    <div id="realized-pl-summary" class="mb-4"></div>
-                                    <div id="floating-pl-summary" class="mb-4"></div>
-                                    <div id="portfolio-summary-by-stock" class="space-y-4"></div>
-                                </div>
+                            <div id="active-sim-params-display" class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm font-mono">
+                                <!-- Content injected by JS -->
                             </div>
                         </div>
                     </div>
 
-                    <!-- Saved Simulations Tab -->
-                    <div id="tab-content-saved" class="tab-content">
-                        <div class="max-w-5xl mx-auto">
-                            <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Daftar Simulasi Tersimpan</h2>
-                                <div class="table-wrapper">
-                                    <table class="w-full text-sm text-left text-gray-300">
-                                        <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
-                                            <tr>
-                                                <th scope="col" class="px-6 py-3">Kode Saham</th>
-                                                <th scope="col" class="px-6 py-3">Harga Awal</th>
-                                                <th scope="col" class="px-6 py-3">Lot Awal</th>
-                                                <th scope="col" class="px-6 py-3">Avg. Down (%)</th>
-                                                <th scope="col" class="px-6 py-3">Jml. Level</th>
-                                                <th scope="col" class="px-6 py-3">Strategi AVG</th>
-                                                <th scope="col" class="px-6 py-3">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="saved-simulations-table-body"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Performance Tab -->
-                    <div id="tab-content-performance" class="tab-content">
+                    <!-- Calculation Result -->
+                    <div class="lg:col-span-3">
                         <div class="card">
-                            <h2 class="text-2xl font-semibold mb-4 text-gray-200">Performa Portofolio vs IHSG</h2>
-                            <p class="text-sm text-gray-400 mb-6">Performa "All Time" dihitung secara otomatis berdasarkan modal awal, transaksi, dan nilai floating P/L. Performa IHSG dapat diisi manual untuk perbandingan.</p>
+                            <h2 class="text-2xl font-bold mb-6">Skenario Averaging</h2>
                             
-                            <div class="mb-8 p-4 bg-gray-900/30 rounded-lg">
-                                <canvas id="performanceChart"></canvas>
+                            <!-- Stats Row -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div class="border-2 border-gray-200 p-4 rounded bg-gray-50">
+                                    <div class="text-gray-500 text-xs font-bold uppercase">Total Investasi</div>
+                                    <div id="summary-total-investment" class="text-2xl font-bold text-gray-900">IDR 0</div>
+                                </div>
+                                <div class="border-2 border-gray-200 p-4 rounded bg-gray-50">
+                                    <div class="text-gray-500 text-xs font-bold uppercase">Total Lot</div>
+                                    <div id="summary-total-lot" class="text-2xl font-bold text-gray-900">0</div>
+                                </div>
+                                <div class="border-2 border-gray-200 p-4 rounded bg-yellow-100 border-yellow-300">
+                                    <div class="text-yellow-800 text-xs font-bold uppercase">Harga Rata-Rata (Avg)</div>
+                                    <div id="summary-avg-price" class="text-2xl font-bold text-yellow-900">IDR 0</div>
+                                </div>
                             </div>
 
-                            <div class="table-wrapper">
-                                <table class="w-full text-sm text-left text-gray-300">
-                                    <thead class="text-xs text-cyan-300 uppercase bg-gray-700/50">
+                            <div class="overflow-x-auto">
+                                <table class="table-brutal">
+                                    <thead>
                                         <tr>
-                                            <th scope="col" class="px-6 py-3">Periode</th>
-                                            <th scope="col" class="px-6 py-3">Performa Portofolio</th>
-                                            <th scope="col" class="px-6 py-3">Performa IHSG (%)</th>
-                                            <th scope="col" class="px-6 py-3">Selisih (Alpha)</th>
+                                            <th>Level</th>
+                                            <th>Harga Beli</th>
+                                            <th>Lot</th>
+                                            <th>Total Beli</th>
+                                            <th>Yield</th>
+                                            <th>Avg Price</th>
+                                            <th>TP 1 (Harga/Profit)</th>
+                                            <th>TP 2 (Harga/Profit)</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="performance-table-body">
+                                    <tbody id="scenario-table-body">
+                                        <!-- Rows injected by JS -->
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Backup/Restore Tab -->
-                    <div id="tab-content-backup" class="tab-content">
-                        <div class="max-w-5xl mx-auto">
-                            <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Pencadangan & Pemulihan Lokal</h2>
-                                <p class="text-gray-400 mb-6">Simpan data portofolio dan simulasi Anda ke sebuah file di komputer Anda, atau pulihkan dari file yang sudah ada. Ini berguna untuk pencadangan atau transfer data secara manual.</p>
-                                <div class="flex flex-col md:flex-row gap-4">
-                                    <button type="button" id="download-json-btn" class="button">
-                                        <span class="button__text">Download (JSON)</span>
-                                        <span class="button__icon">
-                                            <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                                                <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                                                <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                                            </svg>
-                                        </span>
-                                    </button>
-                                    <div>
-                                        <label for="upload-json-input" class="button">
-                                            <span class="button__text">Upload (JSON)</span>
-                                            <span class="button__icon">
-                                                <!-- Tambahkan id unik ke elemen svg untuk menargetkannya dengan CSS -->
-                                                <svg class="svg" id="upload-button-svg" data-name="Layer 2" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                                                    <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                                                    <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                                                </svg>
-                                            </span>
-                                        </label>
-                                        <input type="file" id="upload-json-input" class="hidden" accept=".json">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    
+                    <div id="simulation-reason-card" class="lg:col-span-3 card hidden bg-blue-50 border-blue-200">
+                        <h3 class="font-bold text-blue-900 text-sm mb-2 uppercase">Catatan Strategi</h3>
+                        <p id="simulation-reason-display" class="text-blue-800 italic"></p>
                     </div>
-
-                    <!-- Settings Tab -->
-                    <div id="tab-content-settings" class="tab-content">
-                        <div class="max-w-5xl mx-auto">
-                            <div class="card">
-                                <h2 class="text-2xl font-semibold mb-4 text-gray-200">Pengaturan Default</h2>
-                                <p class="text-gray-400 mb-6">Atur nilai fee default untuk transaksi beli dan jual.</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label for="default-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Beli (%)</label>
-                                        <input type="number" id="default-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                                    </div>
-                                    <div>
-                                        <label for="default-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Default Fee Jual (%)</label>
-                                        <input type="number" id="default-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                                    </div>
-                                </div>
-                                <div class="flex justify-end mt-6">
-                                    <button id="save-settings-btn" class="btn btn-primary">Simpan Pengaturan</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
-            <!-- Modals -->
-            <div id="sim-params-modal" class="modal-overlay">
-                <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-6 text-gray-200">Parameter Simulasi</h3>
-                    <form id="sim-params-form">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Hidden inputs to store main values -->
-                            <input type="text" id="stock-code" value="BBCA" class="hidden">
-                            <input type="number" id="initial-price" value="9500" class="hidden">
-                            <input type="number" id="initial-lot" value="10" class="hidden">
-                            <input type="number" id="dividend" value="227" class="hidden">
-                            <input type="number" id="avg-down-percent" value="15" class="hidden">
-                            <input type="number" id="avg-levels" value="5" class="hidden">
-                            <!-- NEW: Hidden inputs for averaging strategy -->
-                            <select id="avg-strategy" class="hidden">
-                                <option value="lot" selected>Lot</option>
-                                <option value="amount">Amount</option>
-                            </select>
-                            <input type="number" id="avg-multiplier" value="1" class="hidden">
-                            <!-- END NEW -->
-                            <input type="number" id="tp1-percent" value="20" class="hidden">
-                            <input type="number" id="tp2-percent" value="50" class="hidden">
-                            <textarea id="sim-reason" class="hidden"></textarea>
-                            
-                            <!-- Visible inputs in modal -->
-                            <div>
-                                <label for="modal-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                                <input type="text" id="modal-stock-code" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
+            <!-- 2. TAB LOG / JURNAL -->
+            <div id="tab-content-log" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    
+                    <!-- Sidebar Filters -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="card sticky top-24">
+                            <h3 class="text-lg font-bold mb-4 border-b-2 border-gray-200 pb-2">Ringkasan Portofolio</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="text-xs uppercase text-gray-500">Modal Awal (Equity)</label>
+                                    <input type="number" id="initial-equity" value="100000000" class="text-right font-mono font-bold text-lg">
+                                </div>
+                                <div class="bg-gray-100 p-3 rounded border-2 border-gray-200">
+                                    <div class="text-xs text-gray-500">Cash Tersedia</div>
+                                    <div id="current-equity-display" class="text-xl font-bold text-emerald-600">IDR 0</div>
+                                </div>
+                                <div id="realized-pl-summary"></div>
+                                <div id="floating-pl-summary"></div>
                             </div>
-                            <div>
-                                <label for="modal-initial-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Entry Awal (Rp)</label>
-                                <input type="number" id="modal-initial-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="modal-initial-lot" class="block text-sm font-medium text-gray-300 mb-1">Lot Entry Awal</label>
-                                <input type="number" id="modal-initial-lot" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="modal-dividend" class="block text-sm font-medium text-gray-300 mb-1">Dividen per Lembar (Rp)</label>
-                                <input type="number" id="modal-dividend" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="modal-avg-down-percent" class="block text-sm font-medium text-gray-300 mb-1">Avg. Down Setiap Turun (%)</label>
-                                <input type="number" id="modal-avg-down-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="modal-avg-levels" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Tingkat Averaging</label>
-                                <input type="number" id="modal-avg-levels" min="1" max="10" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
+                        </div>
 
-                            <!-- NEW: Averaging Strategy Controls -->
-                            <div>
-                                <label for="modal-avg-strategy" class="block text-sm font-medium text-gray-300 mb-1">Strategi Averaging</label>
-                                <select id="modal-avg-strategy" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200 focus:ring-cyan-500 focus:border-cyan-500">
-                                    <option value="lot" selected>Berdasarkan Pengali Lot</option>
-                                    <option value="amount">Berdasarkan Pengali Total Beli</option>
+                        <div class="card">
+                            <h3 class="text-lg font-bold mb-4">Filter</h3>
+                            <div class="space-y-3">
+                                <input type="text" id="filter-stock-code" placeholder="Kode Saham (e.g. BBCA)">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="date" id="filter-date-from" class="text-xs">
+                                    <input type="date" id="filter-date-to" class="text-xs">
+                                </div>
+                                <select id="filter-status">
+                                    <option value="all">Semua Status</option>
+                                    <option value="open">Masih Open</option>
+                                    <option value="closed">Sudah Jual</option>
                                 </select>
+                                <input type="text" id="filter-reason" placeholder="Cari alasan...">
+                                <div class="flex gap-2 pt-2">
+                                    <button id="filter-apply-btn" class="btn btn-primary flex-1 text-xs">Apply</button>
+                                    <button id="filter-reset-btn" class="btn btn-secondary flex-1 text-xs">Reset</button>
+                                </div>
                             </div>
-                            <div>
-                                <label for="modal-avg-multiplier" class="block text-sm font-medium text-gray-300 mb-1">Pengali (Contoh: 1, 1.5, 2)</label>
-                                <input type="number" id="modal-avg-multiplier" value="1" step="0.1" min="0" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <!-- END NEW -->
+                        </div>
+                    </div>
 
-                            <div>
-                                <label for="modal-tp1-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 1 (%)</label>
-                                <input type="number" id="modal-tp1-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
+                    <!-- Main Log Table -->
+                    <div class="lg:col-span-3">
+                        
+                        <!-- Floating PL Per Stock Summary -->
+                        <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                            <!-- Cards injected via JS -->
+                        </div>
+
+                        <div class="card min-h-[500px]">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-bold">Jurnal Transaksi</h2>
+                                <button id="open-add-log-modal-btn" class="btn btn-accent shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transform hover:-translate-y-1 border-black">
+                                    + Tambah Transaksi
+                                </button>
                             </div>
-                            <div>
-                                <label for="modal-tp2-percent" class="block text-sm font-medium text-gray-300 mb-1">Target Profit 2 (%)</label>
-                                <input type="number" id="modal-tp2-percent" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
+
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="table-brutal text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable cursor-pointer" data-sort="date">Tgl <span class="sort-icon"></span></th>
+                                            <th class="sortable cursor-pointer" data-sort="code">Kode <span class="sort-icon"></span></th>
+                                            <th class="text-right">Harga Beli</th>
+                                            <th class="text-right">Lot</th>
+                                            <th class="sortable cursor-pointer text-center" data-sort="status">Stat <span class="sort-icon"></span></th>
+                                            <th class="sortable cursor-pointer text-right" data-sort="realizedPL">P/L <span class="sort-icon"></span></th>
+                                            <th class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="log-table-body">
+                                        <!-- JS Content -->
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="md:col-span-2">
-                                <label for="modal-sim-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Simulasi / Pembelian</label>
-                                <textarea id="modal-sim-reason" rows="3" placeholder="Contoh: Saham defensif, prospek jangka panjang bagus..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea>
+
+                            <!-- Mobile View -->
+                            <div id="log-card-view" class="md:hidden space-y-4">
+                                <!-- JS Content -->
                             </div>
-                        </div>
-                        <div class="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                            <button type="button" id="cancel-sim-params-btn" class="btn btn-secondary">Batal</button>
-                            <button type="button" id="save-simulation-from-modal-btn" class="btn btn-primary">Simpan</button>
-                            <button type="submit" class="btn btn-primary">Terapkan</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div id="add-log-modal" class="modal-overlay">
-                <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-6 text-gray-200" id="log-modal-title">Tambah Catatan Transaksi</h3>
-                    <form id="log-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <input type="hidden" id="log-edit-index">
-                        <div>
-                            <label for="log-stock-code" class="block text-sm font-medium text-gray-300 mb-1">Kode Saham</label>
-                            <input type="text" id="log-stock-code" placeholder="Contoh: BBRI" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div>
-                            <label for="log-buy-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Beli</label>
-                            <input type="date" id="log-buy-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div>
-                            <label for="log-buy-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Beli (per lembar)</label>
-                            <input type="number" id="log-buy-price" placeholder="Contoh: 5500" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div>
-                            <label for="log-buy-lot" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Lot</label>
-                            <input type="number" id="log-buy-lot" placeholder="Contoh: 10" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div>
-                            <label for="log-fee-beli" class="block text-sm font-medium text-gray-300 mb-1">Fee Beli (%)</label>
-                            <input type="number" id="log-fee-beli" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label for="log-reason" class="block text-sm font-medium text-gray-300 mb-1">Alasan Pembelian</label>
-                            <textarea id="log-reason" rows="3" placeholder="Contoh: Prospek dividen bagus, valuasi murah..." class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200"></textarea>
-                        </div>
-                        <div id="sell-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2 hidden">
-                            <div>
-                                <label for="log-sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                                <input type="number" id="log-sell-price" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="log-sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                                <input type="date" id="log-sell-date" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                            </div>
-                            <div>
-                                <label for="log-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                                <input type="number" id="log-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
+
+                            <!-- Pagination -->
+                            <div id="pagination-controls" class="mt-6 flex justify-between items-center pt-4 border-t-2 border-gray-100">
+                                <div id="page-info" class="text-sm text-gray-500 font-bold"></div>
+                                <div id="page-number-container" class="flex gap-1"></div>
                             </div>
                         </div>
-                        <div class="md:col-span-2 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                            <button type="button" id="cancel-add-log-btn" class="btn btn-secondary">Batal</button>
-                            <button type="submit" id="submit-log-btn" class="btn btn-primary">Tambah</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div id="sell-modal" class="modal-overlay">
-                <div class="modal-content">
-                    <h3 class="text-2xl font-semibold mb-4 text-gray-200">Realisasi Posisi</h3>
-                    <form id="sell-form">
-                        <input type="hidden" id="sell-log-index">
-                        <div class="mb-4">
-                            <label for="sell-price" class="block text-sm font-medium text-gray-300 mb-1">Harga Jual (per lembar)</label>
-                            <input type="number" id="sell-price" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div class="mb-4">
-                            <label for="sell-fee-jual" class="block text-sm font-medium text-gray-300 mb-1">Fee Jual (%)</label>
-                            <input type="number" id="sell-fee-jual" value="0.11" step="0.01" min="0" max="100" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div class="mb-6">
-                            <label for="sell-date" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Jual</label>
-                            <input type="date" id="sell-date" required class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2.5 text-gray-200">
-                        </div>
-                        <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                            <button type="button" id="cancel-sell-btn" class="btn btn-secondary">Batal</button>
-                            <!-- Perbarui kelas di sini untuk mengubah warna tombol Konfirmasi Jual -->
-                            <button type="submit" class="btn bg-orange-500 hover:bg-orange-600 text-white">Konfirmasi Jual</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div id="notification-modal" class="modal-overlay">
-                <div class="modal-content max-w-sm">
-                    <h3 id="notification-title" class="text-2xl font-semibold mb-4 text-yellow-300">Pemberitahuan</h3>
-                    <p id="notification-message" class="text-gray-300 mb-6"></p>
-                    <div class="flex justify-end">
-                        <button type="button" id="notification-ok-btn" class="btn btn-primary">OK</button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Custom Delete Confirmation Modal -->
-            <div id="delete-confirm-modal" class="modal-overlay">
-                <div class="modal-content max-w-sm text-center">
-                    <svg class="mx-auto mb-4 h-16 w-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    <h3 class="text-2xl font-semibold mb-4 text-red-400">Konfirmasi Hapus</h3>
-                    <p class="text-gray-300 mb-6">Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.</p>
-                    <div class="flex justify-center space-x-4">
-                        <button type="button" id="cancel-delete-btn" class="btn btn-secondary">Batal</button>
-                        <button type="button" id="confirm-delete-btn" class="btn btn-danger">Hapus</button>
-                    </div>
+
+            <!-- 3. TAB SAVED -->
+            <div id="tab-content-saved" class="tab-content">
+                <div class="card">
+                    <h2 class="text-2xl font-bold mb-6">Simulasi Tersimpan</h2>
+                    <div class="overflow-x-auto">
+                        <table class="table-brutal">
+                            <thead>
+                                <tr>
+                                    <th>Saham</th>
+                                    <th>Harga Awal</th>
+                                    <th>Lot</th>
+                                    <th>Strategi</th>
+                                    <th>Avg Down</th>
+                                    <th>Level</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saved-simulations-table-body"></tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
+
+            <!-- 4. TAB PERFORMANCE -->
+            <div id="tab-content-performance" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-3 card">
+                        <h2 class="text-2xl font-bold mb-2">Analisa Performa</h2>
+                        <p class="text-gray-500 mb-6 text-sm">Bandingkan pertumbuhan asetmu dengan IHSG.</p>
+                        
+                        <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2 mb-8">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="table-brutal">
+                                <thead>
+                                    <tr>
+                                        <th>Periode</th>
+                                        <th>Portofolio Return</th>
+                                        <th>IHSG Return (Manual)</th>
+                                        <th>Alpha (Selisih)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="performance-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. TAB SETTINGS & BACKUP -->
+            <div id="tab-content-settings" class="tab-content">
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <div class="card">
+                        <h2 class="text-xl font-bold mb-4">Pengaturan Fee</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label>Fee Beli Default (%)</label>
+                                <input type="number" id="default-fee-beli" step="0.01">
+                            </div>
+                            <div>
+                                <label>Fee Jual Default (%)</label>
+                                <input type="number" id="default-fee-jual" step="0.01">
+                            </div>
+                        </div>
+                        <div class="mt-4 text-right">
+                            <button id="save-settings-btn" class="btn btn-primary">Simpan</button>
+                        </div>
+                    </div>
+
+                    <div class="card bg-gray-100 border-gray-300">
+                         <h2 class="text-xl font-bold mb-4">Data Backup & Restore</h2>
+                         <div class="flex gap-4">
+                            <button id="download-json-btn" class="btn btn-secondary border-black">
+                                ⬇ Download JSON
+                            </button>
+                            <label class="btn btn-secondary border-black cursor-pointer">
+                                ⬆ Upload JSON
+                                <input type="file" id="upload-json-input" class="hidden" accept=".json">
+                            </label>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- === MODALS === -->
+    
+    <!-- Simulation Params Modal -->
+    <div id="sim-params-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Parameter Simulasi</h3>
+            <form id="sim-params-form" class="space-y-4">
+                <!-- Hidden Inputs -->
+                <input type="hidden" id="stock-code" value="BBCA">
+                <input type="hidden" id="initial-price" value="9500">
+                <input type="hidden" id="initial-lot" value="10">
+                <input type="hidden" id="dividend" value="227">
+                <input type="hidden" id="avg-down-percent" value="15">
+                <input type="hidden" id="avg-levels" value="5">
+                <input type="hidden" id="avg-strategy" value="lot">
+                <input type="hidden" id="avg-multiplier" value="1">
+                <input type="hidden" id="tp1-percent" value="20">
+                <input type="hidden" id="tp2-percent" value="50">
+                <input type="hidden" id="sim-reason" value="">
+
+                <!-- Visible Inputs -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label>Kode Saham</label>
+                        <input type="text" id="modal-stock-code" class="font-bold uppercase">
+                    </div>
+                    <div>
+                        <label>Harga Awal</label>
+                        <input type="number" id="modal-initial-price">
+                    </div>
+                    <div>
+                        <label>Lot Awal</label>
+                        <input type="number" id="modal-initial-lot">
+                    </div>
+                    <div>
+                        <label>Dividen (Rp)</label>
+                        <input type="number" id="modal-dividend">
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded border-2 border-gray-200">
+                    <label class="text-blue-600">Strategi Averaging</label>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                            <label class="text-xs text-gray-500">Metode</label>
+                            <select id="modal-avg-strategy">
+                                <option value="lot">Pengali Lot (Martingale)</option>
+                                <option value="amount">Nominal Rupiah Sama</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Pengali (x)</label>
+                            <input type="number" id="modal-avg-multiplier" step="0.1">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Jarak Turun (%)</label>
+                            <input type="number" id="modal-avg-down-percent">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Max Level</label>
+                            <input type="number" id="modal-avg-levels">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>TP 1 (%)</label><input type="number" id="modal-tp1-percent"></div>
+                    <div><label>TP 2 (%)</label><input type="number" id="modal-tp2-percent"></div>
+                </div>
+                
+                <div>
+                    <label>Catatan Strategi</label>
+                    <textarea id="modal-sim-reason" rows="2"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-4 border-t-2 border-gray-100">
+                    <button type="button" id="cancel-sim-params-btn" class="btn btn-secondary">Batal</button>
+                    <button type="button" id="save-simulation-from-modal-btn" class="btn btn-accent">Simpan Preset</button>
+                    <button type="submit" class="btn btn-primary">Hitung</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Log Modal -->
+    <div id="add-log-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-6" id="log-modal-title">Input Transaksi</h3>
+            <form id="log-form" class="space-y-4">
+                <input type="hidden" id="log-edit-index">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>Kode</label><input type="text" id="log-stock-code" required class="uppercase font-bold"></div>
+                    <div><label>Tgl Beli</label><input type="date" id="log-buy-date" required></div>
+                    <div><label>Harga Beli</label><input type="number" id="log-buy-price" required></div>
+                    <div><label>Lot</label><input type="number" id="log-buy-lot" required></div>
+                    <div class="col-span-2"><label>Fee Beli (%)</label><input type="number" id="log-fee-beli" step="0.01"></div>
+                </div>
+                
+                <div><label>Alasan</label><textarea id="log-reason" rows="2"></textarea></div>
+
+                <!-- Sell Fields (Hidden by default) -->
+                <div id="sell-fields-container" class="hidden p-4 bg-orange-50 border-2 border-orange-200 rounded mt-2">
+                    <h4 class="font-bold text-orange-800 mb-2 uppercase text-sm">Data Penjualan</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label>Harga Jual</label><input type="number" id="log-sell-price"></div>
+                        <div><label>Tgl Jual</label><input type="date" id="log-sell-date"></div>
+                        <div class="col-span-2"><label>Fee Jual (%)</label><input type="number" id="log-fee-jual" step="0.01"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" id="cancel-add-log-btn" class="btn btn-secondary">Batal</button>
+                    <button type="submit" id="submit-log-btn" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sell Modal -->
+    <div id="sell-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-orange-600">Realisasi Profit/Loss</h3>
+            <form id="sell-form" class="space-y-4">
+                <input type="hidden" id="sell-log-index">
+                <div><label>Harga Jual</label><input type="number" id="sell-price" required class="text-lg font-bold text-right"></div>
+                <div><label>Tgl Jual</label><input type="date" id="sell-date" required></div>
+                <div><label>Fee Jual (%)</label><input type="number" id="sell-fee-jual" step="0.01"></div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" id="cancel-sell-btn" class="btn btn-secondary">Batal</button>
+                    <button type="submit" class="btn btn-primary bg-orange-500 border-orange-700 text-white hover:bg-orange-600">Eksekusi Jual</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notification-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <h3 id="notification-title" class="text-xl font-black mb-2 uppercase">Alert</h3>
+            <p id="notification-message" class="mb-6 font-medium"></p>
+            <button id="notification-ok-btn" class="btn btn-primary w-full">OK, MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="delete-confirm-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm text-center">
+            <div class="text-4xl mb-2">⚠️</div>
+            <h3 class="text-xl font-bold mb-2">Yakin Hapus?</h3>
+            <p class="text-gray-600 mb-6 text-sm">Data yang dihapus tidak bisa dikembalikan.</p>
+            <div class="flex justify-center gap-3">
+                <button id="cancel-delete-btn" class="btn btn-secondary">Batal</button>
+                <button id="confirm-delete-btn" class="btn btn-danger">Ya, Hapus!</button>
             </div>
         </div>
     </div>
+
+    <!-- Import Logic Script -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
