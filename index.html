@@ -155,11 +155,10 @@
             transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
         }
 
-        /* PERBAIKAN: Navbar Transparan saat Sticky */
         #tab-nav-wrapper.sticky-state .tab-nav-container {
-            background-color: rgba(253, 251, 247, 0.65); /* Semi-transparan (sesuai bg-main) */
+            background-color: rgba(253, 251, 247, 0.65); /* Semi-transparan */
             backdrop-filter: blur(12px); /* Efek kaca */
-            box-shadow: 4px 4px 0px 0px rgba(24, 24, 27, 0.1); /* Shadow lebih halus */
+            box-shadow: 4px 4px 0px 0px rgba(24, 24, 27, 0.1);
         }
 
         .tab-button {
@@ -227,11 +226,60 @@
             background-color: #fffbeb; /* Warm hover */
         }
 
+        /* --- PAGINATION STYLES (NEW) --- */
+        .pagination-btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.5rem;
+            height: 2.5rem;
+            padding: 0 0.75rem;
+            border: 2px solid var(--border-color);
+            background-color: white;
+            color: var(--primary);
+            border-radius: 0.375rem;
+            box-shadow: 2px 2px 0px 0px var(--border-color);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin: 0 0.25rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px 0px var(--border-color);
+            background-color: #f3f4f6;
+        }
+
+        .pagination-btn.active {
+            background-color: var(--primary);
+            color: white;
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0px 0px var(--border-color);
+            cursor: default;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 1px 1px 0px 0px var(--border-color);
+            background-color: #e5e7eb;
+        }
+
+        .pagination-info {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+
         /* --- MODALS --- */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background-color: rgba(255, 255, 255, 0.8); /* Light overlay */
+            background-color: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
@@ -255,11 +303,9 @@
             overflow-y: auto;
         }
 
-        /* Utility overrides */
         .text-highlight { color: var(--border-color); font-weight: 700; }
         .bg-paper { background-color: var(--bg-main); }
         
-        /* Status Badges */
         .badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -272,7 +318,6 @@
         .badge-open { background-color: #dbeafe; color: #1e40af; border-color: #1e40af; }
         .badge-closed { background-color: #f3f4f6; color: #374151; border-color: #374151; }
 
-        /* Hide Scrollbar but keep functionality */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
@@ -283,9 +328,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         .sort-icon { display: inline-block; width: 1em; }
-        .pagination-button { @apply btn btn-secondary px-3 py-1 mx-1; }
-        .pagination-button.active { @apply btn-primary; box-shadow: none; transform: translate(2px,2px); }
-
     </style>
 </head>
 <body class="pb-20">
@@ -402,9 +444,8 @@
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
                     <!-- Sidebar Filters -->
-                    <!-- PERBAIKAN 1: Pindahkan 'sticky top-24' ke wrapper parent sidebar -->
                     <div class="lg:col-span-1 space-y-6 sticky top-24 self-start h-fit z-30">
-                        <div class="card"> <!-- Hapus sticky dari elemen card ini -->
+                        <div class="card">
                             <h3 class="text-lg font-bold mb-4 border-b-2 border-gray-200 pb-2">Ringkasan Portofolio</h3>
                             <div class="space-y-4">
                                 <div>
@@ -483,9 +524,9 @@
                             </div>
 
                             <!-- Pagination -->
-                            <div id="pagination-controls" class="mt-6 flex justify-between items-center pt-4 border-t-2 border-gray-100">
-                                <div id="page-info" class="text-sm text-gray-500 font-bold"></div>
-                                <div id="page-number-container" class="flex gap-1"></div>
+                            <div class="mt-6 flex flex-col md:flex-row justify-between items-center pt-4 border-t-2 border-gray-100 gap-4">
+                                <div id="page-info" class="pagination-info"></div>
+                                <div id="page-number-container" class="flex items-center gap-1 flex-wrap justify-center"></div>
                             </div>
                         </div>
                     </div>
