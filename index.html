@@ -41,7 +41,13 @@
             box-shadow: 4px 4px 0px 0px var(--shadow-color);
             padding: 1.5rem;
             transition: transform 0.1s ease-in-out;
+            margin-bottom: 1.5rem; /* Tambahan margin bawah default untuk stacking mobile */
         }
+        /* Reset margin bottom di desktop grid layout agar dikontrol oleh gap grid */
+        @media (min-width: 1024px) {
+            .card { margin-bottom: 0; }
+        }
+
         .card:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px var(--shadow-color); }
 
         .btn {
@@ -161,10 +167,9 @@
             padding: 2.5rem; width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto;
         }
 
-        /* --- LOGIN WALL OVERLAY (REDESIGNED) --- */
+        /* --- LOGIN WALL OVERLAY --- */
         #login-wall-overlay {
             background-color: #e0e7ff;
-            /* Pola dot background untuk area luar */
             background-image: radial-gradient(#94a3b8 1px, transparent 1px);
             background-size: 24px 24px;
             z-index: 9999;
@@ -190,47 +195,25 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Helper animation for mobile accordion */
+        .accordion-arrow { transition: transform 0.3s ease; }
+        .accordion-arrow.rotate-180 { transform: rotate(180deg); }
     </style>
 </head>
 <body class="pb-20">
 
-    <!-- === LOGIN WALL OVERLAY (REDESIGNED) === -->
+    <!-- === LOGIN WALL OVERLAY === -->
     <div id="login-wall-overlay" class="fixed inset-0 flex items-center justify-center p-4">
-        <!-- Kartu Utama: Kuning, Border Hitam Tebal -->
         <div class="relative w-full max-w-md bg-yellow-400 border-[5px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 text-center overflow-hidden">
-            
-            <!-- Dekorasi: Lakban Hitam di Kiri Atas -->
-            <div class="absolute top-8 -left-12 bg-black text-white py-2 px-16 -rotate-45 font-bold text-xs tracking-[0.3em] border-y-2 border-white/30 shadow-md z-10">
-                SECURE AREA
-            </div>
-            
-            <!-- Dekorasi: Lakban Hitam di Kanan Atas (Kecil) -->
-            <div class="absolute top-4 -right-6 bg-black text-white py-1 px-10 rotate-12 font-bold text-[10px] tracking-widest border border-white/30 z-0 opacity-80">
-                NO ACCESS
-            </div>
-
-            <!-- Badge Hitam -->
-            <div class="inline-block bg-black text-white px-4 py-1.5 font-black transform -rotate-1 mb-8 mt-4 text-sm tracking-widest border-2 border-transparent shadow-[2px_2px_0px_0px_white]">
-                GAME COLLECTION
-            </div>
-            
-            <!-- Judul Besar -->
-            <h1 class="text-6xl font-black mb-2 tracking-tighter text-black uppercase leading-[0.85] drop-shadow-sm">
-                AREA<br>TERBATAS
-            </h1>
-            
-            <!-- Garis Bawah & Subjudul -->
+            <div class="absolute top-8 -left-12 bg-black text-white py-2 px-16 -rotate-45 font-bold text-xs tracking-[0.3em] border-y-2 border-white/30 shadow-md z-10">SECURE AREA</div>
+            <div class="absolute top-4 -right-6 bg-black text-white py-1 px-10 rotate-12 font-bold text-[10px] tracking-widest border border-white/30 z-0 opacity-80">NO ACCESS</div>
+            <div class="inline-block bg-black text-white px-4 py-1.5 font-black transform -rotate-1 mb-8 mt-4 text-sm tracking-widest border-2 border-transparent shadow-[2px_2px_0px_0px_white]">GAME COLLECTION</div>
+            <h1 class="text-6xl font-black mb-2 tracking-tighter text-black uppercase leading-[0.85] drop-shadow-sm">AREA<br>TERBATAS</h1>
             <div class="w-24 h-2 bg-black mx-auto mb-4 mt-2"></div>
-            <p class="font-bold text-black mb-10 text-sm uppercase tracking-wider">
-                Silakan identifikasi diri anda
-            </p>
-
-            <!-- Tombol Login Google -->
+            <p class="font-bold text-black mb-10 text-sm uppercase tracking-wider">Silakan identifikasi diri anda</p>
             <button id="overlay-login-btn" class="w-full bg-white text-black font-black text-lg py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
-                <!-- Efek Hover Background -->
                 <div class="absolute inset-0 bg-gray-100 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 z-0"></div>
-                
-                <!-- Google Icon -->
                 <svg class="w-7 h-7 relative z-10" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -239,10 +222,8 @@
                 </svg>
                 <span class="relative z-10 tracking-tight">MASUK DENGAN GOOGLE</span>
             </button>
-            
         </div>
     </div>
-    <!-- === END LOGIN WALL === -->
 
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <!-- Header -->
@@ -253,10 +234,8 @@
             </div>
             
             <div class="flex flex-col items-end gap-2">
-                 <!-- Auth UI -->
                  <div id="auth-container" class="flex items-center gap-3">
                     <span id="sync-status" class="text-xs font-bold text-gray-500 uppercase tracking-wide opacity-0 transition-opacity">Syncing...</span>
-                    <!-- User Info hidden by default -->
                     <div id="user-info" class="hidden items-center gap-3 bg-white border-2 border-black rounded-full px-4 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                         <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                         <span id="user-name" class="font-bold text-sm truncate max-w-[100px]">User</span>
@@ -328,13 +307,25 @@
                 </div>
             </div>
 
-            <!-- 2. TAB LOG -->
+            <!-- 2. TAB LOG (Updated for Mobile Stacking Logic) -->
             <div id="tab-content-log" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div class="lg:col-span-1 space-y-6 sticky top-24 self-start h-fit z-30">
+                    
+                    <!-- SIDEBAR (Updated Logic) -->
+                    <!-- logic: lg:sticky hanya aktif di desktop. z-index diatur. -->
+                    <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24 self-start h-fit z-30">
+                        
+                        <!-- Card Ringkasan dengan Mobile Accordion -->
                         <div class="card">
-                            <h3 class="text-lg font-bold mb-4 border-b-2 border-gray-200 pb-2">Ringkasan Portofolio</h3>
-                            <div class="space-y-4">
+                            <!-- Header Clickable di Mobile -->
+                            <div class="flex justify-between items-center mb-2 lg:mb-4 border-b-2 border-gray-200 pb-2 cursor-pointer lg:cursor-default" id="toggle-summary-btn">
+                                <h3 class="text-lg font-bold">Ringkasan</h3>
+                                <!-- Arrow Icon (Hidden on Desktop) -->
+                                <span id="arrow-summary" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
+                            </div>
+                            
+                            <!-- Content (Default Hidden on Mobile via JS init, Block on Desktop) -->
+                            <div id="summary-content" class="space-y-4">
                                 <div>
                                     <label class="text-xs uppercase text-gray-500">Modal Awal</label>
                                     <input type="number" id="initial-equity" value="100000000" class="text-right font-mono font-bold text-lg">
@@ -347,9 +338,17 @@
                                 <div id="floating-pl-summary"></div>
                             </div>
                         </div>
+
+                        <!-- Card Filter dengan Mobile Accordion -->
                         <div class="card">
-                            <h3 class="text-lg font-bold mb-4">Filter</h3>
-                            <div class="space-y-3">
+                            <!-- Header Clickable di Mobile -->
+                            <div class="flex justify-between items-center mb-2 lg:mb-4 cursor-pointer lg:cursor-default" id="toggle-filter-btn">
+                                <h3 class="text-lg font-bold">Filter</h3>
+                                <span id="arrow-filter" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
+                            </div>
+
+                            <!-- Content -->
+                            <div id="filter-content" class="space-y-3">
                                 <input type="text" id="filter-stock-code" placeholder="Kode Saham (e.g. BBCA)">
                                 <div class="grid grid-cols-2 gap-2"><input type="date" id="filter-date-from" class="text-xs"><input type="date" id="filter-date-to" class="text-xs"></div>
                                 <select id="filter-status"><option value="all">Semua Status</option><option value="open">Masih Open</option><option value="closed">Sudah Jual</option></select>
@@ -358,6 +357,8 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Main Content -->
                     <div class="lg:col-span-3">
                         <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
                         <div class="card min-h-[500px]">
