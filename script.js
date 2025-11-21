@@ -57,6 +57,8 @@ const logoutBtn = document.getElementById('logout-btn');
 const userInfoDiv = document.getElementById('user-info');
 const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
+const loginWallOverlay = document.getElementById('login-wall-overlay');
+const overlayLoginBtn = document.getElementById('overlay-login-btn');
 
 const modals = {
     simParams: document.getElementById('sim-params-modal'),
@@ -125,7 +127,7 @@ function initChart() {
     });
 }
 
-// --- LOGIC: PERFORMANCE TAB (PERBAIKAN) ---
+// --- LOGIC: PERFORMANCE TAB ---
 function renderPerformanceTable() {
     const tbody = document.getElementById('performance-table-body');
     if (!tbody) return;
@@ -189,7 +191,6 @@ function renderPerformanceTable() {
             
             // Update Alpha Cell
             const portVal = isAllTimeRow ? allTimeReturn : 0; 
-            // Catatan: Untuk periode selain All Time, alpha tidak akurat tanpa data historis, jadi kita hanya hitung jika All Time atau user manual
             
             if(isAllTimeRow) {
                 const alpha = portVal - ihsgVal;
@@ -291,8 +292,7 @@ function renderLogTable(logs = portfolioLog) {
     const pageCont = document.getElementById('page-number-container');
     pageCont.innerHTML = '';
 
-    // --- IMPROVED PAGINATION LOGIC ---
-    // Create Prev Button
+    // --- PAGINATION LOGIC ---
     const prevBtn = document.createElement('button');
     prevBtn.innerHTML = '← Prev';
     prevBtn.className = 'pagination-btn';
@@ -300,7 +300,6 @@ function renderLogTable(logs = portfolioLog) {
     prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderLogTable(filteredLogsData); } };
     pageCont.appendChild(prevBtn);
 
-    // Create Page Numbers
     for(let i=1; i<=totalPages; i++){
         if (totalPages > 7 && (i !== 1 && i !== totalPages && Math.abs(currentPage - i) > 2)) {
              if (i === 2 || i === totalPages - 1) {
@@ -318,14 +317,12 @@ function renderLogTable(logs = portfolioLog) {
         pageCont.appendChild(btn);
     }
 
-    // Create Next Button
     const nextBtn = document.createElement('button');
     nextBtn.innerHTML = 'Next →';
     nextBtn.className = 'pagination-btn';
     nextBtn.disabled = currentPage === totalPages || totalPages === 0;
     nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
     pageCont.appendChild(nextBtn);
-    // --- END PAGINATION ---
 
     pagedLogs.forEach((log, index) => {
         const realIndex = portfolioLog.indexOf(log);
@@ -399,7 +396,6 @@ function calculatePortfolioSummary() {
     document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
     document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
     
-    // Panggil renderPerformanceTable untuk update chart secara real-time
     renderPerformanceTable();
 }
 
@@ -472,8 +468,33 @@ window.addEventListener('load', () => {
     document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
     document.getElementById('cancel-delete-btn').addEventListener('click', () => closeModal(modals.deleteConfirm));
     document.getElementById('confirm-delete-btn').addEventListener('click', () => { if(onConfirmAction) onConfirmAction(); });
-    loginBtn.addEventListener('click', async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } });
+    
+    // --- AUTH HANDLER ---
+    const handleLogin = async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } };
+    loginBtn.addEventListener('click', handleLogin); 
+    overlayLoginBtn.addEventListener('click', handleLogin); 
+
     logoutBtn.addEventListener('click', () => signOut(auth));
-    onAuthStateChanged(auth, (user) => { currentUser = user; if(user) { loginBtn.classList.add('hidden'); userInfoDiv.classList.remove('hidden'); userInfoDiv.classList.add('flex'); userNameSpan.textContent = user.displayName; loadCloudData(); } else { loginBtn.classList.remove('hidden'); userInfoDiv.classList.add('hidden'); userInfoDiv.classList.remove('flex'); portfolioLog = []; savedSimulations = []; refreshData(); } });
+    
+    onAuthStateChanged(auth, (user) => { 
+        currentUser = user; 
+        if(user) { 
+            loginWallOverlay.classList.add('hidden-wall');
+            loginBtn.classList.add('hidden'); 
+            userInfoDiv.classList.remove('hidden'); 
+            userInfoDiv.classList.add('flex'); 
+            userNameSpan.textContent = user.displayName; 
+            loadCloudData(); 
+        } else { 
+            loginWallOverlay.classList.remove('hidden-wall');
+            loginBtn.classList.add('hidden');
+            userInfoDiv.classList.add('hidden'); 
+            userInfoDiv.classList.remove('flex'); 
+            portfolioLog = []; 
+            savedSimulations = []; 
+            refreshData(); 
+        } 
+    });
+
     const nav = document.getElementById('tab-nav-wrapper'); const navOffset = nav.offsetTop; window.addEventListener('scroll', () => { if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); else nav.classList.remove('sticky-state'); });
 });
