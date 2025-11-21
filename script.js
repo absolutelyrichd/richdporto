@@ -34,6 +34,7 @@ const itemsPerPage = 10;
 let currentPage = 1;
 let filteredLogsData = [];
 let sortState = { column: 'date', direction: 'desc' };
+const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'];
 
 // --- DOM ELEMENTS ---
 const tabButtons = { 
@@ -94,6 +95,11 @@ function switchTab(name) {
     Object.values(tabContents).forEach(c => c.classList.remove('active'));
     if(tabButtons[name]) tabButtons[name].classList.add('active');
     if(tabContents[name]) tabContents[name].classList.add('active');
+    
+    // Render tabel performa saat tab dibuka
+    if(name === 'performance') {
+        renderPerformanceTable();
+    }
 }
 
 function initChart() {
@@ -102,7 +108,7 @@ function initChart() {
     performanceChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'],
+            labels: periods,
             datasets: [
                 { label: 'Portfolio', data: [0,0,0,0,0,0], backgroundColor: '#10b981', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false },
                 { label: 'IHSG', data: [0,0,0,0,0,0], backgroundColor: '#fb923c', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false }
@@ -119,6 +125,89 @@ function initChart() {
     });
 }
 
+// --- LOGIC: PERFORMANCE TAB (PERBAIKAN) ---
+function renderPerformanceTable() {
+    const tbody = document.getElementById('performance-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    // 1. Hitung Nilai Portofolio Saat Ini (All Time)
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    let totalMarketValue = 0;
+    let cashFlow = 0;
+
+    // Hitung Cash Flow dan Nilai Pasar
+    portfolioLog.forEach(log => {
+        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+        cashFlow -= buyVal; // Uang keluar untuk beli
+
+        if(log.sellPrice) {
+            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+            cashFlow += sellVal; // Uang masuk dari jual
+        } else {
+            // Untuk posisi terbuka, hitung nilai pasarnya
+            const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
+            totalMarketValue += currPrice * log.lot * 100;
+        }
+    });
+
+    const currentCash = initialEquity + cashFlow;
+    const totalPortfolioValue = currentCash + totalMarketValue;
+    const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
+
+    // 2. Render Baris Tabel
+    periods.forEach((period, index) => {
+        const isAllTime = period === 'All Time';
+        const portReturn = isAllTime ? allTimeReturn : 0; // Placeholder 0 untuk periode lain (karena butuh data historis)
+        const displayReturn = isAllTime ? portReturn.toFixed(2) + '%' : '-';
+        const colorClass = isAllTime ? (portReturn >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="font-bold">${period}</td>
+            <td class="${colorClass} font-bold">${displayReturn}</td>
+            <td>
+                <input type="number" step="0.01" class="ihsg-input w-24 p-1 border rounded text-right bg-gray-50" data-index="${index}" placeholder="0.00"> %
+            </td>
+            <td class="font-bold" id="alpha-${index}">-</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // 3. Update Chart (All Time Bar)
+    if(performanceChart) {
+        performanceChart.data.datasets[0].data[5] = allTimeReturn;
+        performanceChart.update();
+    }
+
+    // 4. Event Listener untuk Input IHSG
+    document.querySelectorAll('.ihsg-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = e.target.dataset.index;
+            const ihsgVal = parseFloat(e.target.value) || 0;
+            const isAllTimeRow = periods[idx] === 'All Time';
+            
+            // Update Alpha Cell
+            const portVal = isAllTimeRow ? allTimeReturn : 0; 
+            // Catatan: Untuk periode selain All Time, alpha tidak akurat tanpa data historis, jadi kita hanya hitung jika All Time atau user manual
+            
+            if(isAllTimeRow) {
+                const alpha = portVal - ihsgVal;
+                const alphaCell = document.getElementById(`alpha-${idx}`);
+                alphaCell.textContent = alpha.toFixed(2) + '%';
+                alphaCell.className = `font-bold ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+                
+                // Update Chart IHSG Bar
+                if(performanceChart) {
+                    performanceChart.data.datasets[1].data[5] = ihsgVal;
+                    performanceChart.update();
+                }
+            }
+        });
+    });
+}
+
+// --- LOGIC: SIMULATOR ---
 function calculateDashboard() {
     const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
     const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
@@ -213,7 +302,6 @@ function renderLogTable(logs = portfolioLog) {
 
     // Create Page Numbers
     for(let i=1; i<=totalPages; i++){
-        // Optional: Show only a range of pages if totalPages is large (e.g., > 7)
         if (totalPages > 7 && (i !== 1 && i !== totalPages && Math.abs(currentPage - i) > 2)) {
              if (i === 2 || i === totalPages - 1) {
                  const ellipsis = document.createElement('span');
@@ -223,7 +311,6 @@ function renderLogTable(logs = portfolioLog) {
              }
              continue; 
         }
-
         const btn = document.createElement('button');
         btn.textContent = i;
         btn.className = `pagination-btn ${i === currentPage ? 'active' : ''}`;
@@ -311,7 +398,9 @@ function calculatePortfolioSummary() {
     });
     document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
     document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
-    updateChart(realizedPL + totalFloating, initialEquity);
+    
+    // Panggil renderPerformanceTable untuk update chart secara real-time
+    renderPerformanceTable();
 }
 
 function updatePrice(code, price) { currentMarketPrices[code] = price; calculatePortfolioSummary(); triggerAutoSave(); }
@@ -370,8 +459,7 @@ document.getElementById('upload-json-input').addEventListener('change', (e) => {
 
 function triggerAutoSave() { if(!currentUser) return; syncStatusSpan.style.opacity = 1; clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(async () => { const data = { portfolioLog, savedSimulations, currentMarketPrices, updatedAt: new Date().toISOString() }; try { await setDoc(doc(db, "portfolios", currentUser.uid), data); syncStatusSpan.textContent = 'SAVED'; setTimeout(() => syncStatusSpan.style.opacity = 0, 2000); } catch(e) { syncStatusSpan.textContent = 'ERROR'; } }, 1000); }
 async function loadCloudData() { if(!currentUser) return; const docSnap = await getDoc(doc(db, "portfolios", currentUser.uid)); if(docSnap.exists()) { const data = docSnap.data(); portfolioLog = data.portfolioLog || []; savedSimulations = data.savedSimulations || []; currentMarketPrices = data.currentMarketPrices || {}; refreshData(); } }
-function refreshData() { filteredLogsData = portfolioLog; renderLogTable(); renderSavedSimulations(); calculateDashboard(); }
-function updateChart(profit, equity) { if(performanceChart) { const percentage = (profit / equity) * 100; performanceChart.data.datasets[0].data[5] = percentage; performanceChart.update(); } }
+function refreshData() { filteredLogsData = portfolioLog; renderLogTable(); renderSavedSimulations(); calculateDashboard(); renderPerformanceTable(); }
 
 window.addEventListener('load', () => {
     initChart(); calculateDashboard(); 
