@@ -106,30 +106,54 @@
             border-color: #064e3b;
         }
 
-        /* --- INPUTS --- */
+        /* --- BRUTAL FORMS (INPUTS UPDATE) --- */
         input, select, textarea {
+            display: block;
             width: 100%;
-            background-color: #ffffff;
-            border: 2px solid #d1d5db;
-            border-radius: 0.375rem;
-            padding: 0.6rem;
-            color: #18181b;
+            padding: 0.75rem 1rem; /* Lebih lega */
             font-family: 'Inter', sans-serif;
-            transition: all 0.2s;
+            font-weight: 600; /* Teks input sedikit lebih tebal */
+            font-size: 1rem;
+            color: #18181b;
+            background-color: #ffffff;
+            border: 2px solid var(--border-color); /* Border hitam tebal */
+            border-radius: 0.5rem;
+            box-shadow: 0px 0px 0px 0px transparent; /* Reset shadow */
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animasi smooth */
         }
 
+        /* Hover State */
+        input:hover, select:hover, textarea:hover {
+            background-color: #fafafa;
+            border-color: #000;
+        }
+
+        /* Focus State - Efek Pop */
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--border-color);
-            box-shadow: 3px 3px 0px 0px #d1d5db;
+            background-color: #ffffff;
+            box-shadow: 4px 4px 0px 0px var(--accent-yellow); /* Shadow blok kuning */
+            transform: translate(-2px, -2px); /* Geser input ke atas kiri */
         }
 
+        /* Label Styling */
         label {
-            font-weight: 600;
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
             display: block;
-            color: #374151;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            color: #18181b;
+        }
+
+        /* Placeholder styling */
+        ::placeholder {
+            color: #9ca3af;
+            font-weight: 400;
+            font-size: 0.9rem;
         }
 
         /* --- TABS & NAVBAR --- */
@@ -226,7 +250,7 @@
             background-color: #fffbeb; /* Warm hover */
         }
 
-        /* --- PAGINATION STYLES (NEW) --- */
+        /* --- PAGINATION STYLES --- */
         .pagination-btn {
             font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
@@ -296,7 +320,7 @@
             border: 3px solid var(--border-color);
             box-shadow: 8px 8px 0px 0px var(--border-color);
             border-radius: 0.75rem;
-            padding: 2rem;
+            padding: 2.5rem; /* Padding lebih besar */
             width: 95%;
             max-width: 600px;
             max-height: 90vh;
