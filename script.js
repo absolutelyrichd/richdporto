@@ -23,8 +23,8 @@ window.firebase = { auth, db, provider, signInWithPopup, signOut, onAuthStateCha
 // --- DATA VARIABLES ---
 let portfolioLog = [];
 let savedSimulations = [];
-let performanceChart;
-let equityChart; // New chart variable
+let performanceChart = null; // Initialize as null
+let equityChart = null;      // Initialize as null
 let currentMarketPrices = {};
 let currentUser = null;
 let autoSaveTimer = null;
@@ -36,7 +36,6 @@ let currentPage = 1;
 let filteredLogsData = [];
 let sortState = { column: 'date', direction: 'desc' };
 
-// UPDATED: Added new periods
 const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', '2 Thn', '3 Thn', '4 Thn', '5 Thn', 'All Time'];
 
 // --- DOM ELEMENTS ---
@@ -84,12 +83,14 @@ function formatCurrency(value, withSign = false) {
     return formatted;
 }
 
-function openModal(modal) { modal.classList.add('active'); }
-function closeModal(modal) { modal.classList.remove('active'); }
+function openModal(modal) { if(modal) modal.classList.add('active'); }
+function closeModal(modal) { if(modal) modal.classList.remove('active'); }
 
 function showNotification(msg, title = 'INFO') {
-    document.getElementById('notification-title').textContent = title;
-    document.getElementById('notification-message').textContent = msg;
+    const titleEl = document.getElementById('notification-title');
+    const msgEl = document.getElementById('notification-message');
+    if(titleEl) titleEl.textContent = title;
+    if(msgEl) msgEl.textContent = msg;
     openModal(modals.notification);
 }
 
@@ -98,13 +99,18 @@ let onConfirmAction = null;
 
 function showConfirm(action, message = "Apakah Anda yakin ingin melanjutkan?", title = "KONFIRMASI") {
     onConfirmAction = action;
-    document.getElementById('confirm-modal-title').textContent = title;
-    document.getElementById('confirm-modal-message').textContent = message;
+    const titleEl = document.getElementById('confirm-modal-title');
+    const msgEl = document.getElementById('confirm-modal-message');
+    if(titleEl) titleEl.textContent = title;
+    if(msgEl) msgEl.textContent = message;
     openModal(modals.confirm);
 }
 
-document.getElementById('confirm-cancel-btn').addEventListener('click', () => closeModal(modals.confirm));
-document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+if(confirmCancelBtn) confirmCancelBtn.addEventListener('click', () => closeModal(modals.confirm));
+
+const confirmOkBtn = document.getElementById('confirm-ok-btn');
+if(confirmOkBtn) confirmOkBtn.addEventListener('click', () => {
     if(onConfirmAction) onConfirmAction();
     closeModal(modals.confirm);
 });
@@ -121,10 +127,12 @@ function switchTab(name) {
 }
 
 function initChart() {
-    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const canvas = document.getElementById('performanceChart');
+    if (!canvas) return; // Prevent crash if element missing
+
+    const ctx = canvas.getContext('2d');
     if (performanceChart) performanceChart.destroy();
     
-    // Create zero array based on periods length
     const initialData = new Array(periods.length).fill(0);
 
     performanceChart = new Chart(ctx, {
@@ -146,12 +154,14 @@ function initChart() {
         }
     });
 
-    // Initialize Equity Chart
     initEquityChart();
 }
 
 function initEquityChart() {
-    const ctx = document.getElementById('equityChart').getContext('2d');
+    const canvas = document.getElementById('equityChart');
+    if (!canvas) return; // Prevent crash if element missing
+
+    const ctx = canvas.getContext('2d');
     if (equityChart) equityChart.destroy();
 
     equityChart = new Chart(ctx, {
@@ -161,14 +171,14 @@ function initEquityChart() {
             datasets: [{
                 label: 'Realized Equity',
                 data: [],
-                borderColor: '#2563eb', // Blue
+                borderColor: '#2563eb',
                 backgroundColor: 'rgba(37, 99, 235, 0.1)',
                 borderWidth: 2,
                 pointRadius: 3,
                 pointBackgroundColor: '#ffffff',
                 pointBorderColor: '#2563eb',
                 fill: true,
-                tension: 0.2 // Slight curve
+                tension: 0.2
             }]
         },
         options: {
@@ -179,9 +189,7 @@ function initEquityChart() {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
+                            if (label) { label += ': '; }
                             if (context.parsed.y !== null) {
                                 label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.y);
                             }
@@ -196,9 +204,7 @@ function initEquityChart() {
                     ticks: { 
                         color: '#374151', 
                         font: { family: 'Inter' },
-                        callback: function(value) {
-                            return 'Rp ' + (value/1000000).toFixed(0) + 'jt';
-                        }
+                        callback: function(value) { return 'Rp ' + (value/1000000).toFixed(0) + 'jt'; }
                     } 
                 },
                 x: { 
@@ -213,12 +219,10 @@ function initEquityChart() {
 function updateEquityChartData() {
     if (!equityChart) return;
 
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    const initialEquityEl = document.getElementById('initial-equity');
+    const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
     
-    // Collect all closed transactions (Realized P/L)
     const closedLogs = portfolioLog.filter(log => log.sellPrice && log.sellDate);
-    
-    // Sort by sell date ascending
     closedLogs.sort((a, b) => new Date(a.sellDate) - new Date(b.sellDate));
 
     const labels = [];
@@ -226,29 +230,20 @@ function updateEquityChartData() {
     
     let currentTotalEquity = initialEquity;
     
-    // Add start point (Initial) - Use the earliest buy date or today if empty
-    const startDate = closedLogs.length > 0 ? closedLogs[0].date : new Date().toISOString().split('T')[0];
     labels.push('Start');
     dataPoints.push(initialEquity);
 
-    // Group transactions by sell date to avoid clutter
     const dateGroups = {};
     
     closedLogs.forEach(log => {
-        if (!dateGroups[log.sellDate]) {
-            dateGroups[log.sellDate] = 0;
-        }
-        
+        if (!dateGroups[log.sellDate]) { dateGroups[log.sellDate] = 0; }
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
         const profit = sellVal - buyVal;
-        
         dateGroups[log.sellDate] += profit;
     });
 
-    // Sort grouped dates
     const sortedDates = Object.keys(dateGroups).sort();
-
     sortedDates.forEach(date => {
         currentTotalEquity += dateGroups[date];
         labels.push(date);
@@ -260,21 +255,18 @@ function updateEquityChartData() {
     equityChart.update();
 }
 
-
-// --- LOGIC: PERFORMANCE TAB ---
 function renderPerformanceTable() {
     const tbody = document.getElementById('performance-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // 1. Hitung Nilai Portofolio Saat Ini (All Time)
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    const initialEquityEl = document.getElementById('initial-equity');
+    const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
     let cashFlow = 0; 
 
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         cashFlow -= buyVal; 
-
         if(log.sellPrice) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             cashFlow += sellVal; 
@@ -283,11 +275,10 @@ function renderPerformanceTable() {
 
     const currentCash = initialEquity + cashFlow;
     
-    // Fungsi All Time Return (Khusus)
     const getAllTimeReturn = () => {
         let totalMarketVal = 0;
         portfolioLog.forEach(log => {
-            if (!log.sellPrice) { // Open position value
+            if (!log.sellPrice) {
                 const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
                 totalMarketVal += currPrice * log.lot * 100;
             }
@@ -298,26 +289,17 @@ function renderPerformanceTable() {
 
     const allTimeReturn = getAllTimeReturn();
 
-    // --- CORE CALCULATION LOGIC (REUSABLE) ---
     const calculateReturnFromDate = (startDate) => {
-        // Konversi ke string YYYY-MM-DD untuk perbandingan yang konsisten
         const startDateStr = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-
         let totalPL = 0;
-
         portfolioLog.forEach(log => {
-            // CASE 1: Transaksi SUDAH JUAL (Closed)
-            // Hitung jika tanggal jual (sellDate) >= startDate
             if (log.sellPrice && log.sellDate) {
                 if (log.sellDate >= startDateStr) {
                     const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
                     const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual || 0) / 100);
                     totalPL += (sellVal - buyVal);
                 }
-            } 
-            // CASE 2: Transaksi MASIH HOLD (Open)
-            // Hitung floating P/L jika tanggal beli (date) >= startDate
-            else {
+            } else {
                 if (log.date >= startDateStr) {
                     const currentPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
                     const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
@@ -326,11 +308,9 @@ function renderPerformanceTable() {
                 }
             }
         });
-        
         return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
     };
 
-    // Wrapper untuk Periode Standar (UPDATED with years)
     const calculatePeriodReturn = (periodName) => {
         const now = new Date();
         let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -349,7 +329,6 @@ function renderPerformanceTable() {
         return calculateReturnFromDate(startDate);
     };
 
-    // 2. Render Baris Tabel Standar
     periods.forEach((period, index) => {
         const isAllTime = period === 'All Time';
         let portReturn = isAllTime ? allTimeReturn : calculatePeriodReturn(period);
@@ -369,7 +348,6 @@ function renderPerformanceTable() {
         tbody.appendChild(tr);
     });
 
-    // 3. Render Baris CUSTOM (Baru!)
     const customRow = document.createElement('tr');
     customRow.className = "bg-yellow-50 border-t-2 border-dashed border-yellow-200";
     customRow.innerHTML = `
@@ -387,48 +365,39 @@ function renderPerformanceTable() {
     `;
     tbody.appendChild(customRow);
 
-    // 4. Update Performance Bar Chart (UPDATED)
     if(performanceChart) {
-        // Reset data array length just in case
         performanceChart.data.labels = periods;
-        // Last element is 'All Time'
         const allTimeIdx = periods.length - 1; 
-        
         const newData = [];
         for(let i=0; i<periods.length; i++) {
             if (i === allTimeIdx) newData.push(allTimeReturn);
             else newData.push(calculatePeriodReturn(periods[i]));
         }
-
         performanceChart.data.datasets[0].data = newData;
-        // Resize IHSG array if needed, preserving existing values where possible
-        const oldIhsg = performanceChart.data.datasets[1].data;
+        // Safe resize for IHSG data
+        const currentIhsg = performanceChart.data.datasets[1].data;
         const newIhsg = new Array(periods.length).fill(0);
-        // We can't easily map old indices to new ones if structure changed, so reset or keep what matches.
-        // For simplicity, we just keep what we can. 
-        // Ideally we store IHSG values in memory/DB, but here it's transient UI state.
-        performanceChart.data.datasets[1].data = newIhsg; 
-        
+        for(let i=0; i<Math.min(currentIhsg.length, newIhsg.length); i++) {
+            newIhsg[i] = currentIhsg[i];
+        }
+        performanceChart.data.datasets[1].data = newIhsg;
         performanceChart.update();
     }
 
-    // 5. Update Equity Line Chart (NEW)
     updateEquityChartData();
 
-    // 6. Listeners
-    // Standard IHSG Inputs
     document.querySelectorAll('.ihsg-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.index);
             const ihsgVal = parseFloat(e.target.value) || 0;
             const periodName = periods[idx];
-            
             let currentPortReturn = (periodName === 'All Time') ? allTimeReturn : calculatePeriodReturn(periodName);
             const alpha = currentPortReturn - ihsgVal;
             const alphaCell = document.getElementById(`alpha-${idx}`);
-            alphaCell.textContent = alpha.toFixed(2) + '%';
-            alphaCell.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
-            
+            if(alphaCell) {
+                alphaCell.textContent = alpha.toFixed(2) + '%';
+                alphaCell.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            }
             if(performanceChart) {
                 performanceChart.data.datasets[1].data[idx] = ihsgVal;
                 performanceChart.update();
@@ -436,36 +405,38 @@ function renderPerformanceTable() {
         });
     });
 
-    // Custom Row Listeners
     const customDateInput = document.getElementById('custom-period-date');
     const customReturnDisplay = document.getElementById('custom-return-display');
     const customIhsgInput = document.getElementById('custom-ihsg-input');
     const customAlphaDisplay = document.getElementById('custom-alpha-display');
 
     const updateCustomRow = () => {
-        if (!customDateInput.value) {
-            customReturnDisplay.textContent = '-';
-            customAlphaDisplay.textContent = '-';
+        if (!customDateInput || !customDateInput.value) {
+            if(customReturnDisplay) customReturnDisplay.textContent = '-';
+            if(customAlphaDisplay) customAlphaDisplay.textContent = '-';
             return;
         }
 
         const startDate = new Date(customDateInput.value);
         const portReturn = calculateReturnFromDate(startDate);
-        const ihsgVal = parseFloat(customIhsgInput.value) || 0;
+        const ihsgVal = customIhsgInput ? (parseFloat(customIhsgInput.value) || 0) : 0;
         const alpha = portReturn - ihsgVal;
 
-        customReturnDisplay.textContent = portReturn.toFixed(2) + '%';
-        customReturnDisplay.className = `font-bold align-middle text-lg ${portReturn >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        if(customReturnDisplay) {
+            customReturnDisplay.textContent = portReturn.toFixed(2) + '%';
+            customReturnDisplay.className = `font-bold align-middle text-lg ${portReturn >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        }
         
-        customAlphaDisplay.textContent = alpha.toFixed(2) + '%';
-        customAlphaDisplay.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        if(customAlphaDisplay) {
+            customAlphaDisplay.textContent = alpha.toFixed(2) + '%';
+            customAlphaDisplay.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        }
     };
 
-    customDateInput.addEventListener('change', updateCustomRow);
-    customIhsgInput.addEventListener('input', updateCustomRow);
+    if(customDateInput) customDateInput.addEventListener('change', updateCustomRow);
+    if(customIhsgInput) customIhsgInput.addEventListener('input', updateCustomRow);
 }
 
-// --- LOGIC: SIMULATOR & OTHERS (UNCHANGED) ---
 function calculateDashboard() {
     const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
     const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
@@ -477,17 +448,20 @@ function calculateDashboard() {
     const avgStrategy = document.getElementById('avg-strategy').value;
     const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
 
-    const strategyText = avgStrategy === 'lot' ? 'Lot Multiplier' : 'Fixed Amount';
-    document.getElementById('active-sim-params-display').innerHTML = `
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">CODE</div><div class="font-bold text-lg text-blue-600">${document.getElementById('stock-code').value}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">ENTRY</div><div class="font-bold">${formatCurrency(initialPrice)}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">LOT AWAL</div><div class="font-bold">${initialLot}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">GAP</div><div class="font-bold">-${avgDownPercent}%</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">STRATEGY</div><div class="font-bold">${strategyText} x${avgMultiplier}</div></div>
-    `;
+    const activeParamsDisplay = document.getElementById('active-sim-params-display');
+    if(activeParamsDisplay) {
+        const strategyText = avgStrategy === 'lot' ? 'Lot Multiplier' : 'Fixed Amount';
+        activeParamsDisplay.innerHTML = `
+            <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">CODE</div><div class="font-bold text-lg text-blue-600">${document.getElementById('stock-code').value}</div></div>
+            <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">ENTRY</div><div class="font-bold">${formatCurrency(initialPrice)}</div></div>
+            <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">LOT AWAL</div><div class="font-bold">${initialLot}</div></div>
+            <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">GAP</div><div class="font-bold">-${avgDownPercent}%</div></div>
+            <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">STRATEGY</div><div class="font-bold">${strategyText} x${avgMultiplier}</div></div>
+        `;
+    }
 
     const tableBody = document.getElementById('scenario-table-body');
-    tableBody.innerHTML = ''; 
+    if(tableBody) tableBody.innerHTML = ''; 
 
     let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice;
     const initialBuyAmount = initialPrice * initialLot * 100;
@@ -516,23 +490,31 @@ function calculateDashboard() {
         const profitTp1 = (tp1Price - avgPrice) * cumulativeShares;
         const profitTp2 = (tp2Price - avgPrice) * cumulativeShares;
 
-        const row = `<tr><td class="font-bold text-gray-400">LVL ${i}</td><td class="font-mono">${formatCurrency(entryPrice)}</td><td class="font-mono">${lotsToBuy}</td><td class="font-mono text-gray-600">${formatCurrency(totalBuy)}</td><td class="${dividendYield > 5 ? 'text-green-600 font-bold' : 'text-gray-400'}">${dividendYield.toFixed(1)}%</td><td class="font-bold text-blue-600 bg-blue-50">${formatCurrency(avgPrice)}</td><td><div class="text-xs text-gray-500">${formatCurrency(tp1Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp1)}</div></td><td><div class="text-xs text-gray-500">${formatCurrency(tp2Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp2)}</div></td></tr>`;
-        tableBody.innerHTML += row;
+        if(tableBody) {
+            const row = `<tr><td class="font-bold text-gray-400">LVL ${i}</td><td class="font-mono">${formatCurrency(entryPrice)}</td><td class="font-mono">${lotsToBuy}</td><td class="font-mono text-gray-600">${formatCurrency(totalBuy)}</td><td class="${dividendYield > 5 ? 'text-green-600 font-bold' : 'text-gray-400'}">${dividendYield.toFixed(1)}%</td><td class="font-bold text-blue-600 bg-blue-50">${formatCurrency(avgPrice)}</td><td><div class="text-xs text-gray-500">${formatCurrency(tp1Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp1)}</div></td><td><div class="text-xs text-gray-500">${formatCurrency(tp2Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp2)}</div></td></tr>`;
+            tableBody.innerHTML += row;
+        }
         currentPrice = entryPrice;
     }
     const totalLots = cumulativeShares / 100;
     const finalAvg = cumulativeCost / cumulativeShares;
-    document.getElementById('summary-total-investment').textContent = formatCurrency(cumulativeCost);
-    document.getElementById('summary-total-lot').textContent = totalLots;
-    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvg);
+    
+    const sumInv = document.getElementById('summary-total-investment');
+    const sumLot = document.getElementById('summary-total-lot');
+    const sumAvg = document.getElementById('summary-avg-price');
+    if(sumInv) sumInv.textContent = formatCurrency(cumulativeCost);
+    if(sumLot) sumLot.textContent = totalLots;
+    if(sumAvg) sumAvg.textContent = formatCurrency(finalAvg);
     
     const reason = document.getElementById('sim-reason').value;
     const reasonCard = document.getElementById('simulation-reason-card');
-    if(reason) {
-        document.getElementById('simulation-reason-display').textContent = reason;
-        reasonCard.classList.remove('hidden');
-    } else {
-        reasonCard.classList.add('hidden');
+    if(reasonCard) {
+        if(reason) {
+            document.getElementById('simulation-reason-display').textContent = reason;
+            reasonCard.classList.remove('hidden');
+        } else {
+            reasonCard.classList.add('hidden');
+        }
     }
 }
 
@@ -568,23 +550,12 @@ function renderLogTable(logs = portfolioLog) {
     let sortedLogs = [...logs];
     sortedLogs.sort((a, b) => {
         let valA, valB;
-        
         switch(sortState.column) {
-            case 'date':
-                valA = new Date(a.date); valB = new Date(b.date);
-                break;
-            case 'code':
-                valA = a.code; valB = b.code;
-                break;
-            case 'price':
-                valA = a.price; valB = b.price;
-                break;
-            case 'lot':
-                valA = a.lot; valB = b.lot;
-                break;
-            case 'status':
-                valA = a.sellPrice ? 1 : 0; valB = b.sellPrice ? 1 : 0;
-                break;
+            case 'date': valA = new Date(a.date); valB = new Date(b.date); break;
+            case 'code': valA = a.code; valB = b.code; break;
+            case 'price': valA = a.price; valB = b.price; break;
+            case 'lot': valA = a.lot; valB = b.lot; break;
+            case 'status': valA = a.sellPrice ? 1 : 0; valB = b.sellPrice ? 1 : 0; break;
             case 'pl':
                 const getPL = (log) => {
                     if(!log.sellPrice) return -999999999;
@@ -594,10 +565,8 @@ function renderLogTable(logs = portfolioLog) {
                 };
                 valA = getPL(a); valB = getPL(b);
                 break;
-            default:
-                valA = a.date; valB = b.date;
+            default: valA = a.date; valB = b.date;
         }
-
         if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
         return 0;
@@ -605,41 +574,44 @@ function renderLogTable(logs = portfolioLog) {
 
     const start = (currentPage - 1) * itemsPerPage;
     const pagedLogs = sortedLogs.slice(start, start + itemsPerPage);
-    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, sortedLogs.length)} of ${sortedLogs.length}`;
+    const pageInfo = document.getElementById('page-info');
+    if(pageInfo) pageInfo.textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, sortedLogs.length)} of ${sortedLogs.length}`;
+    
     const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
     const pageCont = document.getElementById('page-number-container');
-    pageCont.innerHTML = '';
+    if(pageCont) {
+        pageCont.innerHTML = '';
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '← Prev';
+        prevBtn.className = 'pagination-btn';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderLogTable(filteredLogsData); } };
+        pageCont.appendChild(prevBtn);
 
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '← Prev';
-    prevBtn.className = 'pagination-btn';
-    prevBtn.disabled = currentPage === 1;
-    prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderLogTable(filteredLogsData); } };
-    pageCont.appendChild(prevBtn);
-
-    for(let i=1; i<=totalPages; i++){
-        if (totalPages > 7 && (i !== 1 && i !== totalPages && Math.abs(currentPage - i) > 2)) {
-             if (i === 2 || i === totalPages - 1) {
-                 const ellipsis = document.createElement('span');
-                 ellipsis.textContent = '...';
-                 ellipsis.className = 'pagination-info mx-1';
-                 pageCont.appendChild(ellipsis);
-             }
-             continue; 
+        for(let i=1; i<=totalPages; i++){
+            if (totalPages > 7 && (i !== 1 && i !== totalPages && Math.abs(currentPage - i) > 2)) {
+                if (i === 2 || i === totalPages - 1) {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'pagination-info mx-1';
+                    pageCont.appendChild(ellipsis);
+                }
+                continue; 
+            }
+            const btn = document.createElement('button');
+            btn.textContent = i;
+            btn.className = `pagination-btn ${i === currentPage ? 'active' : ''}`;
+            btn.onclick = () => { currentPage = i; renderLogTable(filteredLogsData); };
+            pageCont.appendChild(btn);
         }
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = `pagination-btn ${i === currentPage ? 'active' : ''}`;
-        btn.onclick = () => { currentPage = i; renderLogTable(filteredLogsData); };
-        pageCont.appendChild(btn);
-    }
 
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next →';
-    nextBtn.className = 'pagination-btn';
-    nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-    nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
-    pageCont.appendChild(nextBtn);
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = 'Next →';
+        nextBtn.className = 'pagination-btn';
+        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
+        pageCont.appendChild(nextBtn);
+    }
 
     pagedLogs.forEach((log) => {
         const realIndex = portfolioLog.findIndex(l => l.id === log.id);
@@ -679,11 +651,12 @@ function renderLogTable(logs = portfolioLog) {
 }
 
 function calculatePortfolioSummary() {
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    const initialEquityEl = document.getElementById('initial-equity');
+    const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
+    
     let totalBuy = 0, totalSell = 0, realizedPL = 0;
     let stockHoldings = {};
 
-    // 1. Hitung Cash Flow & Holdings
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         totalBuy += buyVal;
@@ -693,71 +666,62 @@ function calculatePortfolioSummary() {
             totalSell += sellVal; 
             realizedPL += (sellVal - buyVal);
         } else {
-            // Akumulasi Holding untuk menghitung Market Value nanti
             if(!stockHoldings[log.code]) stockHoldings[log.code] = { lot: 0, cost: 0 };
             stockHoldings[log.code].lot += log.lot; 
             stockHoldings[log.code].cost += buyVal;
         }
     });
 
-    // 2. Hitung Cash Tersedia (Buying Power)
     const currentCash = initialEquity - totalBuy + totalSell;
-    document.getElementById('current-equity-display').textContent = formatCurrency(currentCash);
+    const currentEquityDisplay = document.getElementById('current-equity-display');
+    if(currentEquityDisplay) currentEquityDisplay.textContent = formatCurrency(currentCash);
 
-    // 3. Hitung Floating P/L & Total Market Value
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
-    summaryContainer.innerHTML = '';
-    
-    let totalFloating = 0;
-    let totalMarketValue = 0; // Nilai pasar dari saham yang dipegang
+    if(summaryContainer) {
+        summaryContainer.innerHTML = '';
+        let totalFloating = 0;
+        let totalMarketValue = 0; 
 
-    Object.keys(stockHoldings).forEach(code => {
-        const data = stockHoldings[code];
-        const avgPrice = data.cost / (data.lot * 100);
+        Object.keys(stockHoldings).forEach(code => {
+            const data = stockHoldings[code];
+            const avgPrice = data.cost / (data.lot * 100);
+            
+            const currPrice = parseFloat(currentMarketPrices[code]) || 0;
+            const effectivePrice = currPrice > 0 ? currPrice : avgPrice;
+
+            let floating = 0;
+            if(currPrice > 0) { 
+                floating = (currPrice * data.lot * 100) - data.cost; 
+                totalFloating += floating; 
+            }
+
+            totalMarketValue += (effectivePrice * data.lot * 100);
+
+            const div = document.createElement('div');
+            div.className = 'card bg-white p-3 border-2 border-gray-200';
+            div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
+            summaryContainer.appendChild(div);
+        });
+
+        const totalAsset = currentCash + totalMarketValue;
+        const totalAssetDisplay = document.getElementById('total-portfolio-value-display');
+        if(totalAssetDisplay) {
+            totalAssetDisplay.textContent = formatCurrency(totalAsset);
+            if (totalAsset >= initialEquity) {
+                totalAssetDisplay.className = "text-xl font-black text-blue-700 tracking-tight";
+            } else {
+                totalAssetDisplay.className = "text-xl font-black text-red-600 tracking-tight";
+            }
+        }
+
+        const realizedEl = document.getElementById('realized-pl-summary');
+        if(realizedEl) realizedEl.innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
         
-        // LOGIKA PENTING: 
-        // Jika user belum set harga pasar, kita gunakan harga beli (avgPrice) sebagai nilai sementara.
-        // Ini supaya Total Aset tidak terlihat 'anjlok' hanya karena harga pasar belum diisi.
-        const currPrice = parseFloat(currentMarketPrices[code]) || 0;
-        const effectivePrice = currPrice > 0 ? currPrice : avgPrice;
-
-        let floating = 0;
-        // Hitung floating P/L hanya jika ada harga pasar yang diisi user
-        if(currPrice > 0) { 
-            floating = (currPrice * data.lot * 100) - data.cost; 
-            totalFloating += floating; 
-        }
-
-        // Hitung Market Value Saham menggunakan effectivePrice
-        totalMarketValue += (effectivePrice * data.lot * 100);
-
-        // Render Card Saham
-        const div = document.createElement('div');
-        div.className = 'card bg-white p-3 border-2 border-gray-200';
-        div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
-        summaryContainer.appendChild(div);
-    });
-
-    // 4. Hitung Total Aset (Net Worth)
-    // Total Aset = Cash Tersedia + Nilai Saham
-    const totalAsset = currentCash + totalMarketValue;
+        const floatingEl = document.getElementById('floating-pl-summary');
+        if(floatingEl) floatingEl.innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
     
-    // Update UI Total Aset
-    const totalAssetDisplay = document.getElementById('total-portfolio-value-display');
-    if(totalAssetDisplay) {
-        totalAssetDisplay.textContent = formatCurrency(totalAsset);
-        // Beri warna biru/hijau jika aset tumbuh, merah jika turun dari modal awal
-        if (totalAsset >= initialEquity) {
-            totalAssetDisplay.className = "text-xl font-black text-blue-700 tracking-tight";
-        } else {
-            totalAssetDisplay.className = "text-xl font-black text-red-600 tracking-tight";
-        }
+        document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
     }
-
-    document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
-    
-    document.getElementById('realized-pl-summary').innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
-    document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
     
     renderPerformanceTable();
 }
@@ -904,19 +868,73 @@ window.addEventListener('load', () => {
     initChart(); 
     calculateDashboard(); 
     
-    // ADD THIS LISTENER: Update calculation when Modal Awal changes
-    document.getElementById('initial-equity').addEventListener('input', () => {
-        calculatePortfolioSummary();
-        triggerAutoSave();
-    });
+    const initialEquityInput = document.getElementById('initial-equity');
+    if(initialEquityInput) {
+        initialEquityInput.addEventListener('input', () => {
+            calculatePortfolioSummary();
+            triggerAutoSave();
+        });
+    }
 
-    const nav = document.getElementById('tab-nav-wrapper'); const navOffset = nav.offsetTop; window.addEventListener('scroll', () => { if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); else nav.classList.remove('sticky-state'); });
+    const nav = document.getElementById('tab-nav-wrapper'); 
+    if(nav) {
+        const navOffset = nav.offsetTop; 
+        window.addEventListener('scroll', () => { 
+            if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); 
+            else nav.classList.remove('sticky-state'); 
+        });
+    }
 
-    // Init Accordion
     initMobileAccordion();
 
-    // NEW: Add Sort Listeners
     document.querySelectorAll('.sortable').forEach(th => {
         th.addEventListener('click', () => handleSort(th.dataset.col));
     });
+
+    // --- AUTH HANDLER ---
+    const handleLogin = async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } };
+    if(loginBtn) loginBtn.addEventListener('click', handleLogin); 
+    if(overlayLoginBtn) overlayLoginBtn.addEventListener('click', handleLogin); 
+
+    if(logoutBtn) logoutBtn.addEventListener('click', () => signOut(auth));
+    
+    onAuthStateChanged(auth, (user) => { 
+        currentUser = user; 
+        if(user) { 
+            if(loginWallOverlay) loginWallOverlay.classList.add('hidden-wall');
+            if(loginBtn) loginBtn.classList.add('hidden'); 
+            if(userInfoDiv) {
+                userInfoDiv.classList.remove('hidden'); 
+                userInfoDiv.classList.add('flex'); 
+            }
+            if(userNameSpan) userNameSpan.textContent = user.displayName; 
+            loadCloudData(); 
+        } else { 
+            if(loginWallOverlay) loginWallOverlay.classList.remove('hidden-wall');
+            if(loginBtn) loginBtn.classList.add('hidden');
+            if(userInfoDiv) {
+                userInfoDiv.classList.add('hidden'); 
+                userInfoDiv.classList.remove('flex'); 
+            }
+            portfolioLog = []; 
+            savedSimulations = []; 
+            refreshData(); 
+        } 
+    });
+
+    document.getElementById('open-add-log-modal-btn').addEventListener('click', () => { 
+        document.getElementById('log-form').reset(); 
+        document.getElementById('log-edit-index').value = ''; 
+        document.getElementById('sell-fields-container').classList.add('hidden'); 
+        document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; 
+        document.getElementById('log-fee-beli').value = defaultFeeBeli; 
+        openModal(modals.addLog); 
+    });
+    document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(modals.addLog));
+    document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => { ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => document.getElementById(`modal-${id}`).value = document.getElementById(id).value); openModal(modals.simParams); });
+    document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(modals.simParams));
+    document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(modals.sell));
+    document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
+    
+    document.querySelectorAll('.tab-button').forEach(btn => { btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', ''))); });
 });
