@@ -19,6 +19,7 @@
             --accent-green: #10b981;
             --accent-red: #f43f5e;
             --accent-orange: #fb923c;
+            --accent-purple: #a855f7; /* Warna baru untuk Dev Tab */
         }
 
         body {
@@ -74,6 +75,7 @@
         .btn-secondary:hover { background-color: #f3f4f6; }
         .btn-accent { background-color: var(--accent-yellow); color: var(--border-color); }
         .btn-danger { background-color: var(--accent-red); color: white; border-color: #881337; }
+        .btn-dev { background-color: var(--accent-purple); color: white; } /* Tombol Dev */
 
         input, select, textarea {
             display: block; width: 100%; padding: 0.75rem 1rem;
@@ -118,6 +120,10 @@
             background-color: var(--accent-yellow); color: var(--border-color);
             border: 2px solid var(--border-color); box-shadow: 2px 2px 0px 0px var(--border-color);
             transform: translate(-1px, -1px);
+        }
+        /* Style khusus tab developer */
+        #tab-btn-dev.active {
+            background-color: var(--accent-purple); color: white;
         }
 
         /* --- TABLES --- */
@@ -262,6 +268,7 @@
                 <button id="tab-btn-saved" class="tab-button">Simulasi</button>
                 <button id="tab-btn-performance" class="tab-button">Performa</button>
                 <button id="tab-btn-settings" class="tab-button">Settings</button>
+                <button id="tab-btn-dev" class="tab-button font-mono text-purple-600 hover:text-purple-800">Developer</button>
             </nav>
         </div>
 
@@ -447,6 +454,51 @@
                             <button id="download-json-btn" class="btn btn-secondary border-black">⬇ Download JSON</button>
                             <label class="btn btn-secondary border-black cursor-pointer">⬆ Upload JSON<input type="file" id="upload-json-input" class="hidden" accept=".json"></label>
                          </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. TAB DEVELOPER (NEW) -->
+            <div id="tab-content-dev" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Documentation Card -->
+                    <div class="card border-purple-500 shadow-[4px_4px_0px_0px_#a855f7]">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-700">Developer Zone</h2>
+                        <p class="mb-4 text-sm">Area ini khusus untuk debugging, inspeksi data, dan alat bantu pengembangan.</p>
+                        <div class="bg-purple-50 p-4 rounded border-2 border-purple-200 mb-4">
+                            <h3 class="font-bold mb-2">📚 Dokumentasi / Wiki</h3>
+                            <p class="text-xs mb-3">Pastikan file <code>Wiki - Dasbor Portofolio Revamped.html</code> ada di folder yang sama.</p>
+                            <a href="Wiki - Dasbor Portofolio Revamped.html" target="_blank" class="btn btn-dev w-full text-center block">Buka Wiki (HTML)</a>
+                        </div>
+                    </div>
+
+                    <!-- System Status & Tools -->
+                    <div class="card">
+                         <h2 class="text-xl font-bold mb-4">Tools & Status</h2>
+                         <div class="space-y-2 text-sm font-mono mb-6">
+                            <div class="flex justify-between border-b pb-1"><span>User ID:</span> <span id="dev-uid" class="font-bold text-purple-600">...</span></div>
+                            <div class="flex justify-between border-b pb-1"><span>Memori Data:</span> <span id="dev-storage-size">0 KB</span></div>
+                            <div class="flex justify-between border-b pb-1"><span>Status:</span> <span id="dev-sync-status" class="font-bold">Idle</span></div>
+                         </div>
+                         <div class="grid grid-cols-2 gap-2">
+                            <button id="dev-generate-dummy" class="btn btn-secondary text-xs border-purple-500 text-purple-700">🎲 Generate Dummy Data</button>
+                            <button id="dev-hard-reset" class="btn btn-danger text-xs">☠️ Hard Reset / Clear</button>
+                         </div>
+                    </div>
+
+                    <!-- Data Inspector -->
+                    <div class="card lg:col-span-2">
+                        <h2 class="text-xl font-bold mb-4">State Inspector (Read-Only)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">PORTFOLIO LOG (JSON)</label>
+                                <textarea id="dev-json-log" rows="12" class="w-full text-xs font-mono bg-gray-50 border-2 border-gray-300 rounded p-2" readonly></textarea>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">SAVED SIMULATIONS (JSON)</label>
+                                <textarea id="dev-json-sim" rows="12" class="w-full text-xs font-mono bg-gray-50 border-2 border-gray-300 rounded p-2" readonly></textarea>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
