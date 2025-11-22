@@ -716,82 +716,6 @@ function renderLogTable(logs = portfolioLog) {
     calculatePortfolioSummary();
 }
 
-function calculatePortfolioSummary() {
-    const initialEquityEl = document.getElementById('initial-equity');
-    const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
-    
-    let totalBuy = 0, totalSell = 0, realizedPL = 0;
-    let stockHoldings = {};
-
-    portfolioLog.forEach(log => {
-        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-        totalBuy += buyVal;
-        
-        if(log.sellPrice) {
-            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            totalSell += sellVal; 
-            realizedPL += (sellVal - buyVal);
-        } else {
-            if(!stockHoldings[log.code]) stockHoldings[log.code] = { lot: 0, cost: 0 };
-            stockHoldings[log.code].lot += log.lot; 
-            stockHoldings[log.code].cost += buyVal;
-        }
-    });
-
-    const currentCash = initialEquity - totalBuy + totalSell;
-    const currentEquityDisplay = document.getElementById('current-equity-display');
-    if(currentEquityDisplay) currentEquityDisplay.textContent = formatCurrency(currentCash);
-
-    const summaryContainer = document.getElementById('portfolio-summary-by-stock');
-    if(summaryContainer) {
-        summaryContainer.innerHTML = '';
-        let totalFloating = 0;
-        let totalMarketValue = 0; 
-
-        Object.keys(stockHoldings).forEach(code => {
-            const data = stockHoldings[code];
-            const avgPrice = data.cost / (data.lot * 100);
-            
-            const currPrice = parseFloat(currentMarketPrices[code]) || 0;
-            const effectivePrice = currPrice > 0 ? currPrice : avgPrice;
-
-            let floating = 0;
-            if(currPrice > 0) { 
-                floating = (currPrice * data.lot * 100) - data.cost; 
-                totalFloating += floating; 
-            }
-
-            totalMarketValue += (effectivePrice * data.lot * 100);
-
-            const div = document.createElement('div');
-            div.className = 'card bg-white p-3 border-2 border-gray-200';
-            div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
-            summaryContainer.appendChild(div);
-        });
-
-        const totalAsset = currentCash + totalMarketValue;
-        const totalAssetDisplay = document.getElementById('total-portfolio-value-display');
-        if(totalAssetDisplay) {
-            totalAssetDisplay.textContent = formatCurrency(totalAsset);
-            if (totalAsset >= initialEquity) {
-                totalAssetDisplay.className = "text-xl font-black text-blue-700 tracking-tight";
-            } else {
-                totalAssetDisplay.className = "text-xl font-black text-red-600 tracking-tight";
-            }
-        }
-
-        const realizedEl = document.getElementById('realized-pl-summary');
-        if(realizedEl) realizedEl.innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
-        
-        const floatingEl = document.getElementById('floating-pl-summary');
-        if(floatingEl) floatingEl.innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
-    
-        document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
-    }
-    
-    renderPerformanceTable();
-}
-
 function updatePrice(code, price) { currentMarketPrices[code] = price; calculatePortfolioSummary(); triggerAutoSave(); }
 function deleteLog(index) { showConfirm(() => { portfolioLog.splice(index, 1); refreshData(); }, "Hapus data transaksi ini?", "Hapus Transaksi"); }
 function openSellModal(index) { document.getElementById('sell-log-index').value = index; document.getElementById('sell-date').value = new Date().toISOString().split('T')[0]; document.getElementById('sell-fee-jual').value = defaultFeeJual; openModal(modals.sell); }
@@ -820,6 +744,42 @@ function updateDeveloperStats() {
     const dataSize = new Blob([JSON.stringify({portfolioLog, savedSimulations})]).size;
     document.getElementById('dev-memory-size').textContent = (dataSize / 1024).toFixed(2) + ' KB';
 }
+
+function generateDummyData() {
+    const codes = ['BBCA', 'BMRI', 'TLKM', 'ASII', 'BBRI'];
+    const newLogs = [];
+    for(let i=0; i<5; i++) {
+        const code = codes[Math.floor(Math.random() * codes.length)];
+        const price = 500 + Math.floor(Math.random() * 9000);
+        const lot = 1 + Math.floor(Math.random() * 50);
+        const date = new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString().split('T')[0];
+        
+        newLogs.push({
+            id: Date.now() + i,
+            code: code,
+            date: date,
+            price: price,
+            lot: lot,
+            feeBeli: defaultFeeBeli,
+            reason: "Dummy Data"
+        });
+    }
+    portfolioLog = [...portfolioLog, ...newLogs];
+    refreshData();
+    triggerAutoSave();
+    showNotification("5 Dummy data berhasil ditambahkan!");
+}
+
+function hardResetData() {
+    portfolioLog = [];
+    savedSimulations = [];
+    currentMarketPrices = {};
+    refreshData();
+    triggerAutoSave();
+    showNotification("Semua data telah dihapus.");
+}
+
+// Button listeners are added at the bottom...
 
 // --- NEW: ADVANCED DUMMY GENERATOR LOGIC ---
 function openDummyModal() {
@@ -906,81 +866,6 @@ function generateAdvancedDummyData(params) {
     showNotification(`Berhasil generate ${count} data dummy!`, "SUCCESS");
     closeModal(modals.dummy);
 }
-
-// Handler for dummy form submission
-document.getElementById('dummy-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const params = {
-        count: parseInt(document.getElementById('dummy-count').value) || 10,
-        statusMode: document.getElementById('dummy-status').value,
-        priceMin: parseInt(document.getElementById('dummy-price-min').value) || 100,
-        priceMax: parseInt(document.getElementById('dummy-price-max').value) || 10000,
-        lotMin: parseInt(document.getElementById('dummy-lot-min').value) || 1,
-        lotMax: parseInt(document.getElementById('dummy-lot-max').value) || 100,
-        startDate: document.getElementById('dummy-date-start').value,
-        endDate: document.getElementById('dummy-date-end').value
-    };
-
-    generateAdvancedDummyData(params);
-});
-
-// Update Button Listener in Developer Tab
-document.getElementById('btn-open-dummy-modal').addEventListener('click', openDummyModal);
-document.getElementById('cancel-dummy-btn').addEventListener('click', () => closeModal(modals.dummy));
-
-// --- RESET DATA LOGIC (UPDATED) ---
-document.getElementById('btn-open-reset-modal').addEventListener('click', () => openModal(modals.reset));
-document.getElementById('btn-close-reset-modal').addEventListener('click', () => closeModal(modals.reset));
-
-// 1. Reset Logs Only
-document.getElementById('btn-reset-logs').addEventListener('click', () => {
-    showConfirm(() => {
-        portfolioLog = [];
-        refreshData();
-        triggerAutoSave();
-        showNotification("Semua jurnal transaksi berhasil dihapus.", "RESET LOGS");
-        closeModal(modals.reset);
-    }, "Anda yakin ingin menghapus SEMUA riwayat transaksi? Data simulasi & harga pasar tetap aman.", "HAPUS TRANSAKSI");
-});
-
-// 2. Reset Simulations Only
-document.getElementById('btn-reset-simulations').addEventListener('click', () => {
-    showConfirm(() => {
-        savedSimulations = [];
-        refreshData();
-        triggerAutoSave();
-        showNotification("Semua simulasi tersimpan berhasil dihapus.", "RESET SIMULASI");
-        closeModal(modals.reset);
-    }, "Anda yakin ingin menghapus semua skenario simulasi?", "HAPUS SIMULASI");
-});
-
-// 3. Reset Market Prices Only
-document.getElementById('btn-reset-prices').addEventListener('click', () => {
-    showConfirm(() => {
-        currentMarketPrices = {};
-        refreshData(); // Recalculate summary with fallbacks
-        triggerAutoSave();
-        showNotification("Semua harga pasar manual telah di-reset.", "RESET HARGA");
-        closeModal(modals.reset);
-    }, "Reset semua input harga pasar manual ke default?", "RESET HARGA");
-});
-
-// 4. Full Hard Reset (Existing Logic moved here)
-document.getElementById('btn-reset-all').addEventListener('click', () => {
-    showConfirm(() => {
-        portfolioLog = [];
-        savedSimulations = [];
-        currentMarketPrices = {};
-        refreshData();
-        triggerAutoSave();
-        showNotification("Aplikasi telah di-reset total ke pengaturan awal.", "HARD RESET SELESAI");
-        closeModal(modals.reset);
-    }, "PERINGATAN: Ini akan menghapus SELURUH data (Log, Simulasi, Harga). Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
-});
-
-// Removed old hard reset listener to avoid conflict if element is missing
-// document.getElementById('btn-hard-reset').addEventListener('click', ... ); 
 
 document.getElementById('sim-params-form').addEventListener('submit', (e) => { e.preventDefault(); ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'avg-strategy', 'avg-multiplier', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => { document.getElementById(id).value = document.getElementById(`modal-${id}`).value; }); calculateDashboard(); closeModal(modals.simParams); triggerAutoSave(); });
 
@@ -1171,4 +1056,98 @@ window.addEventListener('load', () => {
     document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
     
     document.querySelectorAll('.tab-button').forEach(btn => { btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', ''))); });
+
+    // Safe Event Listeners for Dummy Generator
+    const btnOpenDummy = document.getElementById('btn-open-dummy-modal');
+    if (btnOpenDummy) {
+        btnOpenDummy.addEventListener('click', openDummyModal);
+    }
+    
+    const btnCancelDummy = document.getElementById('cancel-dummy-btn');
+    if (btnCancelDummy) {
+        btnCancelDummy.addEventListener('click', () => closeModal(modals.dummy));
+    }
+
+    const dummyForm = document.getElementById('dummy-form');
+    if (dummyForm) {
+        dummyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const params = {
+                count: parseInt(document.getElementById('dummy-count').value) || 10,
+                statusMode: document.getElementById('dummy-status').value,
+                priceMin: parseInt(document.getElementById('dummy-price-min').value) || 100,
+                priceMax: parseInt(document.getElementById('dummy-price-max').value) || 10000,
+                lotMin: parseInt(document.getElementById('dummy-lot-min').value) || 1,
+                lotMax: parseInt(document.getElementById('dummy-lot-max').value) || 100,
+                startDate: document.getElementById('dummy-date-start').value,
+                endDate: document.getElementById('dummy-date-end').value
+            };
+            generateAdvancedDummyData(params);
+        });
+    }
+
+    // Safe Event Listeners for Reset Menu
+    const btnOpenReset = document.getElementById('btn-open-reset-modal');
+    if (btnOpenReset) {
+        btnOpenReset.addEventListener('click', () => openModal(modals.reset));
+    }
+
+    const btnCloseReset = document.getElementById('btn-close-reset-modal');
+    if (btnCloseReset) {
+        btnCloseReset.addEventListener('click', () => closeModal(modals.reset));
+    }
+
+    const btnResetLogs = document.getElementById('btn-reset-logs');
+    if (btnResetLogs) {
+        btnResetLogs.addEventListener('click', () => {
+            showConfirm(() => {
+                portfolioLog = [];
+                refreshData();
+                triggerAutoSave();
+                showNotification("Semua jurnal transaksi berhasil dihapus.", "RESET LOGS");
+                closeModal(modals.reset);
+            }, "Anda yakin ingin menghapus SEMUA riwayat transaksi? Data simulasi & harga pasar tetap aman.", "HAPUS TRANSAKSI");
+        });
+    }
+
+    const btnResetSims = document.getElementById('btn-reset-simulations');
+    if (btnResetSims) {
+        btnResetSims.addEventListener('click', () => {
+            showConfirm(() => {
+                savedSimulations = [];
+                refreshData();
+                triggerAutoSave();
+                showNotification("Semua simulasi tersimpan berhasil dihapus.", "RESET SIMULASI");
+                closeModal(modals.reset);
+            }, "Anda yakin ingin menghapus semua skenario simulasi?", "HAPUS SIMULASI");
+        });
+    }
+
+    const btnResetPrices = document.getElementById('btn-reset-prices');
+    if (btnResetPrices) {
+        btnResetPrices.addEventListener('click', () => {
+            showConfirm(() => {
+                currentMarketPrices = {};
+                refreshData(); // Recalculate summary with fallbacks
+                triggerAutoSave();
+                showNotification("Semua harga pasar manual telah di-reset.", "RESET HARGA");
+                closeModal(modals.reset);
+            }, "Reset semua input harga pasar manual ke default?", "RESET HARGA");
+        });
+    }
+
+    const btnResetAll = document.getElementById('btn-reset-all');
+    if (btnResetAll) {
+        btnResetAll.addEventListener('click', () => {
+            showConfirm(() => {
+                portfolioLog = [];
+                savedSimulations = [];
+                currentMarketPrices = {};
+                refreshData();
+                triggerAutoSave();
+                showNotification("Aplikasi telah di-reset total ke pengaturan awal.", "HARD RESET SELESAI");
+                closeModal(modals.reset);
+            }, "PERINGATAN: Ini akan menghapus SELURUH data (Log, Simulasi, Harga). Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
+        });
+    }
 });
