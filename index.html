@@ -130,10 +130,17 @@
         .table-brutal th {
             text-transform: uppercase; font-size: 0.75rem; font-weight: 700;
             padding: 1rem; text-align: left; border-bottom: 2px solid var(--border-color); color: #374151;
+            user-select: none; /* Prevent text selection on double click */
         }
         .table-brutal td { padding: 1rem; border-bottom: 1px solid #e5e7eb; color: #1f2937; }
         .table-brutal tr:last-child td { border-bottom: none; }
         .table-brutal tr:hover td { background-color: #fffbeb; }
+        
+        /* Sorting styles */
+        th.sortable { cursor: pointer; transition: background-color 0.2s; }
+        th.sortable:hover { background-color: #e5e7eb; }
+        .sort-icon { display: inline-block; margin-left: 4px; font-size: 0.7em; opacity: 0.3; }
+        th.active-sort .sort-icon { opacity: 1; color: var(--border-color); }
 
         /* --- PAGINATION --- */
         .pagination-btn {
@@ -372,7 +379,17 @@
                             </div>
                             <div class="hidden md:block overflow-x-auto">
                                 <table class="table-brutal text-sm">
-                                    <thead><tr><th>Tgl</th><th>Kode</th><th class="text-right">Harga</th><th class="text-right">Lot</th><th class="text-center">Stat</th><th class="text-right">P/L</th><th class="text-center">Act</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-col="date">Tgl <span class="sort-icon">▼</span></th>
+                                            <th class="sortable" data-col="code">Kode <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="price">Harga <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="lot">Lot <span class="sort-icon">▼</span></th>
+                                            <th class="text-center sortable" data-col="status">Stat <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="pl">P/L <span class="sort-icon">▼</span></th>
+                                            <th class="text-center">Act</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="log-table-body"></tbody>
                                 </table>
                             </div>

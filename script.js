@@ -37,7 +37,6 @@ let sortState = { column: 'date', direction: 'desc' };
 const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'];
 
 // --- DOM ELEMENTS ---
-// FIXED: Kunci objek disesuaikan dengan ID HTML (open-order menggunakan string literal karena ada dash)
 const tabButtons = { 
     simulator: document.getElementById('tab-btn-simulator'), 
     'open-order': document.getElementById('tab-btn-open-order'), 
@@ -283,20 +282,87 @@ function calculateDashboard() {
     }
 }
 
+// --- LOGIC: LOG TABLE & SORTING ---
+function handleSort(column) {
+    if (sortState.column === column) {
+        // Toggle direction
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default desc for numbers/dates, asc for text usually
+        sortState.column = column;
+        sortState.direction = 'desc'; // Default desc is often better for logs
+    }
+    
+    // Update UI Indicators
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.classList.remove('active-sort');
+        const icon = th.querySelector('.sort-icon');
+        if(icon) icon.textContent = '▼'; // Reset default
+    });
+    
+    const activeTh = document.querySelector(`.sortable[data-col="${column}"]`);
+    if(activeTh) {
+        activeTh.classList.add('active-sort');
+        activeTh.querySelector('.sort-icon').textContent = sortState.direction === 'asc' ? '▲' : '▼';
+    }
+    
+    renderLogTable(filteredLogsData);
+}
+
 function renderLogTable(logs = portfolioLog) {
     const tbody = document.getElementById('log-table-body');
     const cardView = document.getElementById('log-card-view');
     if(!tbody || !cardView) return;
     tbody.innerHTML = ''; cardView.innerHTML = '';
 
+    // 1. Sorting Logic
+    let sortedLogs = [...logs];
+    sortedLogs.sort((a, b) => {
+        let valA, valB;
+        
+        switch(sortState.column) {
+            case 'date':
+                valA = new Date(a.date); valB = new Date(b.date);
+                break;
+            case 'code':
+                valA = a.code; valB = b.code;
+                break;
+            case 'price':
+                valA = a.price; valB = b.price;
+                break;
+            case 'lot':
+                valA = a.lot; valB = b.lot;
+                break;
+            case 'status':
+                valA = a.sellPrice ? 1 : 0; valB = b.sellPrice ? 1 : 0; // Open (0) first or last
+                break;
+            case 'pl':
+                // Calculate P/L for sorting
+                const getPL = (log) => {
+                    if(!log.sellPrice) return -999999999; // Treat open as lowest or handle separately
+                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+                    const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+                    return sellVal - buyVal;
+                };
+                valA = getPL(a); valB = getPL(b);
+                break;
+            default:
+                valA = a.date; valB = b.date;
+        }
+
+        if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // 2. Pagination Logic
     const start = (currentPage - 1) * itemsPerPage;
-    const pagedLogs = logs.slice(start, start + itemsPerPage);
-    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, logs.length)} of ${logs.length}`;
-    const totalPages = Math.ceil(logs.length / itemsPerPage);
+    const pagedLogs = sortedLogs.slice(start, start + itemsPerPage);
+    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, sortedLogs.length)} of ${sortedLogs.length}`;
+    const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
     const pageCont = document.getElementById('page-number-container');
     pageCont.innerHTML = '';
 
-    // --- PAGINATION LOGIC ---
     const prevBtn = document.createElement('button');
     prevBtn.innerHTML = '← Prev';
     prevBtn.className = 'pagination-btn';
@@ -328,8 +394,9 @@ function renderLogTable(logs = portfolioLog) {
     nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
     pageCont.appendChild(nextBtn);
 
-    pagedLogs.forEach((log, index) => {
-        const realIndex = portfolioLog.indexOf(log);
+    // 3. Rendering Rows
+    pagedLogs.forEach((log) => {
+        const realIndex = portfolioLog.findIndex(l => l.id === log.id); // Important: find index in original array for edit/delete
         const isOpen = !log.sellPrice;
         const buyCost = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         let pl = 0;
@@ -538,4 +605,9 @@ window.addEventListener('load', () => {
 
     // Init Accordion
     initMobileAccordion();
+
+    // NEW: Add Sort Listeners
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => handleSort(th.dataset.col));
+    });
 });
