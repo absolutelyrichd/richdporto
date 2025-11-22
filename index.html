@@ -19,7 +19,7 @@
             --accent-green: #10b981;
             --accent-red: #f43f5e;
             --accent-orange: #fb923c;
-            --accent-purple: #a855f7; /* New accent for Developer */
+            --accent-purple: #a855f7;
         }
 
         body {
@@ -42,7 +42,7 @@
             box-shadow: 4px 4px 0px 0px var(--shadow-color);
             padding: 1.5rem;
             transition: transform 0.1s ease-in-out;
-            margin-bottom: 1.5rem; /* Tambahan margin bawah default untuk stacking mobile */
+            margin-bottom: 1.5rem;
         }
         /* Reset margin bottom di desktop grid layout agar dikontrol oleh gap grid */
         @media (min-width: 1024px) {
@@ -421,7 +421,8 @@
                 <div class="card">
                     <h2 class="text-2xl font-bold mb-4">Analisa Performa</h2>
                     
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- UPDATED: Changed from grid lg:grid-cols-2 to space-y-8 for vertical layout -->
+                    <div class="grid grid-cols-1 gap-8 mb-8">
                         <!-- Chart 1: Returns -->
                         <div>
                             <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Return vs Benchmark</h3>
