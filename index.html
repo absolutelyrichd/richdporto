@@ -419,8 +419,25 @@
             <!-- 5. TAB PERFORMANCE -->
             <div id="tab-content-performance" class="tab-content">
                 <div class="card">
-                    <h2 class="text-2xl font-bold mb-2">Analisa Performa</h2>
-                    <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2 mb-8"><canvas id="performanceChart"></canvas></div>
+                    <h2 class="text-2xl font-bold mb-4">Analisa Performa</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <!-- Chart 1: Returns -->
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Return vs Benchmark</h3>
+                            <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                        </div>
+                        <!-- Chart 2: Equity Growth (NEW) -->
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Pertumbuhan Equity (Realized)</h3>
+                            <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2">
+                                <canvas id="equityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto">
                         <table class="table-brutal">
                             <thead><tr><th>Periode</th><th>Portofolio Return</th><th>IHSG Return (Manual)</th><th>Alpha</th></tr></thead>
