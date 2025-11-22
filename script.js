@@ -156,7 +156,7 @@ function initChart() {
     
     const initialData = new Array(periods.length).fill(0);
 
-    // UBAH KE LINE CHART DENGAN STEP 1
+    // UBAH KE LINE CHART DENGAN STEP 1 (Percent)
     performanceChart = new Chart(ctx, {
         type: 'line', 
         data: {
@@ -165,7 +165,7 @@ function initChart() {
                 { 
                     label: 'Portfolio', 
                     data: initialData, 
-                    borderColor: '#10b981', // Emerald Green
+                    borderColor: '#10b981', 
                     backgroundColor: 'rgba(16, 185, 129, 0.1)', 
                     borderWidth: 3,
                     pointBackgroundColor: '#ffffff',
@@ -173,12 +173,12 @@ function initChart() {
                     pointRadius: 5,
                     pointHoverRadius: 7,
                     fill: true,
-                    tension: 0.3 // Smooth curve
+                    tension: 0.3 
                 },
                 { 
                     label: 'IHSG', 
                     data: initialData, 
-                    borderColor: '#fb923c', // Orange
+                    borderColor: '#fb923c', 
                     backgroundColor: 'rgba(251, 146, 60, 0.1)', 
                     borderWidth: 3,
                     pointBackgroundColor: '#ffffff',
@@ -186,7 +186,7 @@ function initChart() {
                     pointRadius: 5,
                     pointHoverRadius: 7,
                     fill: true,
-                    tension: 0.3 // Smooth curve
+                    tension: 0.3 
                 }
             ]
         },
@@ -205,7 +205,7 @@ function initChart() {
                     ticks: { 
                         color: '#374151', 
                         font: { family: 'Inter' },
-                        stepSize: 1 // <--- INI YANG DIUBAH (Langkah sumbu Y per 1 unit)
+                        stepSize: 1 
                     } 
                 },
                 x: { grid: { display: false }, ticks: { color: '#374151', font: { family: 'Inter', weight: 'bold' } } }
@@ -268,6 +268,8 @@ function initEquityChart() {
                     ticks: { 
                         color: '#374151', 
                         font: { family: 'Inter' },
+                        // UPDATE: STEP SIZE 1 JUTA (Agar grid line per 1 jt, tidak loncat 10)
+                        stepSize: 1000000, 
                         callback: function(value) { return 'Rp ' + (value/1000000).toFixed(0) + 'jt'; }
                     } 
                 },
