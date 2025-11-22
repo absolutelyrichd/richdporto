@@ -146,9 +146,8 @@ function renderPerformanceTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // 1. Hitung Nilai Portofolio Saat Ini (All Time) - Total Equity
+    // 1. Hitung Nilai Portofolio Saat Ini (All Time)
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalMarketValue = 0;
     let cashFlow = 0; 
 
     portfolioLog.forEach(log => {
@@ -158,46 +157,38 @@ function renderPerformanceTable() {
         if(log.sellPrice) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             cashFlow += sellVal; 
-        } else {
-            const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
-            totalMarketValue += currPrice * log.lot * 100;
         }
     });
 
     const currentCash = initialEquity + cashFlow;
-    const totalPortfolioValue = currentCash + totalMarketValue;
-    const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
+    // totalPortfolioValue (Market Value + Cash) dihitung implicit di logic All Time, tapi variabel ini dipakai untuk referensi jika perlu
+    // const totalPortfolioValue = currentCash + totalMarketValue; 
+    
+    // Fungsi All Time Return (Khusus)
+    const getAllTimeReturn = () => {
+        let totalMarketVal = 0;
+        portfolioLog.forEach(log => {
+            if (!log.sellPrice) { // Open position value
+                const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
+                totalMarketVal += currPrice * log.lot * 100;
+            }
+        });
+        const totalVal = currentCash + totalMarketVal;
+        return initialEquity > 0 ? ((totalVal - initialEquity) / initialEquity) * 100 : 0;
+    };
 
-    // --- FUNGSI HITUNG RETURN PERIODE (GENERIC UNTUK SEMUA PERIODE) ---
-    const calculatePeriodReturn = (periodName) => {
-        const now = new Date();
-        // Gunakan setFullYear/Month/Date untuk manipulasi tanggal yang aman
-        let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const allTimeReturn = getAllTimeReturn();
 
-        // Mundurkan tanggal sesuai periode
-        if (periodName === '1 Bln') {
-            startDate.setMonth(startDate.getMonth() - 1);
-        } else if (periodName === '3 Bln') {
-            startDate.setMonth(startDate.getMonth() - 3);
-        } else if (periodName === '6 Bln') {
-            startDate.setMonth(startDate.getMonth() - 6);
-        } else if (periodName === '1 Thn') {
-            startDate.setFullYear(startDate.getFullYear() - 1);
-        } else if (periodName === 'YTD') {
-            startDate = new Date(now.getFullYear(), 0, 1); // 1 Jan tahun ini
-        } else {
-            return 0; // Should not happen for standard periods
-        }
-
-        // Konversi ke format YYYY-MM-DD untuk perbandingan string
-        // Menggunakan offset timezone agar tidak bergeser karena UTC
+    // --- CORE CALCULATION LOGIC (REUSABLE) ---
+    const calculateReturnFromDate = (startDate) => {
+        // Konversi ke string YYYY-MM-DD untuk perbandingan yang konsisten
         const startDateStr = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
         let totalPL = 0;
 
         portfolioLog.forEach(log => {
             // CASE 1: Transaksi SUDAH JUAL (Closed)
-            // Profit dihitung jika 'Tanggal Jual' masuk dalam periode ini
+            // Hitung jika tanggal jual (sellDate) >= startDate
             if (log.sellPrice && log.sellDate) {
                 if (log.sellDate >= startDateStr) {
                     const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
@@ -206,7 +197,7 @@ function renderPerformanceTable() {
                 }
             } 
             // CASE 2: Transaksi MASIH HOLD (Open)
-            // Profit Floating dihitung jika 'Tanggal Beli' masuk dalam periode ini (Barang Baru)
+            // Hitung floating P/L jika tanggal beli (date) >= startDate
             else {
                 if (log.date >= startDateStr) {
                     const currentPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
@@ -217,27 +208,31 @@ function renderPerformanceTable() {
             }
         });
         
-        // Return % terhadap Modal Awal
         return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
     };
 
-    // 2. Render Baris Tabel
+    // Wrapper untuk Periode Standar
+    const calculatePeriodReturn = (periodName) => {
+        const now = new Date();
+        let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (periodName === '1 Bln') startDate.setMonth(startDate.getMonth() - 1);
+        else if (periodName === '3 Bln') startDate.setMonth(startDate.getMonth() - 3);
+        else if (periodName === '6 Bln') startDate.setMonth(startDate.getMonth() - 6);
+        else if (periodName === '1 Thn') startDate.setFullYear(startDate.getFullYear() - 1);
+        else if (periodName === 'YTD') startDate = new Date(now.getFullYear(), 0, 1);
+        else return 0;
+
+        return calculateReturnFromDate(startDate);
+    };
+
+    // 2. Render Baris Tabel Standar
     periods.forEach((period, index) => {
         const isAllTime = period === 'All Time';
-        let portReturn = 0;
-
-        if (isAllTime) {
-            portReturn = allTimeReturn;
-        } else {
-            portReturn = calculatePeriodReturn(period);
-        }
-
+        let portReturn = isAllTime ? allTimeReturn : calculatePeriodReturn(period);
         const displayReturn = portReturn.toFixed(2) + '%';
         const colorClass = portReturn >= 0 ? 'text-green-600' : 'text-red-600';
-        
-        // Label note diperbarui agar user paham angka ini meliputi apa
-        let note = '';
-        if(!isAllTime) note = '<span class="text-[10px] text-gray-400 font-normal block md:inline md:ml-1">(Realized + New Open)</span>';
+        let note = !isAllTime ? '<span class="text-[10px] text-gray-400 font-normal block md:inline md:ml-1">(Realized + New Open)</span>' : '';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -251,27 +246,42 @@ function renderPerformanceTable() {
         tbody.appendChild(tr);
     });
 
-    // 3. Update Chart
+    // 3. Render Baris CUSTOM (Baru!)
+    const customRow = document.createElement('tr');
+    customRow.className = "bg-yellow-50 border-t-2 border-dashed border-yellow-200";
+    customRow.innerHTML = `
+        <td class="font-bold align-middle">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 uppercase tracking-wide">Custom Since:</span>
+                <input type="date" id="custom-period-date" class="text-xs font-mono border border-gray-300 rounded p-1 w-full mt-1 bg-white">
+            </div>
+        </td>
+        <td class="font-bold align-middle text-lg" id="custom-return-display">-</td>
+        <td class="align-middle">
+            <input type="number" step="0.01" id="custom-ihsg-input" class="w-24 p-1 border rounded text-right bg-white" placeholder="0.00"> %
+        </td>
+        <td class="font-bold align-middle" id="custom-alpha-display">-</td>
+    `;
+    tbody.appendChild(customRow);
+
+    // 4. Update Chart
     if(performanceChart) {
-        performanceChart.data.datasets[0].data[5] = allTimeReturn; // All Time
-        // Loop untuk update 1 Bln s/d 1 Thn
+        performanceChart.data.datasets[0].data[5] = allTimeReturn;
         for(let i=0; i<5; i++) {
             performanceChart.data.datasets[0].data[i] = calculatePeriodReturn(periods[i]);
         }
         performanceChart.update();
     }
 
-    // 4. Listener Input IHSG
+    // 5. Listeners
+    // Standard IHSG Inputs
     document.querySelectorAll('.ihsg-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.index);
             const ihsgVal = parseFloat(e.target.value) || 0;
             const periodName = periods[idx];
             
-            let currentPortReturn = 0;
-            if (periodName === 'All Time') currentPortReturn = allTimeReturn;
-            else currentPortReturn = calculatePeriodReturn(periodName);
-            
+            let currentPortReturn = (periodName === 'All Time') ? allTimeReturn : calculatePeriodReturn(periodName);
             const alpha = currentPortReturn - ihsgVal;
             const alphaCell = document.getElementById(`alpha-${idx}`);
             alphaCell.textContent = alpha.toFixed(2) + '%';
@@ -283,6 +293,34 @@ function renderPerformanceTable() {
             }
         });
     });
+
+    // Custom Row Listeners
+    const customDateInput = document.getElementById('custom-period-date');
+    const customReturnDisplay = document.getElementById('custom-return-display');
+    const customIhsgInput = document.getElementById('custom-ihsg-input');
+    const customAlphaDisplay = document.getElementById('custom-alpha-display');
+
+    const updateCustomRow = () => {
+        if (!customDateInput.value) {
+            customReturnDisplay.textContent = '-';
+            customAlphaDisplay.textContent = '-';
+            return;
+        }
+
+        const startDate = new Date(customDateInput.value);
+        const portReturn = calculateReturnFromDate(startDate);
+        const ihsgVal = parseFloat(customIhsgInput.value) || 0;
+        const alpha = portReturn - ihsgVal;
+
+        customReturnDisplay.textContent = portReturn.toFixed(2) + '%';
+        customReturnDisplay.className = `font-bold align-middle text-lg ${portReturn >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        
+        customAlphaDisplay.textContent = alpha.toFixed(2) + '%';
+        customAlphaDisplay.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+    };
+
+    customDateInput.addEventListener('change', updateCustomRow);
+    customIhsgInput.addEventListener('input', updateCustomRow);
 }
 
 // --- LOGIC: SIMULATOR & OTHERS (UNCHANGED) ---
