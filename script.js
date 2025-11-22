@@ -37,9 +37,10 @@ let sortState = { column: 'date', direction: 'desc' };
 const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'];
 
 // --- DOM ELEMENTS ---
+// FIXED: Kunci objek disesuaikan dengan ID HTML (open-order menggunakan string literal karena ada dash)
 const tabButtons = { 
     simulator: document.getElementById('tab-btn-simulator'), 
-    openOrder: document.getElementById('tab-btn-open-order'), // NEW
+    'open-order': document.getElementById('tab-btn-open-order'), 
     log: document.getElementById('tab-btn-log'), 
     saved: document.getElementById('tab-btn-saved'), 
     performance: document.getElementById('tab-btn-performance'),
@@ -47,7 +48,7 @@ const tabButtons = {
 };
 const tabContents = { 
     simulator: document.getElementById('tab-content-simulator'), 
-    openOrder: document.getElementById('tab-content-open-order'), // NEW
+    'open-order': document.getElementById('tab-content-open-order'), 
     log: document.getElementById('tab-content-log'), 
     saved: document.getElementById('tab-content-saved'), 
     performance: document.getElementById('tab-content-performance'),
@@ -95,8 +96,9 @@ function showConfirm(action) {
 }
 
 function switchTab(name) {
-    Object.values(tabButtons).forEach(b => b.classList.remove('active'));
-    Object.values(tabContents).forEach(c => c.classList.remove('active'));
+    Object.values(tabButtons).forEach(b => { if(b) b.classList.remove('active'); });
+    Object.values(tabContents).forEach(c => { if(c) c.classList.remove('active'); });
+    
     if(tabButtons[name]) tabButtons[name].classList.add('active');
     if(tabContents[name]) tabContents[name].classList.add('active');
     
