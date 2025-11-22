@@ -94,6 +94,27 @@ function showNotification(msg, title = 'INFO') {
     openModal(modals.notification);
 }
 
+// Helper khusus untuk menghitung Cash saat ini secara akurat (tanpa bergantung pada UI)
+function getPortfolioCashBalance() {
+    const initialEquityEl = document.getElementById('initial-equity');
+    const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
+    
+    let totalBuy = 0, totalSell = 0;
+
+    portfolioLog.forEach(log => {
+        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+        totalBuy += buyVal;
+        
+        if(log.sellPrice) {
+            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+            totalSell += sellVal; 
+        }
+    });
+
+    return initialEquity - totalBuy + totalSell;
+}
+
+
 // --- GENERIC CONFIRMATION LOGIC ---
 let onConfirmAction = null;
 
@@ -798,20 +819,69 @@ document.getElementById('btn-hard-reset').addEventListener('click', () => {
 });
 
 document.getElementById('sim-params-form').addEventListener('submit', (e) => { e.preventDefault(); ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'avg-strategy', 'avg-multiplier', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => { document.getElementById(id).value = document.getElementById(`modal-${id}`).value; }); calculateDashboard(); closeModal(modals.simParams); triggerAutoSave(); });
+
+// === LOGIKA PENTING YANG DIUBAH ADA DI SINI ===
 document.getElementById('log-form').addEventListener('submit', (e) => {
     e.preventDefault();
+    
+    // 1. Ambil Nilai Input
+    const price = parseFloat(document.getElementById('log-buy-price').value);
+    const lot = parseInt(document.getElementById('log-buy-lot').value);
+    const feePercent = parseFloat(document.getElementById('log-fee-beli').value);
+    
+    // 2. Hitung Biaya Transaksi Baru
+    const costOfNewTransaction = price * lot * 100 * (1 + feePercent/100);
+    
+    // 3. Ambil Cash Saat Ini
+    let currentAvailableCash = getPortfolioCashBalance();
+    
+    // 4. Cek apakah ini mode Edit atau Tambah Baru
     const idxVal = document.getElementById('log-edit-index').value;
     const isEdit = idxVal !== '';
-    const newLog = { id: isEdit ? portfolioLog[idxVal].id : Date.now(), code: document.getElementById('log-stock-code').value.toUpperCase(), date: document.getElementById('log-buy-date').value, price: parseFloat(document.getElementById('log-buy-price').value), lot: parseInt(document.getElementById('log-buy-lot').value), feeBeli: parseFloat(document.getElementById('log-fee-beli').value), reason: document.getElementById('log-reason').value, sellPrice: null, sellDate: null, feeJual: null };
+    
+    if (isEdit) {
+        // Jika Edit, kita perlu 'mengembalikan' dulu biaya transaksi lama ke saldo cash
+        // supaya bisa dicek apakah saldo cukup untuk revisinya.
+        const oldLog = portfolioLog[idxVal];
+        const oldCost = oldLog.price * oldLog.lot * 100 * (1 + (oldLog.feeBeli||0)/100);
+        currentAvailableCash += oldCost;
+    }
+
+    // 5. VALIDASI SALDO
+    if (costOfNewTransaction > currentAvailableCash) {
+        showNotification(
+            `Dana tidak mencukupi!\n\nCash Tersedia: ${formatCurrency(currentAvailableCash)}\nButuh: ${formatCurrency(costOfNewTransaction)}\nKurang: ${formatCurrency(costOfNewTransaction - currentAvailableCash)}`, 
+            "TRANSAKSI DITOLAK"
+        );
+        return; // Hentikan proses, jangan disimpan
+    }
+
+    // 6. Jika lolos validasi, Lanjutkan Simpan
+    const newLog = { 
+        id: isEdit ? portfolioLog[idxVal].id : Date.now(), 
+        code: document.getElementById('log-stock-code').value.toUpperCase(), 
+        date: document.getElementById('log-buy-date').value, 
+        price: price, 
+        lot: lot, 
+        feeBeli: feePercent, 
+        reason: document.getElementById('log-reason').value, 
+        sellPrice: null, 
+        sellDate: null, 
+        feeJual: null 
+    };
+    
     const sellP = document.getElementById('log-sell-price').value;
     if(sellP && !document.getElementById('sell-fields-container').classList.contains('hidden')) {
         newLog.sellPrice = parseFloat(sellP);
         newLog.sellDate = document.getElementById('log-sell-date').value;
         newLog.feeJual = parseFloat(document.getElementById('log-fee-jual').value);
     }
+    
     if(isEdit) portfolioLog[idxVal] = newLog; else portfolioLog.push(newLog);
-    closeModal(modals.addLog); refreshData();
+    closeModal(modals.addLog); 
+    refreshData();
 });
+
 document.getElementById('sell-form').addEventListener('submit', (e) => { e.preventDefault(); const idx = document.getElementById('sell-log-index').value; const log = portfolioLog[idx]; log.sellPrice = parseFloat(document.getElementById('sell-price').value); log.sellDate = document.getElementById('sell-date').value; log.feeJual = parseFloat(document.getElementById('sell-fee-jual').value); closeModal(modals.sell); refreshData(); });
 document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => { const sim = { id: Date.now(), stockCode: document.getElementById('modal-stock-code').value, initialPrice: document.getElementById('modal-initial-price').value, initialLot: document.getElementById('modal-initial-lot').value, avgStrategy: document.getElementById('modal-avg-strategy').value, avgMultiplier: document.getElementById('modal-avg-multiplier').value, avgDownPercent: document.getElementById('modal-avg-down-percent').value, avgLevels: document.getElementById('modal-avg-levels').value }; savedSimulations.push(sim); renderSavedSimulations(); triggerAutoSave(); showNotification('Simulasi tersimpan!'); });
 
