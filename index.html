@@ -425,7 +425,7 @@
                     </div>
                 </div>
             </div>
-<!-- Pastikan bagian ini ada di dalam Tab Performa -->
+
             <!-- 5. TAB PERFORMANCE -->
             <div id="tab-content-performance" class="tab-content">
                 <div class="card">
@@ -435,7 +435,7 @@
                         <canvas id="performanceChart"></canvas>
                     </div>
 
-                    <!-- Chart 2: Equity Growth (New) - PASTIKAN INI ADA -->
+                    <!-- Chart 2: Equity Growth (New) -->
                     <h3 class="text-lg font-bold mb-2 text-blue-900 border-l-4 border-blue-500 pl-2">Pertumbuhan Ekuitas (Realized)</h3>
                     <div class="h-[300px] w-full bg-blue-50 border-2 border-blue-200 rounded p-2 mb-8">
                         <canvas id="equityChart"></canvas>
@@ -493,8 +493,8 @@
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <button id="btn-generate-dummy" class="btn btn-secondary border-purple-500 text-purple-700 hover:bg-purple-50">
-                                🤖 Generate Dummy Data
+                            <button id="btn-open-dummy-modal" class="btn btn-secondary border-purple-500 text-purple-700 hover:bg-purple-50">
+                                🤖 Generator Data Dummy
                             </button>
                             <button id="btn-hard-reset" class="btn btn-danger">
                                 ☠️ HARD RESET / CLEAR
@@ -569,6 +569,40 @@
         </div>
     </div>
     
+    <!-- DUMMY GENERATOR MODAL (NEW) -->
+    <div id="dummy-generator-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Generator Data Dummy</h3>
+            <form id="dummy-form" class="space-y-4">
+                <div><label>Jumlah Data</label><input type="number" id="dummy-count" value="10" min="1" max="100"></div>
+                <div>
+                    <label>Status Transaksi</label>
+                    <select id="dummy-status">
+                        <option value="mixed">Campur (Open & Closed)</option>
+                        <option value="open">Hanya Open (Hold)</option>
+                        <option value="closed">Hanya Closed (Jual)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>Harga Min</label><input type="number" id="dummy-price-min" value="500"></div>
+                    <div><label>Harga Max</label><input type="number" id="dummy-price-max" value="10000"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>Lot Min</label><input type="number" id="dummy-lot-min" value="1"></div>
+                    <div><label>Lot Max</label><input type="number" id="dummy-lot-max" value="50"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>Dari Tanggal</label><input type="date" id="dummy-date-start"></div>
+                    <div><label>Sampai Tanggal</label><input type="date" id="dummy-date-end"></div>
+                </div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" id="cancel-dummy-btn" class="btn btn-secondary">Batal</button>
+                    <button type="submit" class="btn btn-primary bg-purple-600 border-purple-800 text-white">Generate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- NEW GENERIC CONFIRM MODAL -->
     <div id="generic-confirm-modal" class="modal-overlay">
         <div class="modal-content max-w-sm text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">

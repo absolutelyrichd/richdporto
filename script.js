@@ -71,7 +71,8 @@ const modals = {
     addLog: document.getElementById('add-log-modal'),
     sell: document.getElementById('sell-modal'),
     notification: document.getElementById('notification-modal'),
-    confirm: document.getElementById('generic-confirm-modal')
+    confirm: document.getElementById('generic-confirm-modal'),
+    dummy: document.getElementById('dummy-generator-modal')
 };
 
 // --- HELPERS ---
@@ -811,30 +812,114 @@ function updateDeveloperStats() {
     document.getElementById('dev-memory-size').textContent = (dataSize / 1024).toFixed(2) + ' KB';
 }
 
-function generateDummyData() {
-    const codes = ['BBCA', 'BMRI', 'TLKM', 'ASII', 'BBRI'];
+// --- NEW: ADVANCED DUMMY GENERATOR LOGIC ---
+function openDummyModal() {
+    // Set default date values
+    const end = new Date().toISOString().split('T')[0];
+    const start = new Date();
+    start.setFullYear(start.getFullYear() - 1);
+    
+    const dateStartInput = document.getElementById('dummy-date-start');
+    const dateEndInput = document.getElementById('dummy-date-end');
+    
+    if(dateStartInput) dateStartInput.value = start.toISOString().split('T')[0];
+    if(dateEndInput) dateEndInput.value = end;
+    
+    openModal(modals.dummy);
+}
+
+function generateAdvancedDummyData(params) {
+    const codes = ['BBCA', 'BMRI', 'TLKM', 'ASII', 'BBRI', 'GOTO', 'UNVR', 'ICBP', 'ADRO', 'BBNI'];
     const newLogs = [];
-    for(let i=0; i<5; i++) {
+    
+    const { count, statusMode, priceMin, priceMax, lotMin, lotMax, startDate, endDate } = params;
+    
+    const startTs = new Date(startDate).getTime();
+    const endTs = new Date(endDate).getTime();
+
+    for(let i=0; i < count; i++) {
         const code = codes[Math.floor(Math.random() * codes.length)];
-        const price = 500 + Math.floor(Math.random() * 9000);
-        const lot = 1 + Math.floor(Math.random() * 50);
-        const date = new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString().split('T')[0];
         
+        // Random Price
+        const buyPrice = Math.floor(Math.random() * (priceMax - priceMin + 1)) + priceMin;
+        
+        // Random Lot
+        const buyLot = Math.floor(Math.random() * (lotMax - lotMin + 1)) + lotMin;
+        
+        // Random Buy Date
+        const buyDateTs = Math.floor(Math.random() * (endTs - startTs + 1)) + startTs;
+        const buyDateStr = new Date(buyDateTs).toISOString().split('T')[0];
+        
+        let sellPrice = null;
+        let sellDateStr = null;
+        let feeJual = null;
+
+        // Determine Status
+        let isClosed = false;
+        if (statusMode === 'closed') isClosed = true;
+        else if (statusMode === 'open') isClosed = false;
+        else isClosed = Math.random() > 0.5; // Mixed
+
+        if (isClosed) {
+            // Generate realistic Sell Date (must be >= Buy Date)
+            // Random hold time between 1 day and (End Date - Buy Date)
+            const remainingTime = endTs - buyDateTs;
+            // Hold at least 1 day (86400000 ms), max remaining time
+            const holdTime = Math.floor(Math.random() * remainingTime); 
+            const sellDateTs = buyDateTs + holdTime;
+            sellDateStr = new Date(sellDateTs).toISOString().split('T')[0];
+
+            // Generate realistic Sell Price (Profit/Loss between -15% to +25%)
+            const percentage = (Math.random() * 40) - 15; // Range -15 to +25
+            sellPrice = Math.floor(buyPrice * (1 + percentage / 100));
+            if(sellPrice <= 0) sellPrice = 50; // Min price guard
+
+            feeJual = defaultFeeJual;
+        }
+
         newLogs.push({
-            id: Date.now() + i,
+            id: Date.now() + i + Math.random(), // Ensure unique ID
             code: code,
-            date: date,
-            price: price,
-            lot: lot,
+            date: buyDateStr,
+            price: buyPrice,
+            lot: buyLot,
             feeBeli: defaultFeeBeli,
-            reason: "Dummy Data"
+            reason: "Generated Dummy Data",
+            sellPrice: sellPrice,
+            sellDate: sellDateStr,
+            feeJual: feeJual
         });
     }
+
     portfolioLog = [...portfolioLog, ...newLogs];
     refreshData();
     triggerAutoSave();
-    showNotification("5 Dummy data berhasil ditambahkan!");
+    showNotification(`Berhasil generate ${count} data dummy!`, "SUCCESS");
+    closeModal(modals.dummy);
 }
+
+// Handler for dummy form submission
+document.getElementById('dummy-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const params = {
+        count: parseInt(document.getElementById('dummy-count').value) || 10,
+        statusMode: document.getElementById('dummy-status').value,
+        priceMin: parseInt(document.getElementById('dummy-price-min').value) || 100,
+        priceMax: parseInt(document.getElementById('dummy-price-max').value) || 10000,
+        lotMin: parseInt(document.getElementById('dummy-lot-min').value) || 1,
+        lotMax: parseInt(document.getElementById('dummy-lot-max').value) || 100,
+        startDate: document.getElementById('dummy-date-start').value,
+        endDate: document.getElementById('dummy-date-end').value
+    };
+
+    generateAdvancedDummyData(params);
+});
+
+// Update Button Listener in Developer Tab
+document.getElementById('btn-open-dummy-modal').addEventListener('click', openDummyModal);
+document.getElementById('cancel-dummy-btn').addEventListener('click', () => closeModal(modals.dummy));
+
 
 function hardResetData() {
     portfolioLog = [];
@@ -844,10 +929,6 @@ function hardResetData() {
     triggerAutoSave();
     showNotification("Semua data telah dihapus.");
 }
-
-document.getElementById('btn-generate-dummy').addEventListener('click', () => {
-    showConfirm(generateDummyData, "Ini akan menambahkan 5 data transaksi acak ke jurnal Anda.", "Generate Dummy?");
-});
 
 document.getElementById('btn-hard-reset').addEventListener('click', () => {
     showConfirm(hardResetData, "PERINGATAN: Ini akan menghapus SELURUH data transaksi dan simulasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
