@@ -1,843 +1,589 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDXXt1ZI9WjZhJ0zoKsfInsjWfECK4dWoI",
-    authDomain: "richdporto.firebaseapp.com",
-    projectId: "richdporto",
-    storageBucket: "richdporto.appspot.com",
-    messagingSenderId: "720478988067",
-    appId: "1:720478988067:web:a21abb0396f99872a38e96",
-    measurementId: "G-S793S8TH7V"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
-
-window.firebase = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc };
-
-// --- DATA VARIABLES ---
-let portfolioLog = [];
-let savedSimulations = [];
-let performanceChart;
-let equityChart; // NEW CHART INSTANCE
-let currentMarketPrices = {};
-let currentUser = null;
-let autoSaveTimer = null;
-let defaultFeeBeli = 0.15; 
-let defaultFeeJual = 0.25; 
-
-const itemsPerPage = 10;
-let currentPage = 1;
-let filteredLogsData = [];
-let sortState = { column: 'date', direction: 'desc' };
-// UPDATED: Added 2-5 Years
-const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', '2 Thn', '3 Thn', '4 Thn', '5 Thn', 'All Time'];
-
-// --- DOM ELEMENTS ---
-const tabButtons = { 
-    simulator: document.getElementById('tab-btn-simulator'), 
-    'open-order': document.getElementById('tab-btn-open-order'), 
-    log: document.getElementById('tab-btn-log'), 
-    saved: document.getElementById('tab-btn-saved'), 
-    performance: document.getElementById('tab-btn-performance'),
-    settings: document.getElementById('tab-btn-settings'),
-    developer: document.getElementById('tab-btn-developer')
-};
-const tabContents = { 
-    simulator: document.getElementById('tab-content-simulator'), 
-    'open-order': document.getElementById('tab-content-open-order'), 
-    log: document.getElementById('tab-content-log'), 
-    saved: document.getElementById('tab-content-saved'), 
-    performance: document.getElementById('tab-content-performance'),
-    settings: document.getElementById('tab-content-settings'),
-    developer: document.getElementById('tab-content-developer')
-};
-
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const userInfoDiv = document.getElementById('user-info');
-const userNameSpan = document.getElementById('user-name');
-const syncStatusSpan = document.getElementById('sync-status');
-const loginWallOverlay = document.getElementById('login-wall-overlay');
-const overlayLoginBtn = document.getElementById('overlay-login-btn');
-
-const modals = {
-    simParams: document.getElementById('sim-params-modal'),
-    addLog: document.getElementById('add-log-modal'),
-    sell: document.getElementById('sell-modal'),
-    notification: document.getElementById('notification-modal'),
-    confirm: document.getElementById('generic-confirm-modal')
-};
-
-// --- HELPERS ---
-function formatCurrency(value, withSign = false) {
-    const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(value));
-    if (!withSign) return formatted;
-    if (value > 0) return `+${formatted}`;
-    if (value < 0) return `-${formatted}`;
-    return formatted;
-}
-
-function openModal(modal) { modal.classList.add('active'); }
-function closeModal(modal) { modal.classList.remove('active'); }
-
-function showNotification(msg, title = 'INFO') {
-    document.getElementById('notification-title').textContent = title;
-    document.getElementById('notification-message').textContent = msg;
-    openModal(modals.notification);
-}
-
-// --- GENERIC CONFIRMATION LOGIC ---
-let onConfirmAction = null;
-
-function showConfirm(action, message = "Apakah Anda yakin ingin melanjutkan?", title = "KONFIRMASI") {
-    onConfirmAction = action;
-    document.getElementById('confirm-modal-title').textContent = title;
-    document.getElementById('confirm-modal-message').textContent = message;
-    openModal(modals.confirm);
-}
-
-document.getElementById('confirm-cancel-btn').addEventListener('click', () => closeModal(modals.confirm));
-document.getElementById('confirm-ok-btn').addEventListener('click', () => {
-    if(onConfirmAction) onConfirmAction();
-    closeModal(modals.confirm);
-});
-
-function switchTab(name) {
-    Object.values(tabButtons).forEach(b => { if(b) b.classList.remove('active'); });
-    Object.values(tabContents).forEach(c => { if(c) c.classList.remove('active'); });
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
     
-    if(tabButtons[name]) tabButtons[name].classList.add('active');
-    if(tabContents[name]) tabContents[name].classList.add('active');
-    
-    if(name === 'developer') updateDeveloperStats();
-    if(name === 'performance') renderPerformanceTable();
-}
-
-function initChart() {
-    // Chart 1: Returns
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    if (performanceChart) performanceChart.destroy();
-    
-    // Create labels explicitly from periods array
-    // Create initial data arrays with 0s matching length of periods
-    const initialData = new Array(periods.length).fill(0);
-
-    performanceChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: periods,
-            datasets: [
-                { label: 'Portfolio', data: initialData, backgroundColor: '#10b981', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false },
-                { label: 'IHSG', data: initialData, backgroundColor: '#fb923c', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { font: { family: 'Space Grotesk', weight: 'bold' }, color: '#18181b' } } },
-            scales: {
-                y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { color: '#374151', font: { family: 'Inter' } } },
-                x: { grid: { display: false }, ticks: { color: '#374151', font: { family: 'Inter', weight: 'bold' } } }
-            }
+    <style>
+        /* --- DESIGN SYSTEM: SOFT NEO-BRUTALISM --- */
+        :root {
+            --bg-main: #fdfbf7;
+            --bg-card: #ffffff;
+            --border-color: #18181b;
+            --shadow-color: #18181b;
+            --accent-yellow: #facc15;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-orange: #fb923c;
+            --accent-purple: #a855f7;
         }
-    });
 
-    // Chart 2: Equity Growth
-    const ctxEq = document.getElementById('equityChart').getContext('2d');
-    if (equityChart) equityChart.destroy();
-    
-    equityChart = new Chart(ctxEq, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Total Equity',
-                data: [],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 3,
-                tension: 0.3,
-                pointBackgroundColor: '#1e40af',
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { font: { family: 'Inter' }, callback: (val) => (val/1000000).toFixed(1) + 'jt' } },
-                x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxTicksLimit: 6 } }
-            }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: #18181b;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 24px 24px;
         }
-    });
-}
 
-// --- LOGIC: PERFORMANCE TAB ---
-function renderPerformanceTable() {
-    const tbody = document.getElementById('performance-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalMarketValue = 0;
-    let cashFlow = 0; 
-
-    portfolioLog.forEach(log => {
-        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-        cashFlow -= buyVal; 
-
-        if(log.sellPrice) {
-            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            cashFlow += sellVal; 
-        } else {
-            const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
-            totalMarketValue += currPrice * log.lot * 100;
+        h1, h2, h3, h4, h5, .font-display {
+            font-family: 'Space Grotesk', sans-serif;
         }
-    });
 
-    const currentCash = initialEquity + cashFlow;
-    const totalPortfolioValue = currentCash + totalMarketValue;
-    const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
+        /* --- UTILS --- */
+        .card {
+            background-color: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            box-shadow: 4px 4px 0px 0px var(--shadow-color);
+            padding: 1.5rem;
+            transition: transform 0.1s ease-in-out;
+            margin-bottom: 1.5rem;
+        }
+        /* Reset margin bottom di desktop grid layout agar dikontrol oleh gap grid */
+        @media (min-width: 1024px) {
+            .card { margin-bottom: 0; }
+        }
 
-    // --- CORE CALCULATION LOGIC ---
-    const calculateReturnFromDate = (startDate) => {
-        const startDateStr = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        let totalPL = 0;
+        .card:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px var(--shadow-color); }
 
-        portfolioLog.forEach(log => {
-            if (log.sellPrice && log.sellDate) {
-                if (log.sellDate >= startDateStr) {
-                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
-                    const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual || 0) / 100);
-                    totalPL += (sellVal - buyVal);
-                }
-            } 
-            else {
-                if (log.date >= startDateStr) {
-                    const currentPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
-                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
-                    const marketVal = currentPrice * log.lot * 100;
-                    totalPL += (marketVal - buyVal);
-                }
-            }
-        });
+        .btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            padding: 0.6em 1.5em;
+            border: 2px solid var(--border-color);
+            border-radius: 0.375rem;
+            box-shadow: 2px 2px 0px 0px var(--shadow-color);
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0px 0px var(--shadow-color); }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px 0px var(--shadow-color); }
+
+        .btn-primary { background-color: var(--border-color); color: #ffffff; }
+        .btn-primary:hover { background-color: #27272a; }
+        .btn-secondary { background-color: #ffffff; color: var(--border-color); }
+        .btn-secondary:hover { background-color: #f3f4f6; }
+        .btn-accent { background-color: var(--accent-yellow); color: var(--border-color); }
+        .btn-danger { background-color: var(--accent-red); color: white; border-color: #881337; }
+        .btn-developer { background-color: var(--accent-purple); color: white; border-color: #581c87; }
+
+        input, select, textarea {
+            display: block; width: 100%; padding: 0.75rem 1rem;
+            font-family: 'Inter', sans-serif; font-weight: 600; font-size: 1rem;
+            color: #18181b; background-color: #ffffff;
+            border: 2px solid var(--border-color); border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--border-color);
+            background-color: #ffffff; box-shadow: 4px 4px 0px 0px var(--accent-yellow);
+            transform: translate(-2px, -2px);
+        }
+        label {
+            display: block; font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #18181b;
+        }
+
+        /* --- TABS & NAVBAR --- */
+        #tab-nav-wrapper.sticky-state {
+            position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 2rem); max-width: 1280px; z-index: 50;
+        }
+        .tab-nav-container {
+            background: white; border: 2px solid var(--border-color); border-radius: 0.5rem;
+            padding: 0.5rem; box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+            overflow-x: auto; display: flex; gap: 0.5rem;
+            transition: background-color 0.3s ease, backdrop-filter 0.3s ease;
+        }
+        #tab-nav-wrapper.sticky-state .tab-nav-container {
+            background-color: rgba(253, 251, 247, 0.65); backdrop-filter: blur(12px);
+            box-shadow: 4px 4px 0px 0px rgba(24, 24, 27, 0.1);
+        }
+        .tab-button {
+            padding: 0.5rem 1rem; border: 2px solid transparent; border-radius: 0.25rem;
+            font-weight: 600; color: #6b7280; white-space: nowrap; transition: all 0.2s;
+            flex-grow: 1; text-align: center;
+        }
+        .tab-button:hover { color: var(--border-color); background-color: #f3f4f6; }
+        .tab-button.active {
+            background-color: var(--accent-yellow); color: var(--border-color);
+            border: 2px solid var(--border-color); box-shadow: 2px 2px 0px 0px var(--border-color);
+            transform: translate(-1px, -1px);
+        }
+        /* Specific style for Developer tab when active */
+        #tab-btn-developer.active {
+            background-color: var(--accent-purple); color: white;
+            border-color: #581c87;
+        }
+
+        /* --- TABLES --- */
+        .table-brutal {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+            border: 2px solid var(--border-color); border-radius: 0.5rem;
+            overflow: hidden; background: white;
+        }
+        .table-brutal thead tr { background-color: #f3f4f6; border-bottom: 2px solid var(--border-color); }
+        .table-brutal th {
+            text-transform: uppercase; font-size: 0.75rem; font-weight: 700;
+            padding: 1rem; text-align: left; border-bottom: 2px solid var(--border-color); color: #374151;
+            user-select: none;
+        }
+        .table-brutal td { padding: 1rem; border-bottom: 1px solid #e5e7eb; color: #1f2937; }
+        .table-brutal tr:last-child td { border-bottom: none; }
+        .table-brutal tr:hover td { background-color: #fffbeb; }
         
-        return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
-    };
+        th.sortable { cursor: pointer; transition: background-color 0.2s; }
+        th.sortable:hover { background-color: #e5e7eb; }
+        .sort-icon { display: inline-block; margin-left: 4px; font-size: 0.7em; opacity: 0.3; }
+        th.active-sort .sort-icon { opacity: 1; color: var(--border-color); }
 
-    // Wrapper for Standard Periods
-    const calculatePeriodReturn = (periodName) => {
-        const now = new Date();
-        let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        /* --- PAGINATION --- */
+        .pagination-btn {
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 2.5rem; height: 2.5rem; padding: 0 0.75rem;
+            border: 2px solid var(--border-color); background-color: white; color: var(--primary);
+            border-radius: 0.375rem; box-shadow: 2px 2px 0px 0px var(--border-color);
+            cursor: pointer; transition: all 0.15s ease; margin: 0 0.25rem;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px); box-shadow: 4px 4px 0px 0px var(--border-color); background-color: #f3f4f6;
+        }
+        .pagination-btn.active {
+            background-color: var(--primary); color: white;
+            transform: translate(1px, 1px); box-shadow: 1px 1px 0px 0px var(--border-color); cursor: default;
+        }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 1px 1px 0px 0px var(--border-color); background-color: #e5e7eb; }
 
-        if (periodName === '1 Bln') startDate.setMonth(startDate.getMonth() - 1);
-        else if (periodName === '3 Bln') startDate.setMonth(startDate.getMonth() - 3);
-        else if (periodName === '6 Bln') startDate.setMonth(startDate.getMonth() - 6);
-        else if (periodName === '1 Thn') startDate.setFullYear(startDate.getFullYear() - 1);
-        else if (periodName === '2 Thn') startDate.setFullYear(startDate.getFullYear() - 2);
-        else if (periodName === '3 Thn') startDate.setFullYear(startDate.getFullYear() - 3);
-        else if (periodName === '4 Thn') startDate.setFullYear(startDate.getFullYear() - 4);
-        else if (periodName === '5 Thn') startDate.setFullYear(startDate.getFullYear() - 5);
-        else if (periodName === 'YTD') startDate = new Date(now.getFullYear(), 0, 1);
-        else return 0;
+        /* --- MODALS & OVERLAYS --- */
+        .modal-overlay {
+            position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; visibility: hidden; transition: all 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
 
-        return calculateReturnFromDate(startDate);
-    };
+        .modal-content {
+            background: white; border: 3px solid var(--border-color);
+            box-shadow: 8px 8px 0px 0px var(--border-color); border-radius: 0.75rem;
+            padding: 2.5rem; width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+        }
 
-    // 2. Render Standard Rows
-    periods.forEach((period, index) => {
-        const isAllTime = period === 'All Time';
-        let portReturn = isAllTime ? allTimeReturn : calculatePeriodReturn(period);
-        const displayReturn = portReturn.toFixed(2) + '%';
-        const colorClass = portReturn >= 0 ? 'text-green-600' : 'text-red-600';
-        let note = !isAllTime ? '<span class="text-[10px] text-gray-400 font-normal block md:inline md:ml-1">(Realized + New Open)</span>' : '';
+        /* --- LOGIN WALL OVERLAY --- */
+        #login-wall-overlay {
+            background-color: #e0e7ff;
+            background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+            background-size: 24px 24px;
+            z-index: 9999;
+            opacity: 1;
+            visibility: visible;
+            transition: all 0.5s ease-out;
+        }
+        
+        #login-wall-overlay.hidden-wall {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="font-bold align-middle">${period}</td>
-            <td class="${colorClass} font-bold align-middle">${displayReturn} ${note}</td>
-            <td class="align-middle">
-                <input type="number" step="0.01" class="ihsg-input w-24 p-1 border rounded text-right bg-gray-50" data-index="${index}" placeholder="0.00"> %
-            </td>
-            <td class="font-bold align-middle" id="alpha-${index}">-</td>
-        `;
-        tbody.appendChild(tr);
-    });
+        .badge {
+            display: inline-block; padding: 0.25rem 0.75rem;
+            border: 1px solid var(--border-color); border-radius: 99px;
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        }
+        .badge-open { background-color: #dbeafe; color: #1e40af; border-color: #1e40af; }
+        .badge-closed { background-color: #f3f4f6; color: #374151; border-color: #374151; }
 
-    // 3. Render Custom Row
-    const customRow = document.createElement('tr');
-    customRow.className = "bg-yellow-50 border-t-2 border-dashed border-yellow-200";
-    customRow.innerHTML = `
-        <td class="font-bold align-middle">
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 uppercase tracking-wide">Custom Since:</span>
-                <input type="date" id="custom-period-date" class="text-xs font-mono border border-gray-300 rounded p-1 w-full mt-1 bg-white">
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .accordion-arrow { transition: transform 0.3s ease; }
+        .accordion-arrow.rotate-180 { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- === LOGIN WALL OVERLAY === -->
+    <div id="login-wall-overlay" class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="relative w-full max-w-md bg-yellow-400 border-[5px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 text-center overflow-hidden">
+            <div class="absolute top-8 -left-12 bg-black text-white py-2 px-16 -rotate-45 font-bold text-xs tracking-[0.3em] border-y-2 border-white/30 shadow-md z-10">SECURE AREA</div>
+            <div class="absolute top-4 -right-6 bg-black text-white py-1 px-10 rotate-12 font-bold text-[10px] tracking-widest border border-white/30 z-0 opacity-80">NO ACCESS</div>
+            <div class="inline-block bg-black text-white px-4 py-1.5 font-black transform -rotate-1 mb-8 mt-4 text-sm tracking-widest border-2 border-transparent shadow-[2px_2px_0px_0px_white]">GAME COLLECTION</div>
+            <h1 class="text-6xl font-black mb-2 tracking-tighter text-black uppercase leading-[0.85] drop-shadow-sm">AREA<br>TERBATAS</h1>
+            <div class="w-24 h-2 bg-black mx-auto mb-4 mt-2"></div>
+            <p class="font-bold text-black mb-10 text-sm uppercase tracking-wider">Silakan identifikasi diri anda</p>
+            <button id="overlay-login-btn" class="w-full bg-white text-black font-black text-lg py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+                <div class="absolute inset-0 bg-gray-100 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 z-0"></div>
+                <svg class="w-7 h-7 relative z-10" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                <span class="relative z-10 tracking-tight">MASUK DENGAN GOOGLE</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-2">PORTFOLIO<span class="text-yellow-500">.</span>MANAGER</h1>
+                <p class="text-gray-600 font-medium border-l-4 border-yellow-400 pl-3">Simulate. Track. Analyze. Grow.</p>
             </div>
-        </td>
-        <td class="font-bold align-middle text-lg" id="custom-return-display">-</td>
-        <td class="align-middle">
-            <input type="number" step="0.01" id="custom-ihsg-input" class="w-24 p-1 border rounded text-right bg-white" placeholder="0.00"> %
-        </td>
-        <td class="font-bold align-middle" id="custom-alpha-display">-</td>
-    `;
-    tbody.appendChild(customRow);
-
-    // 4. Update Charts
-    // 4a. Performance (Return) Chart
-    if(performanceChart) {
-        performanceChart.data.labels = periods; // Update labels in case array grew
-        const idxAllTime = periods.indexOf('All Time');
-        
-        for(let i=0; i<periods.length; i++) {
-            if(i === idxAllTime) performanceChart.data.datasets[0].data[i] = allTimeReturn;
-            else performanceChart.data.datasets[0].data[i] = calculatePeriodReturn(periods[i]);
-        }
-        performanceChart.update();
-    }
-
-    // 4b. Equity Growth Chart
-    if(equityChart) {
-        updateEquityChartData(initialEquity);
-    }
-
-    // 5. Listeners
-    document.querySelectorAll('.ihsg-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const idx = parseInt(e.target.dataset.index);
-            const ihsgVal = parseFloat(e.target.value) || 0;
-            const periodName = periods[idx];
             
-            let currentPortReturn = (periodName === 'All Time') ? allTimeReturn : calculatePeriodReturn(periodName);
-            const alpha = currentPortReturn - ihsgVal;
-            const alphaCell = document.getElementById(`alpha-${idx}`);
-            alphaCell.textContent = alpha.toFixed(2) + '%';
-            alphaCell.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
-            
-            if(performanceChart) {
-                performanceChart.data.datasets[1].data[idx] = ihsgVal;
-                performanceChart.update();
-            }
-        });
-    });
+            <div class="flex flex-col items-end gap-2">
+                 <div id="auth-container" class="flex items-center gap-3">
+                    <span id="sync-status" class="text-xs font-bold text-gray-500 uppercase tracking-wide opacity-0 transition-opacity">Syncing...</span>
+                    <div id="user-info" class="hidden items-center gap-3 bg-white border-2 border-black rounded-full px-4 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span id="user-name" class="font-bold text-sm truncate max-w-[100px]">User</span>
+                        <button id="logout-btn" class="text-xs font-bold text-red-500 hover:underline">LOGOUT</button>
+                    </div>
+                    <button id="login-btn" class="btn btn-primary py-2 text-sm hidden">Login Google</button>
+                </div>
+            </div>
+        </header>
 
-    const customDateInput = document.getElementById('custom-period-date');
-    const customReturnDisplay = document.getElementById('custom-return-display');
-    const customIhsgInput = document.getElementById('custom-ihsg-input');
-    const customAlphaDisplay = document.getElementById('custom-alpha-display');
+        <!-- Sticky Navigation -->
+        <div id="tab-nav-wrapper" class="mb-8 z-40">
+            <nav class="tab-nav-container">
+                <button id="tab-btn-simulator" class="tab-button active">Kalkulator</button>
+                <button id="tab-btn-open-order" class="tab-button">Open Order</button>
+                <button id="tab-btn-log" class="tab-button">Jurnal Transaksi</button>
+                <button id="tab-btn-saved" class="tab-button">Simulasi</button>
+                <button id="tab-btn-performance" class="tab-button">Performa</button>
+                <button id="tab-btn-settings" class="tab-button">Settings</button>
+                <button id="tab-btn-developer" class="tab-button bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200">Developer</button>
+            </nav>
+        </div>
 
-    const updateCustomRow = () => {
-        if (!customDateInput.value) {
-            customReturnDisplay.textContent = '-';
-            customAlphaDisplay.textContent = '-';
-            return;
-        }
-        const startDate = new Date(customDateInput.value);
-        const portReturn = calculateReturnFromDate(startDate);
-        const ihsgVal = parseFloat(customIhsgInput.value) || 0;
-        const alpha = portReturn - ihsgVal;
+        <!-- CONTENT AREA -->
+        <main>
+            <!-- 1. TAB SIMULATOR -->
+            <div id="tab-content-simulator" class="tab-content active">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-3">
+                        <div class="card bg-yellow-50 border-yellow-400">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-xl font-bold flex items-center gap-2"><span class="w-3 h-3 bg-black rounded-full"></span>SIMULASI AKTIF</h2>
+                                <button id="open-sim-params-modal-btn" class="btn btn-primary text-xs">Ubah Parameter</button>
+                            </div>
+                            <div id="active-sim-params-display" class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm font-mono"></div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <div class="card">
+                            <h2 class="text-2xl font-bold mb-6">Skenario Averaging</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div class="border-2 border-gray-200 p-4 rounded bg-gray-50">
+                                    <div class="text-gray-500 text-xs font-bold uppercase">Total Investasi</div>
+                                    <div id="summary-total-investment" class="text-2xl font-bold text-gray-900">IDR 0</div>
+                                </div>
+                                <div class="border-2 border-gray-200 p-4 rounded bg-gray-50">
+                                    <div class="text-gray-500 text-xs font-bold uppercase">Total Lot</div>
+                                    <div id="summary-total-lot" class="text-2xl font-bold text-gray-900">0</div>
+                                </div>
+                                <div class="border-2 border-gray-200 p-4 rounded bg-yellow-100 border-yellow-300">
+                                    <div class="text-yellow-800 text-xs font-bold uppercase">Harga Rata-Rata (Avg)</div>
+                                    <div id="summary-avg-price" class="text-2xl font-bold text-yellow-900">IDR 0</div>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="table-brutal">
+                                    <thead>
+                                        <tr>
+                                            <th>Level</th><th>Harga Beli</th><th>Lot</th><th>Total Beli</th><th>Yield</th><th>Avg Price</th><th>TP 1</th><th>TP 2</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scenario-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="simulation-reason-card" class="lg:col-span-3 card hidden bg-blue-50 border-blue-200">
+                        <h3 class="font-bold text-blue-900 text-sm mb-2 uppercase">Catatan Strategi</h3>
+                        <p id="simulation-reason-display" class="text-blue-800 italic"></p>
+                    </div>
+                </div>
+            </div>
 
-        customReturnDisplay.textContent = portReturn.toFixed(2) + '%';
-        customReturnDisplay.className = `font-bold align-middle text-lg ${portReturn >= 0 ? 'text-green-600' : 'text-red-600'}`;
-        customAlphaDisplay.textContent = alpha.toFixed(2) + '%';
-        customAlphaDisplay.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
-    };
+            <!-- 2. TAB OPEN ORDER -->
+            <div id="tab-content-open-order" class="tab-content">
+                <div class="card bg-blue-50 border-blue-200 mb-6">
+                     <h2 class="text-2xl font-bold mb-4 text-blue-900">Open Order / Holdings</h2>
+                     <p class="text-sm text-blue-800 mb-0">Berikut adalah ringkasan posisi saham Anda yang masih terbuka.</p>
+                </div>
+                <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
+            </div>
 
-    customDateInput.addEventListener('change', updateCustomRow);
-    customIhsgInput.addEventListener('input', updateCustomRow);
-}
+            <!-- 3. TAB LOG -->
+            <div id="tab-content-log" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    
+                    <!-- SIDEBAR -->
+                    <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24 self-start h-fit z-30">
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-2 lg:mb-4 border-b-2 border-gray-200 pb-2 cursor-pointer lg:cursor-default" id="toggle-summary-btn">
+                                <h3 class="text-lg font-bold">Ringkasan</h3>
+                                <span id="arrow-summary" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
+                            </div>
+                            <div id="summary-content" class="space-y-4">
+                                <div>
+                                    <label class="text-xs uppercase text-gray-500">Modal Awal</label>
+                                    <input type="number" id="initial-equity" value="100000000" class="text-right font-mono font-bold text-lg">
+                                </div>
+                                <div class="bg-gray-100 p-3 rounded border-2 border-gray-200">
+                                    <div class="text-xs text-gray-500">Cash Tersedia</div>
+                                    <div id="current-equity-display" class="text-xl font-bold text-emerald-600">IDR 0</div>
+                                </div>
+                                <div id="realized-pl-summary"></div>
+                                <div id="floating-pl-summary"></div>
+                            </div>
+                        </div>
 
-// --- EQUITY CHART LOGIC ---
-function updateEquityChartData(initialEquity) {
-    // Filter logs that affect cash (Buy/Sell) or just Sells for realized curve?
-    // To show growth properly, we track Cumulative Realized P/L over time
-    // X Axis: Date of closed transactions
-    // Y Axis: Initial Equity + Cumulative Realized P/L
-    // Finally, append Today with Total Equity (Realized + Floating)
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-2 lg:mb-4 cursor-pointer lg:cursor-default" id="toggle-filter-btn">
+                                <h3 class="text-lg font-bold">Filter</h3>
+                                <span id="arrow-filter" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
+                            </div>
+                            <div id="filter-content" class="space-y-3">
+                                <input type="text" id="filter-stock-code" placeholder="Kode Saham (e.g. BBCA)">
+                                <div class="grid grid-cols-2 gap-2"><input type="date" id="filter-date-from" class="text-xs"><input type="date" id="filter-date-to" class="text-xs"></div>
+                                <select id="filter-status"><option value="all">Semua Status</option><option value="open">Masih Open</option><option value="closed">Sudah Jual</option></select>
+                                <input type="text" id="filter-reason" placeholder="Cari alasan...">
+                                <div class="flex gap-2 pt-2"><button id="filter-apply-btn" class="btn btn-primary flex-1 text-xs">Apply</button><button id="filter-reset-btn" class="btn btn-secondary flex-1 text-xs">Reset</button></div>
+                            </div>
+                        </div>
+                    </div>
 
-    const closedLogs = portfolioLog.filter(l => l.sellPrice && l.sellDate).sort((a, b) => new Date(a.sellDate) - new Date(b.sellDate));
+                    <!-- Main Content -->
+                    <div class="lg:col-span-3">
+                        <div class="card min-h-[500px]">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-bold">Jurnal Transaksi</h2>
+                                <button id="open-add-log-modal-btn" class="btn btn-accent shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-black">+ Tambah</button>
+                            </div>
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="table-brutal text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-col="date">Tgl <span class="sort-icon">▼</span></th>
+                                            <th class="sortable" data-col="code">Kode <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="price">Harga <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="lot">Lot <span class="sort-icon">▼</span></th>
+                                            <th class="text-center sortable" data-col="status">Stat <span class="sort-icon">▼</span></th>
+                                            <th class="text-right sortable" data-col="pl">P/L <span class="sort-icon">▼</span></th>
+                                            <th class="text-center">Act</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="log-table-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="log-card-view" class="md:hidden space-y-4"></div>
+                            <div class="mt-6 flex flex-col md:flex-row justify-between items-center pt-4 border-t-2 border-gray-100 gap-4">
+                                <div id="page-info" class="pagination-info"></div>
+                                <div id="page-number-container" class="flex items-center gap-1 flex-wrap justify-center"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. TAB SAVED -->
+            <div id="tab-content-saved" class="tab-content">
+                <div class="card">
+                    <h2 class="text-2xl font-bold mb-6">Simulasi Tersimpan</h2>
+                    <div class="overflow-x-auto">
+                        <table class="table-brutal">
+                            <thead><tr><th>Saham</th><th>Harga Awal</th><th>Lot</th><th>Strategi</th><th>Avg Down</th><th>Level</th><th>Action</th></tr></thead>
+                            <tbody id="saved-simulations-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. TAB PERFORMANCE -->
+            <div id="tab-content-performance" class="tab-content">
+                <div class="card">
+                    <h2 class="text-2xl font-bold mb-4">Analisa Performa</h2>
+                    
+                    <!-- UPDATED: Changed from grid lg:grid-cols-2 to space-y-8 for vertical layout -->
+                    <div class="grid grid-cols-1 gap-8 mb-8">
+                        <!-- Chart 1: Returns -->
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Return vs Benchmark</h3>
+                            <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                        </div>
+                        <!-- Chart 2: Equity Growth (NEW) -->
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Pertumbuhan Equity (Realized)</h3>
+                            <div class="h-[300px] w-full bg-gray-50 border-2 border-gray-200 rounded p-2">
+                                <canvas id="equityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table-brutal">
+                            <thead><tr><th>Periode</th><th>Portofolio Return</th><th>IHSG Return (Manual)</th><th>Alpha</th></tr></thead>
+                            <tbody id="performance-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. TAB SETTINGS -->
+            <div id="tab-content-settings" class="tab-content">
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <div class="card">
+                        <h2 class="text-xl font-bold mb-4">Pengaturan Fee</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label>Fee Beli (%)</label><input type="number" id="default-fee-beli" step="0.01"></div>
+                            <div><label>Fee Jual (%)</label><input type="number" id="default-fee-jual" step="0.01"></div>
+                        </div>
+                        <div class="mt-4 text-right"><button id="save-settings-btn" class="btn btn-primary">Simpan</button></div>
+                    </div>
+                    <div class="card bg-gray-100 border-gray-300">
+                         <h2 class="text-xl font-bold mb-4">Data Backup</h2>
+                         <div class="flex gap-4">
+                            <button id="download-json-btn" class="btn btn-secondary border-black">⬇ Download JSON</button>
+                            <label class="btn btn-secondary border-black cursor-pointer">⬆ Upload JSON<input type="file" id="upload-json-input" class="hidden" accept=".json"></label>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. TAB DEVELOPER (NEW) -->
+            <div id="tab-content-developer" class="tab-content">
+                <div class="max-w-3xl mx-auto">
+                    <div class="card bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                        <h2 class="text-2xl font-bold mb-6 border-b-2 border-gray-200 pb-4">Tools & Status</h2>
+                        
+                        <div class="space-y-4 font-mono text-sm mb-8">
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">User ID:</span>
+                                <span id="dev-user-id" class="font-bold text-purple-600 break-all text-right">Not Logged In</span>
+                            </div>
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">Memori Data:</span>
+                                <span id="dev-memory-size" class="font-bold">0 KB</span>
+                            </div>
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">Status:</span>
+                                <span class="font-bold text-green-600">Idle</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button id="btn-generate-dummy" class="btn btn-secondary border-purple-500 text-purple-700 hover:bg-purple-50">
+                                🤖 Generate Dummy Data
+                            </button>
+                            <button id="btn-hard-reset" class="btn btn-danger">
+                                ☠️ HARD RESET / CLEAR
+                            </button>
+                        </div>
+                        <p class="mt-4 text-xs text-gray-400 text-center">*Warning: Hard Reset akan menghapus seluruh data secara permanen.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <div id="sim-params-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-6 border-b-2 border-black pb-2">Parameter Simulasi</h3>
+            <form id="sim-params-form" class="space-y-4">
+                <input type="hidden" id="stock-code" value="BBCA"><input type="hidden" id="initial-price" value="9500"><input type="hidden" id="initial-lot" value="10"><input type="hidden" id="dividend" value="227"><input type="hidden" id="avg-down-percent" value="15"><input type="hidden" id="avg-levels" value="5"><input type="hidden" id="avg-strategy" value="lot"><input type="hidden" id="avg-multiplier" value="1"><input type="hidden" id="tp1-percent" value="20"><input type="hidden" id="tp2-percent" value="50"><input type="hidden" id="sim-reason" value="">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label>Kode Saham</label><input type="text" id="modal-stock-code" class="font-bold uppercase"></div>
+                    <div><label>Harga Awal</label><input type="number" id="modal-initial-price"></div>
+                    <div><label>Lot Awal</label><input type="number" id="modal-initial-lot"></div>
+                    <div><label>Dividen (Rp)</label><input type="number" id="modal-dividend"></div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded border-2 border-gray-200">
+                    <label class="text-blue-600">Strategi Averaging</label>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div><label class="text-xs text-gray-500">Metode</label><select id="modal-avg-strategy"><option value="lot">Pengali Lot</option><option value="amount">Nominal Sama</option></select></div>
+                        <div><label class="text-xs text-gray-500">Pengali (x)</label><input type="number" id="modal-avg-multiplier" step="0.1"></div>
+                        <div><label class="text-xs text-gray-500">Jarak (%)</label><input type="number" id="modal-avg-down-percent"></div>
+                        <div><label class="text-xs text-gray-500">Max Level</label><input type="number" id="modal-avg-levels"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4"><div><label>TP 1 (%)</label><input type="number" id="modal-tp1-percent"></div><div><label>TP 2 (%)</label><input type="number" id="modal-tp2-percent"></div></div>
+                <div><label>Catatan</label><textarea id="modal-sim-reason" rows="2"></textarea></div>
+                <div class="flex justify-end gap-2 pt-4 border-t-2 border-gray-100"><button type="button" id="cancel-sim-params-btn" class="btn btn-secondary">Batal</button><button type="button" id="save-simulation-from-modal-btn" class="btn btn-accent">Simpan Preset</button><button type="submit" class="btn btn-primary">Hitung</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="add-log-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-6">Input Transaksi</h3>
+            <form id="log-form" class="space-y-4">
+                <input type="hidden" id="log-edit-index">
+                <div class="grid grid-cols-2 gap-4"><div><label>Kode</label><input type="text" id="log-stock-code" required class="uppercase font-bold"></div><div><label>Tgl Beli</label><input type="date" id="log-buy-date" required></div><div><label>Harga</label><input type="number" id="log-buy-price" required></div><div><label>Lot</label><input type="number" id="log-buy-lot" required></div><div class="col-span-2"><label>Fee Beli (%)</label><input type="number" id="log-fee-beli" step="0.01"></div></div>
+                <div><label>Alasan</label><textarea id="log-reason" rows="2"></textarea></div>
+                <div id="sell-fields-container" class="hidden p-4 bg-orange-50 border-2 border-orange-200 rounded mt-2">
+                    <h4 class="font-bold text-orange-800 mb-2 text-sm">Penjualan</h4>
+                    <div class="grid grid-cols-2 gap-4"><div><label>Harga Jual</label><input type="number" id="log-sell-price"></div><div><label>Tgl Jual</label><input type="date" id="log-sell-date"></div><div class="col-span-2"><label>Fee Jual (%)</label><input type="number" id="log-fee-jual" step="0.01"></div></div>
+                </div>
+                <div class="flex justify-end gap-2 pt-4"><button type="button" id="cancel-add-log-btn" class="btn btn-secondary">Batal</button><button type="submit" id="submit-log-btn" class="btn btn-primary">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="sell-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-orange-600">Realisasi Profit/Loss</h3>
+            <form id="sell-form" class="space-y-4">
+                <input type="hidden" id="sell-log-index">
+                <div><label>Harga Jual</label><input type="number" id="sell-price" required class="text-lg font-bold text-right"></div>
+                <div><label>Tgl Jual</label><input type="date" id="sell-date" required></div>
+                <div><label>Fee Jual (%)</label><input type="number" id="sell-fee-jual" step="0.01"></div>
+                <div class="flex justify-end gap-2 pt-4"><button type="button" id="cancel-sell-btn" class="btn btn-secondary">Batal</button><button type="submit" class="btn btn-primary bg-orange-500 border-orange-700 text-white hover:bg-orange-600">Eksekusi</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="notification-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <h3 id="notification-title" class="text-xl font-black mb-2 uppercase">Alert</h3>
+            <p id="notification-message" class="mb-6 font-medium"></p>
+            <button id="notification-ok-btn" class="btn btn-primary w-full">OK</button>
+        </div>
+    </div>
     
-    const chartLabels = [];
-    const chartData = [];
-    
-    // Start Point
-    chartLabels.push('Start');
-    chartData.push(initialEquity);
+    <!-- NEW GENERIC CONFIRM MODAL -->
+    <div id="generic-confirm-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div class="text-4xl mb-2">⚠️</div>
+            <h3 id="confirm-modal-title" class="text-xl font-black mb-2 uppercase">Konfirmasi</h3>
+            <p id="confirm-modal-message" class="mb-6 font-medium">Apakah anda yakin?</p>
+            <div class="flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="btn btn-secondary">Batal</button>
+                <button id="confirm-ok-btn" class="btn btn-primary">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
 
-    let cumulativePL = 0;
-    closedLogs.forEach(log => {
-        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
-        const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual || 0) / 100);
-        cumulativePL += (sellVal - buyVal);
-        
-        chartLabels.push(log.sellDate);
-        chartData.push(initialEquity + cumulativePL);
-    });
+    <!-- Delete Modal is now redundant but kept if needed or replaced by generic -->
+    <div id="delete-confirm-modal" class="hidden"></div> 
 
-    // Final Point: Today (Total Equity)
-    // Calculate current floating P/L
-    let floatingPL = 0;
-    portfolioLog.forEach(log => {
-        if(!log.sellPrice) {
-            const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
-            const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-            const marketVal = currPrice * log.lot * 100;
-            floatingPL += (marketVal - buyVal);
-        }
-    });
-
-    const today = new Date().toISOString().split('T')[0];
-    // Avoid duplicate label if sell happened today
-    if (chartLabels[chartLabels.length - 1] !== today) {
-        chartLabels.push('Today');
-        chartData.push(initialEquity + cumulativePL + floatingPL);
-    } else {
-        // If last point was today, just update the value to include floating
-        chartData[chartData.length - 1] = initialEquity + cumulativePL + floatingPL;
-    }
-
-    equityChart.data.labels = chartLabels;
-    equityChart.data.datasets[0].data = chartData;
-    equityChart.update();
-}
-
-// --- LOGIC: SIMULATOR & OTHERS (UNCHANGED) ---
-function calculateDashboard() {
-    const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
-    const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
-    const dividend = parseFloat(document.getElementById('dividend').value) || 0;
-    const avgDownPercent = parseFloat(document.getElementById('avg-down-percent').value) || 0;
-    const avgLevels = parseInt(document.getElementById('avg-levels').value) || 0;
-    const tp1Percent = parseFloat(document.getElementById('tp1-percent').value) || 0;
-    const tp2Percent = parseFloat(document.getElementById('tp2-percent').value) || 0;
-    const avgStrategy = document.getElementById('avg-strategy').value;
-    const avgMultiplier = parseFloat(document.getElementById('avg-multiplier').value) || 1;
-
-    const strategyText = avgStrategy === 'lot' ? 'Lot Multiplier' : 'Fixed Amount';
-    document.getElementById('active-sim-params-display').innerHTML = `
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">CODE</div><div class="font-bold text-lg text-blue-600">${document.getElementById('stock-code').value}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">ENTRY</div><div class="font-bold">${formatCurrency(initialPrice)}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">LOT AWAL</div><div class="font-bold">${initialLot}</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">GAP</div><div class="font-bold">-${avgDownPercent}%</div></div>
-        <div class="bg-white p-2 border border-gray-300 rounded"><div class="text-gray-500 text-xs">STRATEGY</div><div class="font-bold">${strategyText} x${avgMultiplier}</div></div>
-    `;
-
-    const tableBody = document.getElementById('scenario-table-body');
-    tableBody.innerHTML = ''; 
-
-    let cumulativeCost = 0, cumulativeShares = 0, currentPrice = initialPrice;
-    const initialBuyAmount = initialPrice * initialLot * 100;
-
-    for (let i = 0; i <= avgLevels; i++) {
-        let entryPrice, lotsToBuy;
-        if (i === 0) {
-            entryPrice = initialPrice; lotsToBuy = initialLot;
-        } else {
-            entryPrice = currentPrice * (1 - avgDownPercent / 100);
-            if (avgStrategy === 'lot') {
-                lotsToBuy = initialLot * Math.pow(avgMultiplier, i);
-            } else {
-                const targetAmount = initialBuyAmount * avgMultiplier;
-                lotsToBuy = Math.round((targetAmount / entryPrice) / 100);
-            }
-        }
-        if (lotsToBuy <= 0) lotsToBuy = 1;
-        const sharesToBuy = lotsToBuy * 100;
-        const totalBuy = entryPrice * sharesToBuy;
-        cumulativeCost += totalBuy; cumulativeShares += sharesToBuy;
-        const avgPrice = cumulativeCost / cumulativeShares;
-        const dividendYield = dividend > 0 ? (dividend / entryPrice) * 100 : 0;
-        const tp1Price = avgPrice * (1 + tp1Percent / 100);
-        const tp2Price = avgPrice * (1 + tp2Percent / 100);
-        const profitTp1 = (tp1Price - avgPrice) * cumulativeShares;
-        const profitTp2 = (tp2Price - avgPrice) * cumulativeShares;
-
-        const row = `<tr><td class="font-bold text-gray-400">LVL ${i}</td><td class="font-mono">${formatCurrency(entryPrice)}</td><td class="font-mono">${lotsToBuy}</td><td class="font-mono text-gray-600">${formatCurrency(totalBuy)}</td><td class="${dividendYield > 5 ? 'text-green-600 font-bold' : 'text-gray-400'}">${dividendYield.toFixed(1)}%</td><td class="font-bold text-blue-600 bg-blue-50">${formatCurrency(avgPrice)}</td><td><div class="text-xs text-gray-500">${formatCurrency(tp1Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp1)}</div></td><td><div class="text-xs text-gray-500">${formatCurrency(tp2Price)}</div><div class="font-bold text-green-600">+${formatCurrency(profitTp2)}</div></td></tr>`;
-        tableBody.innerHTML += row;
-        currentPrice = entryPrice;
-    }
-    const totalLots = cumulativeShares / 100;
-    const finalAvg = cumulativeCost / cumulativeShares;
-    document.getElementById('summary-total-investment').textContent = formatCurrency(cumulativeCost);
-    document.getElementById('summary-total-lot').textContent = totalLots;
-    document.getElementById('summary-avg-price').textContent = formatCurrency(finalAvg);
-    
-    const reason = document.getElementById('sim-reason').value;
-    const reasonCard = document.getElementById('simulation-reason-card');
-    if(reason) {
-        document.getElementById('simulation-reason-display').textContent = reason;
-        reasonCard.classList.remove('hidden');
-    } else {
-        reasonCard.classList.add('hidden');
-    }
-}
-
-function handleSort(column) {
-    if (sortState.column === column) {
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-        sortState.column = column;
-        sortState.direction = 'desc';
-    }
-    
-    document.querySelectorAll('.sortable').forEach(th => {
-        th.classList.remove('active-sort');
-        const icon = th.querySelector('.sort-icon');
-        if(icon) icon.textContent = '▼';
-    });
-    
-    const activeTh = document.querySelector(`.sortable[data-col="${column}"]`);
-    if(activeTh) {
-        activeTh.classList.add('active-sort');
-        activeTh.querySelector('.sort-icon').textContent = sortState.direction === 'asc' ? '▲' : '▼';
-    }
-    
-    renderLogTable(filteredLogsData);
-}
-
-function renderLogTable(logs = portfolioLog) {
-    const tbody = document.getElementById('log-table-body');
-    const cardView = document.getElementById('log-card-view');
-    if(!tbody || !cardView) return;
-    tbody.innerHTML = ''; cardView.innerHTML = '';
-
-    let sortedLogs = [...logs];
-    sortedLogs.sort((a, b) => {
-        let valA, valB;
-        
-        switch(sortState.column) {
-            case 'date':
-                valA = new Date(a.date); valB = new Date(b.date);
-                break;
-            case 'code':
-                valA = a.code; valB = b.code;
-                break;
-            case 'price':
-                valA = a.price; valB = b.price;
-                break;
-            case 'lot':
-                valA = a.lot; valB = b.lot;
-                break;
-            case 'status':
-                valA = a.sellPrice ? 1 : 0; valB = b.sellPrice ? 1 : 0;
-                break;
-            case 'pl':
-                const getPL = (log) => {
-                    if(!log.sellPrice) return -999999999;
-                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-                    const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-                    return sellVal - buyVal;
-                };
-                valA = getPL(a); valB = getPL(b);
-                break;
-            default:
-                valA = a.date; valB = b.date;
-        }
-
-        if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
-        return 0;
-    });
-
-    const start = (currentPage - 1) * itemsPerPage;
-    const pagedLogs = sortedLogs.slice(start, start + itemsPerPage);
-    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, sortedLogs.length)} of ${sortedLogs.length}`;
-    const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
-    const pageCont = document.getElementById('page-number-container');
-    pageCont.innerHTML = '';
-
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = '← Prev';
-    prevBtn.className = 'pagination-btn';
-    prevBtn.disabled = currentPage === 1;
-    prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderLogTable(filteredLogsData); } };
-    pageCont.appendChild(prevBtn);
-
-    for(let i=1; i<=totalPages; i++){
-        if (totalPages > 7 && (i !== 1 && i !== totalPages && Math.abs(currentPage - i) > 2)) {
-             if (i === 2 || i === totalPages - 1) {
-                 const ellipsis = document.createElement('span');
-                 ellipsis.textContent = '...';
-                 ellipsis.className = 'pagination-info mx-1';
-                 pageCont.appendChild(ellipsis);
-             }
-             continue; 
-        }
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = `pagination-btn ${i === currentPage ? 'active' : ''}`;
-        btn.onclick = () => { currentPage = i; renderLogTable(filteredLogsData); };
-        pageCont.appendChild(btn);
-    }
-
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = 'Next →';
-    nextBtn.className = 'pagination-btn';
-    nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-    nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
-    pageCont.appendChild(nextBtn);
-
-    pagedLogs.forEach((log) => {
-        const realIndex = portfolioLog.findIndex(l => l.id === log.id);
-        const isOpen = !log.sellPrice;
-        const buyCost = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-        let pl = 0;
-        if(!isOpen) {
-            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            pl = sellVal - buyCost;
-        }
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="font-mono text-xs">${log.date}</td>
-            <td class="font-bold text-blue-700">${log.code}</td>
-            <td class="text-right font-mono">${formatCurrency(log.price)}</td>
-            <td class="text-right font-mono">${log.lot}</td>
-            <td class="text-center"><span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span></td>
-            <td class="text-right font-bold ${isOpen ? 'text-gray-400' : (pl >= 0 ? 'text-green-600' : 'text-red-500')}">${isOpen ? '-' : formatCurrency(pl, true)}</td>
-            <td class="text-center"><div class="flex justify-center gap-1">${isOpen ? `<button class="btn-sell btn btn-accent px-2 py-0 text-xs border-black" data-index="${realIndex}">JUAL</button>` : ''}<button class="btn-edit btn btn-secondary px-2 py-0 text-xs border-black" data-index="${realIndex}">EDIT</button><button class="btn-delete text-red-500 hover:text-red-700 px-2" data-index="${realIndex}">✕</button></div></td>
-        `;
-        tbody.appendChild(tr);
-
-        const card = document.createElement('div');
-        card.className = 'card p-4 relative';
-        card.innerHTML = `
-            <div class="flex justify-between items-start mb-2"><div><span class="text-xs font-mono text-gray-500">${log.date}</span><h4 class="text-xl font-black text-blue-700">${log.code}</h4></div><span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span></div>
-            <div class="grid grid-cols-2 gap-2 text-sm mb-3"><div><span class="text-xs text-gray-400">Buy</span> <span class="font-mono font-bold">${formatCurrency(log.price)}</span></div><div><span class="text-xs text-gray-400">Lot</span> <span class="font-mono font-bold">${log.lot}</span></div>${!isOpen ? `<div class="col-span-2 pt-1 border-t border-gray-100 flex justify-between"><span class="text-gray-500">P/L</span> <span class="font-bold ${pl>=0?'text-green-500':'text-red-500'}">${formatCurrency(pl, true)}</span></div>` : ''}</div>
-            <div class="flex gap-2 mt-2 border-t border-gray-100 pt-2">${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-1" data-index="${realIndex}">JUAL</button>` : ''}<button class="btn-edit flex-1 btn btn-secondary text-xs py-1" data-index="${realIndex}">EDIT</button><button class="btn-delete btn btn-danger text-xs py-1" data-index="${realIndex}">DEL</button></div>
-        `;
-        cardView.appendChild(card);
-    });
-    
-    document.querySelectorAll('.btn-sell').forEach(b => b.onclick = () => openSellModal(b.dataset.index));
-    document.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => editLog(b.dataset.index));
-    document.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => deleteLog(b.dataset.index));
-    calculatePortfolioSummary();
-}
-
-function calculatePortfolioSummary() {
-    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalBuy = 0, totalSell = 0, realizedPL = 0;
-    let stockHoldings = {};
-    portfolioLog.forEach(log => {
-        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-        totalBuy += buyVal;
-        if(log.sellPrice) {
-            const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            totalSell += sellVal; realizedPL += (sellVal - buyVal);
-        } else {
-            if(!stockHoldings[log.code]) stockHoldings[log.code] = { lot: 0, cost: 0 };
-            stockHoldings[log.code].lot += log.lot; stockHoldings[log.code].cost += buyVal;
-        }
-    });
-    const currentEquity = initialEquity - totalBuy + totalSell;
-    document.getElementById('current-equity-display').textContent = formatCurrency(currentEquity);
-    document.getElementById('realized-pl-summary').innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
-    const summaryContainer = document.getElementById('portfolio-summary-by-stock');
-    summaryContainer.innerHTML = '';
-    let totalFloating = 0;
-    Object.keys(stockHoldings).forEach(code => {
-        const data = stockHoldings[code];
-        const avgPrice = data.cost / (data.lot * 100);
-        const currPrice = parseFloat(currentMarketPrices[code]) || 0;
-        let floating = 0;
-        if(currPrice > 0) { floating = (currPrice * data.lot * 100) - data.cost; totalFloating += floating; }
-        const div = document.createElement('div');
-        div.className = 'card bg-white p-3 border-2 border-gray-200';
-        div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
-        summaryContainer.appendChild(div);
-    });
-    document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
-    document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
-    
-    renderPerformanceTable();
-}
-
-function updatePrice(code, price) { currentMarketPrices[code] = price; calculatePortfolioSummary(); triggerAutoSave(); }
-function deleteLog(index) { showConfirm(() => { portfolioLog.splice(index, 1); refreshData(); }, "Hapus data transaksi ini?", "Hapus Transaksi"); }
-function openSellModal(index) { document.getElementById('sell-log-index').value = index; document.getElementById('sell-date').value = new Date().toISOString().split('T')[0]; document.getElementById('sell-fee-jual').value = defaultFeeJual; openModal(modals.sell); }
-function editLog(index) {
-    const log = portfolioLog[index];
-    document.getElementById('log-edit-index').value = index;
-    document.getElementById('log-stock-code').value = log.code;
-    document.getElementById('log-buy-date').value = log.date;
-    document.getElementById('log-buy-price').value = log.price;
-    document.getElementById('log-buy-lot').value = log.lot;
-    document.getElementById('log-fee-beli').value = log.feeBeli || defaultFeeBeli;
-    document.getElementById('log-reason').value = log.reason || '';
-    const sellContainer = document.getElementById('sell-fields-container');
-    if(log.sellPrice) {
-        sellContainer.classList.remove('hidden');
-        document.getElementById('log-sell-price').value = log.sellPrice;
-        document.getElementById('log-sell-date').value = log.sellDate;
-        document.getElementById('log-fee-jual').value = log.feeJual;
-    } else { sellContainer.classList.add('hidden'); }
-    openModal(modals.addLog);
-}
-
-// --- DEVELOPER TOOLS LOGIC ---
-function updateDeveloperStats() {
-    document.getElementById('dev-user-id').textContent = currentUser ? currentUser.uid : 'Not Logged In';
-    const dataSize = new Blob([JSON.stringify({portfolioLog, savedSimulations})]).size;
-    document.getElementById('dev-memory-size').textContent = (dataSize / 1024).toFixed(2) + ' KB';
-}
-
-function generateDummyData() {
-    const codes = ['BBCA', 'BMRI', 'TLKM', 'ASII', 'BBRI'];
-    const newLogs = [];
-    for(let i=0; i<5; i++) {
-        const code = codes[Math.floor(Math.random() * codes.length)];
-        const price = 500 + Math.floor(Math.random() * 9000);
-        const lot = 1 + Math.floor(Math.random() * 50);
-        const date = new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString().split('T')[0];
-        
-        newLogs.push({
-            id: Date.now() + i,
-            code: code,
-            date: date,
-            price: price,
-            lot: lot,
-            feeBeli: defaultFeeBeli,
-            reason: "Dummy Data"
-        });
-    }
-    portfolioLog = [...portfolioLog, ...newLogs];
-    refreshData();
-    triggerAutoSave();
-    showNotification("5 Dummy data berhasil ditambahkan!");
-}
-
-function hardResetData() {
-    portfolioLog = [];
-    savedSimulations = [];
-    currentMarketPrices = {};
-    refreshData();
-    triggerAutoSave();
-    showNotification("Semua data telah dihapus.");
-}
-
-document.getElementById('btn-generate-dummy').addEventListener('click', () => {
-    showConfirm(generateDummyData, "Ini akan menambahkan 5 data transaksi acak ke jurnal Anda.", "Generate Dummy?");
-});
-
-document.getElementById('btn-hard-reset').addEventListener('click', () => {
-    showConfirm(hardResetData, "PERINGATAN: Ini akan menghapus SELURUH data transaksi dan simulasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
-});
-
-document.getElementById('sim-params-form').addEventListener('submit', (e) => { e.preventDefault(); ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'avg-strategy', 'avg-multiplier', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => { document.getElementById(id).value = document.getElementById(`modal-${id}`).value; }); calculateDashboard(); closeModal(modals.simParams); triggerAutoSave(); });
-document.getElementById('log-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const idxVal = document.getElementById('log-edit-index').value;
-    const isEdit = idxVal !== '';
-    const newLog = { id: isEdit ? portfolioLog[idxVal].id : Date.now(), code: document.getElementById('log-stock-code').value.toUpperCase(), date: document.getElementById('log-buy-date').value, price: parseFloat(document.getElementById('log-buy-price').value), lot: parseInt(document.getElementById('log-buy-lot').value), feeBeli: parseFloat(document.getElementById('log-fee-beli').value), reason: document.getElementById('log-reason').value, sellPrice: null, sellDate: null, feeJual: null };
-    const sellP = document.getElementById('log-sell-price').value;
-    if(sellP && !document.getElementById('sell-fields-container').classList.contains('hidden')) {
-        newLog.sellPrice = parseFloat(sellP);
-        newLog.sellDate = document.getElementById('log-sell-date').value;
-        newLog.feeJual = parseFloat(document.getElementById('log-fee-jual').value);
-    }
-    if(isEdit) portfolioLog[idxVal] = newLog; else portfolioLog.push(newLog);
-    closeModal(modals.addLog); refreshData();
-});
-document.getElementById('sell-form').addEventListener('submit', (e) => { e.preventDefault(); const idx = document.getElementById('sell-log-index').value; const log = portfolioLog[idx]; log.sellPrice = parseFloat(document.getElementById('sell-price').value); log.sellDate = document.getElementById('sell-date').value; log.feeJual = parseFloat(document.getElementById('sell-fee-jual').value); closeModal(modals.sell); refreshData(); });
-document.getElementById('save-simulation-from-modal-btn').addEventListener('click', () => { const sim = { id: Date.now(), stockCode: document.getElementById('modal-stock-code').value, initialPrice: document.getElementById('modal-initial-price').value, initialLot: document.getElementById('modal-initial-lot').value, avgStrategy: document.getElementById('modal-avg-strategy').value, avgMultiplier: document.getElementById('modal-avg-multiplier').value, avgDownPercent: document.getElementById('modal-avg-down-percent').value, avgLevels: document.getElementById('modal-avg-levels').value }; savedSimulations.push(sim); renderSavedSimulations(); triggerAutoSave(); showNotification('Simulasi tersimpan!'); });
-
-function renderSavedSimulations() {
-    const tbody = document.getElementById('saved-simulations-table-body'); if(!tbody) return; tbody.innerHTML = '';
-    savedSimulations.forEach((sim, idx) => { const tr = document.createElement('tr'); tr.innerHTML = `<td class="font-bold">${sim.stockCode}</td><td>${formatCurrency(sim.initialPrice)}</td><td>${sim.initialLot}</td><td>${sim.avgStrategy} x${sim.avgMultiplier}</td><td>${sim.avgDownPercent}%</td><td>${sim.avgLevels}</td><td><button class="btn-load btn btn-secondary py-0 px-2 text-xs border-black" data-index="${idx}">LOAD</button><button class="btn-del-sim text-red-500 ml-2" data-index="${idx}">✕</button></td>`; tbody.appendChild(tr); });
-    document.querySelectorAll('.btn-load').forEach(b => b.onclick = () => loadSim(b.dataset.index));
-    document.querySelectorAll('.btn-del-sim').forEach(b => b.onclick = () => deleteSim(b.dataset.index));
-}
-
-function loadSim(idx) { const sim = savedSimulations[idx]; document.getElementById('stock-code').value = sim.stockCode; document.getElementById('initial-price').value = sim.initialPrice; document.getElementById('initial-lot').value = sim.initialLot; document.getElementById('avg-strategy').value = sim.avgStrategy; document.getElementById('avg-multiplier').value = sim.avgMultiplier; document.getElementById('avg-down-percent').value = sim.avgDownPercent; document.getElementById('avg-levels').value = sim.avgLevels; document.getElementById('modal-stock-code').value = sim.stockCode; document.getElementById('modal-initial-price').value = sim.initialPrice; document.getElementById('modal-initial-lot').value = sim.initialLot; document.getElementById('modal-avg-strategy').value = sim.avgStrategy; document.getElementById('modal-avg-multiplier').value = sim.avgMultiplier; document.getElementById('modal-avg-down-percent').value = sim.avgDownPercent; document.getElementById('modal-avg-levels').value = sim.avgLevels; calculateDashboard(); switchTab('simulator'); }
-function deleteSim(idx) { showConfirm(() => { savedSimulations.splice(idx, 1); renderSavedSimulations(); triggerAutoSave(); }, "Hapus simulasi ini?", "Hapus Simulasi"); }
-document.getElementById('filter-apply-btn').addEventListener('click', () => { const code = document.getElementById('filter-stock-code').value.toUpperCase(); const status = document.getElementById('filter-status').value; filteredLogsData = portfolioLog.filter(log => { if(code && !log.code.includes(code)) return false; if(status === 'open' && log.sellPrice) return false; if(status === 'closed' && !log.sellPrice) return false; return true; }); currentPage = 1; renderLogTable(filteredLogsData); });
-document.getElementById('filter-reset-btn').addEventListener('click', () => { document.getElementById('filter-stock-code').value = ''; filteredLogsData = portfolioLog; renderLogTable(filteredLogsData); });
-document.getElementById('download-json-btn').addEventListener('click', () => { const data = { portfolioLog, savedSimulations, currentMarketPrices, defaultFeeBeli, defaultFeeJual }; const blob = new Blob([JSON.stringify(data)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'portfolio_backup.json'; a.click(); });
-document.getElementById('upload-json-input').addEventListener('change', (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (ev) => { const data = JSON.parse(ev.target.result); portfolioLog = data.portfolioLog || []; savedSimulations = data.savedSimulations || []; currentMarketPrices = data.currentMarketPrices || {}; refreshData(); showNotification('Data Restore Berhasil!'); }; reader.readAsText(file); });
-
-function triggerAutoSave() { if(!currentUser) return; syncStatusSpan.style.opacity = 1; clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(async () => { const data = { portfolioLog, savedSimulations, currentMarketPrices, updatedAt: new Date().toISOString() }; try { await setDoc(doc(db, "portfolios", currentUser.uid), data); syncStatusSpan.textContent = 'SAVED'; setTimeout(() => syncStatusSpan.style.opacity = 0, 2000); } catch(e) { syncStatusSpan.textContent = 'ERROR'; } }, 1000); }
-async function loadCloudData() { if(!currentUser) return; const docSnap = await getDoc(doc(db, "portfolios", currentUser.uid)); if(docSnap.exists()) { const data = docSnap.data(); portfolioLog = data.portfolioLog || []; savedSimulations = data.savedSimulations || []; currentMarketPrices = data.currentMarketPrices || {}; refreshData(); } }
-function refreshData() { filteredLogsData = portfolioLog; renderLogTable(); renderSavedSimulations(); calculateDashboard(); renderPerformanceTable(); updateDeveloperStats(); }
-
-// --- MOBILE ACCORDION LOGIC ---
-function initMobileAccordion() {
-    const toggleSummary = document.getElementById('toggle-summary-btn');
-    const contentSummary = document.getElementById('summary-content');
-    const arrowSummary = document.getElementById('arrow-summary');
-
-    const toggleFilter = document.getElementById('toggle-filter-btn');
-    const contentFilter = document.getElementById('filter-content');
-    const arrowFilter = document.getElementById('arrow-filter');
-
-    const isMobile = () => window.innerWidth < 1024;
-
-    if(toggleSummary) {
-        toggleSummary.addEventListener('click', () => {
-            if(isMobile()) {
-                contentSummary.classList.toggle('hidden');
-                arrowSummary.classList.toggle('rotate-180');
-            }
-        });
-    }
-
-    if(toggleFilter) {
-        toggleFilter.addEventListener('click', () => {
-            if(isMobile()) {
-                contentFilter.classList.toggle('hidden');
-                arrowFilter.classList.toggle('rotate-180');
-            }
-        });
-    }
-}
-
-window.addEventListener('load', () => {
-    initChart(); calculateDashboard(); 
-    document.querySelectorAll('.tab-button').forEach(btn => { btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', ''))); });
-    document.getElementById('open-add-log-modal-btn').addEventListener('click', () => { document.getElementById('log-form').reset(); document.getElementById('log-edit-index').value = ''; document.getElementById('sell-fields-container').classList.add('hidden'); document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; document.getElementById('log-fee-beli').value = defaultFeeBeli; openModal(modals.addLog); });
-    document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(modals.addLog));
-    document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => { ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => document.getElementById(`modal-${id}`).value = document.getElementById(id).value); openModal(modals.simParams); });
-    document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(modals.simParams));
-    document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(modals.sell));
-    document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
-    
-    // --- AUTH HANDLER ---
-    const handleLogin = async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } };
-    loginBtn.addEventListener('click', handleLogin); 
-    overlayLoginBtn.addEventListener('click', handleLogin); 
-
-    logoutBtn.addEventListener('click', () => signOut(auth));
-    
-    onAuthStateChanged(auth, (user) => { 
-        currentUser = user; 
-        if(user) { 
-            loginWallOverlay.classList.add('hidden-wall');
-            loginBtn.classList.add('hidden'); 
-            userInfoDiv.classList.remove('hidden'); 
-            userInfoDiv.classList.add('flex'); 
-            userNameSpan.textContent = user.displayName; 
-            loadCloudData(); 
-        } else { 
-            loginWallOverlay.classList.remove('hidden-wall');
-            loginBtn.classList.add('hidden');
-            userInfoDiv.classList.add('hidden'); 
-            userInfoDiv.classList.remove('flex'); 
-            portfolioLog = []; 
-            savedSimulations = []; 
-            refreshData(); 
-        } 
-    });
-
-    const nav = document.getElementById('tab-nav-wrapper'); const navOffset = nav.offsetTop; window.addEventListener('scroll', () => { if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); else nav.classList.remove('sticky-state'); });
-
-    // Init Accordion
-    initMobileAccordion();
-
-    // NEW: Add Sort Listeners
-    document.querySelectorAll('.sortable').forEach(th => {
-        th.addEventListener('click', () => handleSort(th.dataset.col));
-    });
-});
+    <!-- Import Logic Script -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
