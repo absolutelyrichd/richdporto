@@ -94,6 +94,14 @@
             font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
             letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #18181b;
         }
+        
+        /* Checkbox Custom Style */
+        .custom-checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: var(--border-color);
+            cursor: pointer;
+        }
 
         /* --- TABS & NAVBAR --- */
         #tab-nav-wrapper.sticky-state {
@@ -385,12 +393,22 @@
                         <div class="card min-h-[500px]">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-2xl font-bold">Jurnal Transaksi</h2>
-                                <button id="open-add-log-modal-btn" class="btn btn-accent shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-black">+ Tambah</button>
+                                <div class="flex gap-2">
+                                    <!-- MASS DELETE BUTTON (Initially Hidden) -->
+                                    <button id="btn-mass-delete" class="hidden btn btn-danger text-xs px-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                        Hapus Terpilih (<span id="mass-delete-count">0</span>)
+                                    </button>
+                                    <button id="open-add-log-modal-btn" class="btn btn-accent shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-black">+ Tambah</button>
+                                </div>
                             </div>
                             <div class="hidden md:block overflow-x-auto">
                                 <table class="table-brutal text-sm">
                                     <thead>
                                         <tr>
+                                            <!-- CHECKBOX COLUMN HEADER -->
+                                            <th class="w-10 text-center">
+                                                <input type="checkbox" id="select-all-logs" class="custom-checkbox">
+                                            </th>
                                             <th class="sortable" data-col="date">Tgl <span class="sort-icon">▼</span></th>
                                             <th class="sortable" data-col="code">Kode <span class="sort-icon">▼</span></th>
                                             <th class="text-right sortable" data-col="price">Harga <span class="sort-icon">▼</span></th>

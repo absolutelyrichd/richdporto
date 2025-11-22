@@ -30,6 +30,8 @@ let currentUser = null;
 let autoSaveTimer = null;
 let defaultFeeBeli = 0.15; 
 let defaultFeeJual = 0.25; 
+// NEW: MASS DELETE STATE
+let selectedLogIds = new Set();
 
 const itemsPerPage = 10;
 let currentPage = 1;
@@ -604,12 +606,78 @@ function handleSort(column) {
         activeTh.querySelector('.sort-icon').textContent = sortState.direction === 'asc' ? '▲' : '▼';
     }
     
+    // Clear selection on sort to prevent confusion
+    selectedLogIds.clear();
+    updateMassDeleteUI();
+    
     renderLogTable(filteredLogsData);
+}
+
+// --- MASS DELETE LOGIC ---
+function toggleLogSelection(id) {
+    if (selectedLogIds.has(id)) {
+        selectedLogIds.delete(id);
+    } else {
+        selectedLogIds.add(id);
+    }
+    updateMassDeleteUI();
+}
+
+function toggleSelectAll(isChecked, logsInCurrentPage) {
+    logsInCurrentPage.forEach(log => {
+        if (isChecked) {
+            selectedLogIds.add(log.id);
+        } else {
+            selectedLogIds.delete(log.id);
+        }
+    });
+    
+    // Force rerender checkboxes state without full table reload
+    document.querySelectorAll('.log-checkbox').forEach(cb => {
+        cb.checked = selectedLogIds.has(parseFloat(cb.dataset.id)) || selectedLogIds.has(parseInt(cb.dataset.id)) || selectedLogIds.has(cb.dataset.id);
+    });
+    updateMassDeleteUI();
+}
+
+function updateMassDeleteUI() {
+    const btn = document.getElementById('btn-mass-delete');
+    const countSpan = document.getElementById('mass-delete-count');
+    const selectAllCheckbox = document.getElementById('select-all-logs');
+
+    if (btn && countSpan) {
+        countSpan.textContent = selectedLogIds.size;
+        if (selectedLogIds.size > 0) {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+            if(selectAllCheckbox) selectAllCheckbox.checked = false;
+        }
+    }
+}
+
+function executeMassDelete() {
+    if (selectedLogIds.size === 0) return;
+    
+    showConfirm(() => {
+        const initialSize = portfolioLog.length;
+        // Filter out items that are in the selectedLogIds Set
+        portfolioLog = portfolioLog.filter(log => !selectedLogIds.has(log.id));
+        
+        const deletedCount = initialSize - portfolioLog.length;
+        
+        selectedLogIds.clear();
+        updateMassDeleteUI();
+        refreshData();
+        triggerAutoSave();
+        showNotification(`Berhasil menghapus ${deletedCount} transaksi.`, "MASS DELETE");
+    }, `Anda akan menghapus ${selectedLogIds.size} transaksi terpilih. Tindakan ini tidak dapat dibatalkan.`, "HAPUS BANYAK?");
 }
 
 function renderLogTable(logs = portfolioLog) {
     const tbody = document.getElementById('log-table-body');
     const cardView = document.getElementById('log-card-view');
+    const selectAllCheckbox = document.getElementById('select-all-logs');
+
     if(!tbody || !cardView) return;
     tbody.innerHTML = ''; cardView.innerHTML = '';
 
@@ -679,6 +747,21 @@ function renderLogTable(logs = portfolioLog) {
         pageCont.appendChild(nextBtn);
     }
 
+    // Handle Select All Checkbox Logic per Page
+    if(selectAllCheckbox) {
+        // Uncheck header if not all items on page are selected
+        const allOnPageSelected = pagedLogs.length > 0 && pagedLogs.every(log => selectedLogIds.has(log.id));
+        selectAllCheckbox.checked = allOnPageSelected;
+        
+        // Remove old listener to avoid duplicates (clone node trick)
+        const newSelectAll = selectAllCheckbox.cloneNode(true);
+        selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+        
+        newSelectAll.addEventListener('change', (e) => {
+            toggleSelectAll(e.target.checked, pagedLogs);
+        });
+    }
+
     pagedLogs.forEach((log) => {
         const realIndex = portfolioLog.findIndex(l => l.id === log.id);
         const isOpen = !log.sellPrice;
@@ -688,8 +771,16 @@ function renderLogTable(logs = portfolioLog) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             pl = sellVal - buyCost;
         }
+
+        const isSelected = selectedLogIds.has(log.id);
+
+        // TABLE ROW
         const tr = document.createElement('tr');
+        tr.className = isSelected ? 'bg-yellow-50' : '';
         tr.innerHTML = `
+            <td class="text-center align-middle">
+                <input type="checkbox" class="log-checkbox custom-checkbox" data-id="${log.id}" ${isSelected ? 'checked' : ''}>
+            </td>
             <td class="font-mono text-xs">${log.date}</td>
             <td class="font-bold text-blue-700">${log.code}</td>
             <td class="text-right font-mono">${formatCurrency(log.price)}</td>
@@ -700,16 +791,34 @@ function renderLogTable(logs = portfolioLog) {
         `;
         tbody.appendChild(tr);
 
+        // CARD ROW (Mobile) - Added Select Logic
         const card = document.createElement('div');
-        card.className = 'card p-4 relative';
+        card.className = `card p-4 relative ${isSelected ? 'bg-yellow-50 border-yellow-400' : ''}`;
         card.innerHTML = `
-            <div class="flex justify-between items-start mb-2"><div><span class="text-xs font-mono text-gray-500">${log.date}</span><h4 class="text-xl font-black text-blue-700">${log.code}</h4></div><span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span></div>
-            <div class="grid grid-cols-2 gap-2 text-sm mb-3"><div><span class="text-xs text-gray-400">Buy</span> <span class="font-mono font-bold">${formatCurrency(log.price)}</span></div><div><span class="text-xs text-gray-400">Lot</span> <span class="font-mono font-bold">${log.lot}</span></div>${!isOpen ? `<div class="col-span-2 pt-1 border-t border-gray-100 flex justify-between"><span class="text-gray-500">P/L</span> <span class="font-bold ${pl>=0?'text-green-500':'text-red-500'}">${formatCurrency(pl, true)}</span></div>` : ''}</div>
-            <div class="flex gap-2 mt-2 border-t border-gray-100 pt-2">${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-1" data-index="${realIndex}">JUAL</button>` : ''}<button class="btn-edit flex-1 btn btn-secondary text-xs py-1" data-index="${realIndex}">EDIT</button><button class="btn-delete btn btn-danger text-xs py-1" data-index="${realIndex}">DEL</button></div>
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" class="log-checkbox custom-checkbox mt-1" data-id="${log.id}" ${isSelected ? 'checked' : ''}>
+                    <div><span class="text-xs font-mono text-gray-500">${log.date}</span><h4 class="text-xl font-black text-blue-700">${log.code}</h4></div>
+                </div>
+                <span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm mb-3 pl-8"><div><span class="text-xs text-gray-400">Buy</span> <span class="font-mono font-bold">${formatCurrency(log.price)}</span></div><div><span class="text-xs text-gray-400">Lot</span> <span class="font-mono font-bold">${log.lot}</span></div>${!isOpen ? `<div class="col-span-2 pt-1 border-t border-gray-100 flex justify-between"><span class="text-gray-500">P/L</span> <span class="font-bold ${pl>=0?'text-green-500':'text-red-500'}">${formatCurrency(pl, true)}</span></div>` : ''}</div>
+            <div class="flex gap-2 mt-2 border-t border-gray-100 pt-2 pl-8">${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-1" data-index="${realIndex}">JUAL</button>` : ''}<button class="btn-edit flex-1 btn btn-secondary text-xs py-1" data-index="${realIndex}">EDIT</button><button class="btn-delete btn btn-danger text-xs py-1" data-index="${realIndex}">DEL</button></div>
         `;
         cardView.appendChild(card);
     });
     
+    // Add Event Listeners for new elements
+    document.querySelectorAll('.log-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const id = e.target.dataset.id;
+            // Handle number/string type mismatch if generated IDs are numbers
+            const parsedId = !isNaN(id) && id.length > 5 ? parseFloat(id) : id; 
+            toggleLogSelection(parsedId);
+            renderLogTable(filteredLogsData); // Re-render to show background color highlight
+        });
+    });
+
     document.querySelectorAll('.btn-sell').forEach(b => b.onclick = () => openSellModal(b.dataset.index));
     document.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => editLog(b.dataset.index));
     document.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => deleteLog(b.dataset.index));
@@ -1116,6 +1225,12 @@ window.addEventListener('load', () => {
             refreshData(); 
         } 
     });
+
+    // Mass Delete Button Event
+    const massDeleteBtn = document.getElementById('btn-mass-delete');
+    if(massDeleteBtn) {
+        massDeleteBtn.addEventListener('click', executeMassDelete);
+    }
 
     document.getElementById('open-add-log-modal-btn').addEventListener('click', () => { 
         document.getElementById('log-form').reset(); 
