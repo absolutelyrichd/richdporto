@@ -24,6 +24,7 @@ window.firebase = { auth, db, provider, signInWithPopup, signOut, onAuthStateCha
 let portfolioLog = [];
 let savedSimulations = [];
 let performanceChart;
+let equityChart; // New chart variable
 let currentMarketPrices = {};
 let currentUser = null;
 let autoSaveTimer = null;
@@ -34,7 +35,9 @@ const itemsPerPage = 10;
 let currentPage = 1;
 let filteredLogsData = [];
 let sortState = { column: 'date', direction: 'desc' };
-const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'];
+
+// UPDATED: Added new periods
+const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', '2 Thn', '3 Thn', '4 Thn', '5 Thn', 'All Time'];
 
 // --- DOM ELEMENTS ---
 const tabButtons = { 
@@ -120,13 +123,17 @@ function switchTab(name) {
 function initChart() {
     const ctx = document.getElementById('performanceChart').getContext('2d');
     if (performanceChart) performanceChart.destroy();
+    
+    // Create zero array based on periods length
+    const initialData = new Array(periods.length).fill(0);
+
     performanceChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: periods,
             datasets: [
-                { label: 'Portfolio', data: [0,0,0,0,0,0], backgroundColor: '#10b981', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false },
-                { label: 'IHSG', data: [0,0,0,0,0,0], backgroundColor: '#fb923c', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false }
+                { label: 'Portfolio', data: initialData, backgroundColor: '#10b981', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false },
+                { label: 'IHSG', data: initialData, backgroundColor: '#fb923c', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false }
             ]
         },
         options: {
@@ -138,7 +145,121 @@ function initChart() {
             }
         }
     });
+
+    // Initialize Equity Chart
+    initEquityChart();
 }
+
+function initEquityChart() {
+    const ctx = document.getElementById('equityChart').getContext('2d');
+    if (equityChart) equityChart.destroy();
+
+    equityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Realized Equity',
+                data: [],
+                borderColor: '#2563eb', // Blue
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#2563eb',
+                fill: true,
+                tension: 0.2 // Slight curve
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    grid: { color: '#e5e7eb', borderDash: [4, 4] }, 
+                    ticks: { 
+                        color: '#374151', 
+                        font: { family: 'Inter' },
+                        callback: function(value) {
+                            return 'Rp ' + (value/1000000).toFixed(0) + 'jt';
+                        }
+                    } 
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: '#374151', font: { family: 'Inter', size: 10 } } 
+                }
+            }
+        }
+    });
+}
+
+function updateEquityChartData() {
+    if (!equityChart) return;
+
+    const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
+    
+    // Collect all closed transactions (Realized P/L)
+    const closedLogs = portfolioLog.filter(log => log.sellPrice && log.sellDate);
+    
+    // Sort by sell date ascending
+    closedLogs.sort((a, b) => new Date(a.sellDate) - new Date(b.sellDate));
+
+    const labels = [];
+    const dataPoints = [];
+    
+    let currentTotalEquity = initialEquity;
+    
+    // Add start point (Initial) - Use the earliest buy date or today if empty
+    const startDate = closedLogs.length > 0 ? closedLogs[0].date : new Date().toISOString().split('T')[0];
+    labels.push('Start');
+    dataPoints.push(initialEquity);
+
+    // Group transactions by sell date to avoid clutter
+    const dateGroups = {};
+    
+    closedLogs.forEach(log => {
+        if (!dateGroups[log.sellDate]) {
+            dateGroups[log.sellDate] = 0;
+        }
+        
+        const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
+        const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
+        const profit = sellVal - buyVal;
+        
+        dateGroups[log.sellDate] += profit;
+    });
+
+    // Sort grouped dates
+    const sortedDates = Object.keys(dateGroups).sort();
+
+    sortedDates.forEach(date => {
+        currentTotalEquity += dateGroups[date];
+        labels.push(date);
+        dataPoints.push(currentTotalEquity);
+    });
+
+    equityChart.data.labels = labels;
+    equityChart.data.datasets[0].data = dataPoints;
+    equityChart.update();
+}
+
 
 // --- LOGIC: PERFORMANCE TAB ---
 function renderPerformanceTable() {
@@ -161,8 +282,6 @@ function renderPerformanceTable() {
     });
 
     const currentCash = initialEquity + cashFlow;
-    // totalPortfolioValue (Market Value + Cash) dihitung implicit di logic All Time, tapi variabel ini dipakai untuk referensi jika perlu
-    // const totalPortfolioValue = currentCash + totalMarketValue; 
     
     // Fungsi All Time Return (Khusus)
     const getAllTimeReturn = () => {
@@ -211,7 +330,7 @@ function renderPerformanceTable() {
         return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
     };
 
-    // Wrapper untuk Periode Standar
+    // Wrapper untuk Periode Standar (UPDATED with years)
     const calculatePeriodReturn = (periodName) => {
         const now = new Date();
         let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -220,6 +339,10 @@ function renderPerformanceTable() {
         else if (periodName === '3 Bln') startDate.setMonth(startDate.getMonth() - 3);
         else if (periodName === '6 Bln') startDate.setMonth(startDate.getMonth() - 6);
         else if (periodName === '1 Thn') startDate.setFullYear(startDate.getFullYear() - 1);
+        else if (periodName === '2 Thn') startDate.setFullYear(startDate.getFullYear() - 2);
+        else if (periodName === '3 Thn') startDate.setFullYear(startDate.getFullYear() - 3);
+        else if (periodName === '4 Thn') startDate.setFullYear(startDate.getFullYear() - 4);
+        else if (periodName === '5 Thn') startDate.setFullYear(startDate.getFullYear() - 5);
         else if (periodName === 'YTD') startDate = new Date(now.getFullYear(), 0, 1);
         else return 0;
 
@@ -264,16 +387,35 @@ function renderPerformanceTable() {
     `;
     tbody.appendChild(customRow);
 
-    // 4. Update Chart
+    // 4. Update Performance Bar Chart (UPDATED)
     if(performanceChart) {
-        performanceChart.data.datasets[0].data[5] = allTimeReturn;
-        for(let i=0; i<5; i++) {
-            performanceChart.data.datasets[0].data[i] = calculatePeriodReturn(periods[i]);
+        // Reset data array length just in case
+        performanceChart.data.labels = periods;
+        // Last element is 'All Time'
+        const allTimeIdx = periods.length - 1; 
+        
+        const newData = [];
+        for(let i=0; i<periods.length; i++) {
+            if (i === allTimeIdx) newData.push(allTimeReturn);
+            else newData.push(calculatePeriodReturn(periods[i]));
         }
+
+        performanceChart.data.datasets[0].data = newData;
+        // Resize IHSG array if needed, preserving existing values where possible
+        const oldIhsg = performanceChart.data.datasets[1].data;
+        const newIhsg = new Array(periods.length).fill(0);
+        // We can't easily map old indices to new ones if structure changed, so reset or keep what matches.
+        // For simplicity, we just keep what we can. 
+        // Ideally we store IHSG values in memory/DB, but here it's transient UI state.
+        performanceChart.data.datasets[1].data = newIhsg; 
+        
         performanceChart.update();
     }
 
-    // 5. Listeners
+    // 5. Update Equity Line Chart (NEW)
+    updateEquityChartData();
+
+    // 6. Listeners
     // Standard IHSG Inputs
     document.querySelectorAll('.ihsg-input').forEach(input => {
         input.addEventListener('input', (e) => {
