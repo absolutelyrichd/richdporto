@@ -44,7 +44,6 @@
             transition: transform 0.1s ease-in-out;
             margin-bottom: 1.5rem;
         }
-        /* Reset margin bottom di desktop grid layout agar dikontrol oleh gap grid */
         @media (min-width: 1024px) {
             .card { margin-bottom: 0; }
         }
@@ -121,7 +120,6 @@
             border: 2px solid var(--border-color); box-shadow: 2px 2px 0px 0px var(--border-color);
             transform: translate(-1px, -1px);
         }
-        /* Specific style for Developer tab when active */
         #tab-btn-developer.active {
             background-color: var(--accent-purple); color: white;
             border-color: #581c87;
@@ -421,7 +419,7 @@
                 <div class="card">
                     <h2 class="text-2xl font-bold mb-4">Analisa Performa</h2>
                     
-                    <!-- UPDATED: Changed from grid lg:grid-cols-2 to space-y-8 for vertical layout -->
+                    <!-- UPDATED: Stacked charts vertically (grid-cols-1) -->
                     <div class="grid grid-cols-1 gap-8 mb-8">
                         <!-- Chart 1: Returns -->
                         <div>

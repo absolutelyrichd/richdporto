@@ -120,13 +120,13 @@ function switchTab(name) {
 
 function initChart() {
     // Chart 1: Returns
-    const ctx = document.getElementById('performanceChart').getContext('2d');
-    if (performanceChart) performanceChart.destroy();
-    
     // FIXED: Use separate array instances for data to prevent referencing issues
     const portfolioData = new Array(periods.length).fill(0);
     const ihsgData = new Array(periods.length).fill(0);
 
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    if (performanceChart) performanceChart.destroy();
+    
     performanceChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -147,33 +147,37 @@ function initChart() {
     });
 
     // Chart 2: Equity Growth
-    const ctxEq = document.getElementById('equityChart').getContext('2d');
-    if (equityChart) equityChart.destroy();
-    
-    equityChart = new Chart(ctxEq, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Total Equity',
-                data: [],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 3,
-                tension: 0.3,
-                pointBackgroundColor: '#1e40af',
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { font: { family: 'Inter' }, callback: (val) => (val/1000000).toFixed(1) + 'jt' } },
-                x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxTicksLimit: 6 } }
+    // FIXED: Add check to ensure canvas exists to prevent null error on load
+    const equityCanvas = document.getElementById('equityChart');
+    if (equityCanvas) {
+        const ctxEq = equityCanvas.getContext('2d');
+        if (equityChart) equityChart.destroy();
+        
+        equityChart = new Chart(ctxEq, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Equity',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    pointBackgroundColor: '#1e40af',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { font: { family: 'Inter' }, callback: (val) => (val/1000000).toFixed(1) + 'jt' } },
+                    x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxTicksLimit: 6 } }
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 // --- LOGIC: PERFORMANCE TAB ---
@@ -182,8 +186,8 @@ function renderPerformanceTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    // 1. Hitung Nilai Portofolio Saat Ini (All Time)
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
-    let totalMarketValue = 0;
     let cashFlow = 0; 
 
     portfolioLog.forEach(log => {
@@ -193,22 +197,33 @@ function renderPerformanceTable() {
         if(log.sellPrice) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             cashFlow += sellVal; 
-        } else {
-            const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
-            totalMarketValue += currPrice * log.lot * 100;
         }
     });
 
     const currentCash = initialEquity + cashFlow;
-    const totalPortfolioValue = currentCash + totalMarketValue;
-    const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
+    
+    // Fungsi All Time Return (Khusus)
+    const getAllTimeReturn = () => {
+        let totalMarketVal = 0;
+        portfolioLog.forEach(log => {
+            if (!log.sellPrice) { // Open position value
+                const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
+                totalMarketVal += currPrice * log.lot * 100;
+            }
+        });
+        const totalVal = currentCash + totalMarketVal;
+        return initialEquity > 0 ? ((totalVal - initialEquity) / initialEquity) * 100 : 0;
+    };
 
-    // --- CORE CALCULATION LOGIC ---
+    const allTimeReturn = getAllTimeReturn();
+
+    // --- CORE CALCULATION LOGIC (REUSABLE) ---
     const calculateReturnFromDate = (startDate) => {
         const startDateStr = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         let totalPL = 0;
 
         portfolioLog.forEach(log => {
+            // CASE 1: Transaksi SUDAH JUAL (Closed)
             if (log.sellPrice && log.sellDate) {
                 if (log.sellDate >= startDateStr) {
                     const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
@@ -216,6 +231,7 @@ function renderPerformanceTable() {
                     totalPL += (sellVal - buyVal);
                 }
             } 
+            // CASE 2: Transaksi MASIH HOLD (Open)
             else {
                 if (log.date >= startDateStr) {
                     const currentPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
@@ -229,7 +245,7 @@ function renderPerformanceTable() {
         return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
     };
 
-    // Wrapper for Standard Periods
+    // Wrapper untuk Periode Standar
     const calculatePeriodReturn = (periodName) => {
         const now = new Date();
         let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -248,7 +264,7 @@ function renderPerformanceTable() {
         return calculateReturnFromDate(startDate);
     };
 
-    // 2. Render Standard Rows
+    // 2. Render Baris Tabel Standar
     periods.forEach((period, index) => {
         const isAllTime = period === 'All Time';
         let portReturn = isAllTime ? allTimeReturn : calculatePeriodReturn(period);
@@ -268,7 +284,7 @@ function renderPerformanceTable() {
         tbody.appendChild(tr);
     });
 
-    // 3. Render Custom Row
+    // 3. Render Baris CUSTOM (Baru!)
     const customRow = document.createElement('tr');
     customRow.className = "bg-yellow-50 border-t-2 border-dashed border-yellow-200";
     customRow.innerHTML = `
@@ -289,7 +305,6 @@ function renderPerformanceTable() {
     // 4. Update Charts
     // 4a. Performance (Return) Chart
     if(performanceChart) {
-        performanceChart.data.labels = periods; 
         const idxAllTime = periods.indexOf('All Time');
         
         for(let i=0; i<periods.length; i++) {
@@ -297,7 +312,7 @@ function renderPerformanceTable() {
             else performanceChart.data.datasets[0].data[i] = calculatePeriodReturn(periods[i]);
         }
         
-        // Re-apply IHSG data from inputs to ensure they don't get wiped or synced
+        // Re-apply IHSG data from inputs
         document.querySelectorAll('.ihsg-input').forEach(input => {
             const idx = parseInt(input.dataset.index);
             const val = parseFloat(input.value) || 0;
@@ -350,6 +365,7 @@ function renderPerformanceTable() {
 
         customReturnDisplay.textContent = portReturn.toFixed(2) + '%';
         customReturnDisplay.className = `font-bold align-middle text-lg ${portReturn >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        
         customAlphaDisplay.textContent = alpha.toFixed(2) + '%';
         customAlphaDisplay.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
     };
@@ -360,12 +376,6 @@ function renderPerformanceTable() {
 
 // --- EQUITY CHART LOGIC ---
 function updateEquityChartData(initialEquity) {
-    // Filter logs that affect cash (Buy/Sell) or just Sells for realized curve?
-    // To show growth properly, we track Cumulative Realized P/L over time
-    // X Axis: Date of closed transactions
-    // Y Axis: Initial Equity + Cumulative Realized P/L
-    // Finally, append Today with Total Equity (Realized + Floating)
-
     const closedLogs = portfolioLog.filter(l => l.sellPrice && l.sellDate).sort((a, b) => new Date(a.sellDate) - new Date(b.sellDate));
     
     const chartLabels = [];
@@ -386,7 +396,6 @@ function updateEquityChartData(initialEquity) {
     });
 
     // Final Point: Today (Total Equity)
-    // Calculate current floating P/L
     let floatingPL = 0;
     portfolioLog.forEach(log => {
         if(!log.sellPrice) {
@@ -730,8 +739,6 @@ function initMobileAccordion() {
                 arrowSummary.classList.toggle('rotate-180');
             }
         });
-        // Initialize open on mobile? Let's keep summary open, filter closed by default maybe?
-        // For now, let's keep them consistent with HTML (default visible)
     }
 
     if(toggleFilter) {
