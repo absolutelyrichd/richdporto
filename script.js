@@ -90,7 +90,7 @@ function showNotification(msg, title = 'INFO') {
     openModal(modals.notification);
 }
 
-// --- NEW GENERIC CONFIRMATION LOGIC ---
+// --- GENERIC CONFIRMATION LOGIC ---
 let onConfirmAction = null;
 
 function showConfirm(action, message = "Apakah Anda yakin ingin melanjutkan?", title = "KONFIRMASI") {
@@ -100,7 +100,6 @@ function showConfirm(action, message = "Apakah Anda yakin ingin melanjutkan?", t
     openModal(modals.confirm);
 }
 
-// Event Listeners for Confirm Modal
 document.getElementById('confirm-cancel-btn').addEventListener('click', () => closeModal(modals.confirm));
 document.getElementById('confirm-ok-btn').addEventListener('click', () => {
     if(onConfirmAction) onConfirmAction();
@@ -114,14 +113,8 @@ function switchTab(name) {
     if(tabButtons[name]) tabButtons[name].classList.add('active');
     if(tabContents[name]) tabContents[name].classList.add('active');
     
-    // Update Developer status when tab is opened
-    if(name === 'developer') {
-        updateDeveloperStats();
-    }
-    
-    if(name === 'performance') {
-        renderPerformanceTable();
-    }
+    if(name === 'developer') updateDeveloperStats();
+    if(name === 'performance') renderPerformanceTable();
 }
 
 function initChart() {
@@ -153,10 +146,10 @@ function renderPerformanceTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // 1. Hitung Nilai Portofolio Saat Ini (All Time) - Termasuk Floating
+    // 1. Hitung Nilai Portofolio Saat Ini (All Time) - Total Equity
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalMarketValue = 0;
-    let cashFlow = 0; // Untuk All Time
+    let cashFlow = 0; 
 
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
@@ -175,35 +168,57 @@ function renderPerformanceTable() {
     const totalPortfolioValue = currentCash + totalMarketValue;
     const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
 
-    // Helper function: Menghitung Realized P/L (Closed Trade) berdasarkan tanggal
-    const getRealizedReturnForPeriod = (periodName) => {
+    // --- FUNGSI HITUNG RETURN PERIODE (GENERIC UNTUK SEMUA PERIODE) ---
+    const calculatePeriodReturn = (periodName) => {
         const now = new Date();
-        let startDate = new Date();
-        startDate.setHours(0,0,0,0); // Reset jam
+        // Gunakan setFullYear/Month/Date untuk manipulasi tanggal yang aman
+        let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        if (periodName === '1 Bln') startDate.setMonth(now.getMonth() - 1);
-        else if (periodName === '3 Bln') startDate.setMonth(now.getMonth() - 3);
-        else if (periodName === '6 Bln') startDate.setMonth(now.getMonth() - 6);
-        else if (periodName === '1 Thn') startDate.setFullYear(now.getFullYear() - 1);
-        else if (periodName === 'YTD') startDate = new Date(now.getFullYear(), 0, 1); // 1 Jan tahun ini
-        else return 0; // Should not happen for above cases
+        // Mundurkan tanggal sesuai periode
+        if (periodName === '1 Bln') {
+            startDate.setMonth(startDate.getMonth() - 1);
+        } else if (periodName === '3 Bln') {
+            startDate.setMonth(startDate.getMonth() - 3);
+        } else if (periodName === '6 Bln') {
+            startDate.setMonth(startDate.getMonth() - 6);
+        } else if (periodName === '1 Thn') {
+            startDate.setFullYear(startDate.getFullYear() - 1);
+        } else if (periodName === 'YTD') {
+            startDate = new Date(now.getFullYear(), 0, 1); // 1 Jan tahun ini
+        } else {
+            return 0; // Should not happen for standard periods
+        }
 
-        let realizedPL = 0;
+        // Konversi ke format YYYY-MM-DD untuk perbandingan string
+        // Menggunakan offset timezone agar tidak bergeser karena UTC
+        const startDateStr = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+        let totalPL = 0;
+
         portfolioLog.forEach(log => {
-            // Hanya hitung yang sudah dijual (Realized) dan masuk dalam tanggal periode
+            // CASE 1: Transaksi SUDAH JUAL (Closed)
+            // Profit dihitung jika 'Tanggal Jual' masuk dalam periode ini
             if (log.sellPrice && log.sellDate) {
-                const sellDate = new Date(log.sellDate);
-                if (sellDate >= startDate) {
+                if (log.sellDate >= startDateStr) {
                     const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
                     const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual || 0) / 100);
-                    realizedPL += (sellVal - buyVal);
+                    totalPL += (sellVal - buyVal);
+                }
+            } 
+            // CASE 2: Transaksi MASIH HOLD (Open)
+            // Profit Floating dihitung jika 'Tanggal Beli' masuk dalam periode ini (Barang Baru)
+            else {
+                if (log.date >= startDateStr) {
+                    const currentPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
+                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
+                    const marketVal = currentPrice * log.lot * 100;
+                    totalPL += (marketVal - buyVal);
                 }
             }
         });
         
-        // Return % berdasarkan Initial Equity (Modal Awal)
-        // Catatan: Ini hanya menghitung realized gain/loss untuk periode tersebut
-        return initialEquity > 0 ? (realizedPL / initialEquity) * 100 : 0;
+        // Return % terhadap Modal Awal
+        return initialEquity > 0 ? (totalPL / initialEquity) * 100 : 0;
     };
 
     // 2. Render Baris Tabel
@@ -214,58 +229,54 @@ function renderPerformanceTable() {
         if (isAllTime) {
             portReturn = allTimeReturn;
         } else {
-            portReturn = getRealizedReturnForPeriod(period);
+            portReturn = calculatePeriodReturn(period);
         }
 
         const displayReturn = portReturn.toFixed(2) + '%';
         const colorClass = portReturn >= 0 ? 'text-green-600' : 'text-red-600';
+        
+        // Label note diperbarui agar user paham angka ini meliputi apa
+        let note = '';
+        if(!isAllTime) note = '<span class="text-[10px] text-gray-400 font-normal block md:inline md:ml-1">(Realized + New Open)</span>';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="font-bold">${period}</td>
-            <td class="${colorClass} font-bold">${displayReturn} ${!isAllTime ? '<span class="text-[10px] text-gray-400 font-normal">(Realized)</span>' : ''}</td>
-            <td>
+            <td class="font-bold align-middle">${period}</td>
+            <td class="${colorClass} font-bold align-middle">${displayReturn} ${note}</td>
+            <td class="align-middle">
                 <input type="number" step="0.01" class="ihsg-input w-24 p-1 border rounded text-right bg-gray-50" data-index="${index}" placeholder="0.00"> %
             </td>
-            <td class="font-bold" id="alpha-${index}">-</td>
+            <td class="font-bold align-middle" id="alpha-${index}">-</td>
         `;
         tbody.appendChild(tr);
     });
 
-    // 3. Update Chart (All Time Bar)
+    // 3. Update Chart
     if(performanceChart) {
-        // Update data All Time (index 5)
-        performanceChart.data.datasets[0].data[5] = allTimeReturn;
-        
-        // Update data periods lain (index 0-4)
+        performanceChart.data.datasets[0].data[5] = allTimeReturn; // All Time
+        // Loop untuk update 1 Bln s/d 1 Thn
         for(let i=0; i<5; i++) {
-            performanceChart.data.datasets[0].data[i] = getRealizedReturnForPeriod(periods[i]);
+            performanceChart.data.datasets[0].data[i] = calculatePeriodReturn(periods[i]);
         }
         performanceChart.update();
     }
 
-    // 4. Event Listener untuk Input IHSG
+    // 4. Listener Input IHSG
     document.querySelectorAll('.ihsg-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.index);
             const ihsgVal = parseFloat(e.target.value) || 0;
             const periodName = periods[idx];
             
-            // Hitung ulang nilai portofolio untuk baris ini agar bisa hitung alpha
             let currentPortReturn = 0;
-            if (periodName === 'All Time') {
-                currentPortReturn = allTimeReturn;
-            } else {
-                currentPortReturn = getRealizedReturnForPeriod(periodName);
-            }
+            if (periodName === 'All Time') currentPortReturn = allTimeReturn;
+            else currentPortReturn = calculatePeriodReturn(periodName);
             
-            // Update Alpha Cell
             const alpha = currentPortReturn - ihsgVal;
             const alphaCell = document.getElementById(`alpha-${idx}`);
             alphaCell.textContent = alpha.toFixed(2) + '%';
-            alphaCell.className = `font-bold ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            alphaCell.className = `font-bold align-middle ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
             
-            // Update Chart IHSG Bar
             if(performanceChart) {
                 performanceChart.data.datasets[1].data[idx] = ihsgVal;
                 performanceChart.update();
@@ -274,7 +285,7 @@ function renderPerformanceTable() {
     });
 }
 
-// --- LOGIC: SIMULATOR ---
+// --- LOGIC: SIMULATOR & OTHERS (UNCHANGED) ---
 function calculateDashboard() {
     const initialPrice = parseFloat(document.getElementById('initial-price').value) || 0;
     const initialLot = parseFloat(document.getElementById('initial-lot').value) || 0;
@@ -345,7 +356,6 @@ function calculateDashboard() {
     }
 }
 
-// --- LOGIC: LOG TABLE & SORTING ---
 function handleSort(column) {
     if (sortState.column === column) {
         sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
@@ -673,7 +683,6 @@ window.addEventListener('load', () => {
     document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(modals.simParams));
     document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(modals.sell));
     document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
-    // Deleted generic delete confirm listener in favor of the generic confirm modal logic
     
     // --- AUTH HANDLER ---
     const handleLogin = async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } };
