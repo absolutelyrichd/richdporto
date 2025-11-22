@@ -30,7 +30,8 @@ let autoSaveTimer = null;
 let defaultFeeBeli = 0.15; 
 let defaultFeeJual = 0.25; 
 
-const itemsPerPage = 10;
+// UPDATED: Meningkatkan items per page agar card tidak tersembunyi di page 2
+const itemsPerPage = 50; 
 let currentPage = 1;
 let filteredLogsData = [];
 let sortState = { column: 'date', direction: 'desc' };
@@ -143,7 +144,10 @@ function renderPerformanceTable() {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         cashFlow -= buyVal; // Uang keluar untuk beli
 
-        if(log.sellPrice) {
+        // UPDATED: Cek isSold lebih robust
+        const isSold = log.sellPrice !== null && log.sellPrice !== undefined && log.sellPrice !== '';
+
+        if(isSold) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             cashFlow += sellVal; // Uang masuk dari jual
         } else {
@@ -283,11 +287,19 @@ function renderLogTable(logs = portfolioLog) {
     const tbody = document.getElementById('log-table-body');
     const cardView = document.getElementById('log-card-view');
     if(!tbody || !cardView) return;
-    tbody.innerHTML = ''; cardView.innerHTML = '';
+    tbody.innerHTML = ''; 
+    cardView.innerHTML = '';
 
     const start = (currentPage - 1) * itemsPerPage;
     const pagedLogs = logs.slice(start, start + itemsPerPage);
-    document.getElementById('page-info').textContent = `Showing ${start+1}-${Math.min(start+itemsPerPage, logs.length)} of ${logs.length}`;
+    
+    // Update Info Halaman
+    const totalItems = logs.length;
+    const end = Math.min(start + itemsPerPage, totalItems);
+    document.getElementById('page-info').textContent = totalItems > 0 
+        ? `Showing ${start + 1}-${end} of ${totalItems}` 
+        : 'No transactions found';
+    
     const totalPages = Math.ceil(logs.length / itemsPerPage);
     const pageCont = document.getElementById('page-number-container');
     pageCont.innerHTML = '';
@@ -324,15 +336,29 @@ function renderLogTable(logs = portfolioLog) {
     nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderLogTable(filteredLogsData); } };
     pageCont.appendChild(nextBtn);
 
+    // Handle Empty State
+    if(pagedLogs.length === 0) {
+        cardView.innerHTML = '<div class="text-center text-gray-500 py-8 italic">Belum ada data transaksi yang sesuai filter.</div>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500 italic">Belum ada data transaksi yang sesuai filter.</td></tr>';
+        return;
+    }
+
     pagedLogs.forEach((log, index) => {
+        // Cari index asli di array utama untuk referensi tombol
         const realIndex = portfolioLog.indexOf(log);
-        const isOpen = !log.sellPrice;
+
+        // UPDATED: Logic penentu status Open/Closed yang lebih robust
+        // Jika sellPrice null, undefined, atau empty string -> OPEN
+        const isOpen = log.sellPrice === null || log.sellPrice === undefined || log.sellPrice === '';
+        
         const buyCost = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         let pl = 0;
         if(!isOpen) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             pl = sellVal - buyCost;
         }
+        
+        // --- RENDER DESKTOP TABLE ROW ---
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-mono text-xs">${log.date}</td>
@@ -345,12 +371,37 @@ function renderLogTable(logs = portfolioLog) {
         `;
         tbody.appendChild(tr);
 
+        // --- RENDER MOBILE CARD ---
         const card = document.createElement('div');
-        card.className = 'card p-4 relative';
+        card.className = 'card p-4 relative bg-white border-2 border-gray-200 rounded-lg shadow-sm mb-4'; // Pastikan background white dan border ada
         card.innerHTML = `
-            <div class="flex justify-between items-start mb-2"><div><span class="text-xs font-mono text-gray-500">${log.date}</span><h4 class="text-xl font-black text-blue-700">${log.code}</h4></div><span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span></div>
-            <div class="grid grid-cols-2 gap-2 text-sm mb-3"><div><span class="text-xs text-gray-400">Buy</span> <span class="font-mono font-bold">${formatCurrency(log.price)}</span></div><div><span class="text-xs text-gray-400">Lot</span> <span class="font-mono font-bold">${log.lot}</span></div>${!isOpen ? `<div class="col-span-2 pt-1 border-t border-gray-100 flex justify-between"><span class="text-gray-500">P/L</span> <span class="font-bold ${pl>=0?'text-green-500':'text-red-500'}">${formatCurrency(pl, true)}</span></div>` : ''}</div>
-            <div class="flex gap-2 mt-2 border-t border-gray-100 pt-2">${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-1" data-index="${realIndex}">JUAL</button>` : ''}<button class="btn-edit flex-1 btn btn-secondary text-xs py-1" data-index="${realIndex}">EDIT</button><button class="btn-delete btn btn-danger text-xs py-1" data-index="${realIndex}">DEL</button></div>
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <span class="text-xs font-mono text-gray-500">${log.date}</span>
+                    <h4 class="text-xl font-black text-blue-700 tracking-tight">${log.code}</h4>
+                </div>
+                <span class="badge ${isOpen ? 'badge-open' : 'badge-closed'}">${isOpen ? 'OPEN' : 'CLOSED'}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                <div>
+                    <span class="text-xs text-gray-400 uppercase font-bold">Buy Price</span>
+                    <div class="font-mono font-bold">${formatCurrency(log.price)}</div>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 uppercase font-bold">Lot</span>
+                    <div class="font-mono font-bold">${log.lot}</div>
+                </div>
+                ${!isOpen ? `
+                <div class="col-span-2 pt-2 mt-1 border-t-2 border-gray-100 flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-bold uppercase">Realized P/L</span>
+                    <span class="font-bold text-lg ${pl>=0?'text-green-600':'text-red-500'}">${formatCurrency(pl, true)}</span>
+                </div>` : ''}
+            </div>
+            <div class="flex gap-2 mt-2 border-t-2 border-gray-100 pt-3">
+                ${isOpen ? `<button class="btn-sell flex-1 btn btn-accent text-xs py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] border-black" data-index="${realIndex}">JUAL</button>` : ''}
+                <button class="btn-edit flex-1 btn btn-secondary text-xs py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] border-black" data-index="${realIndex}">EDIT</button>
+                <button class="btn-delete btn btn-danger text-xs py-2 px-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] border-black" data-index="${realIndex}">✕</button>
+            </div>
         `;
         cardView.appendChild(card);
     });
@@ -365,10 +416,15 @@ function calculatePortfolioSummary() {
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalBuy = 0, totalSell = 0, realizedPL = 0;
     let stockHoldings = {};
+    
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         totalBuy += buyVal;
-        if(log.sellPrice) {
+        
+        // UPDATED: Cek konsisten untuk summary
+        const isSold = log.sellPrice !== null && log.sellPrice !== undefined && log.sellPrice !== '';
+
+        if(isSold) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
             totalSell += sellVal; realizedPL += (sellVal - buyVal);
         } else {
@@ -376,11 +432,13 @@ function calculatePortfolioSummary() {
             stockHoldings[log.code].lot += log.lot; stockHoldings[log.code].cost += buyVal;
         }
     });
+
     const currentEquity = initialEquity - totalBuy + totalSell;
     document.getElementById('current-equity-display').textContent = formatCurrency(currentEquity);
     document.getElementById('realized-pl-summary').innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     summaryContainer.innerHTML = '';
+    
     let totalFloating = 0;
     Object.keys(stockHoldings).forEach(code => {
         const data = stockHoldings[code];
@@ -388,11 +446,13 @@ function calculatePortfolioSummary() {
         const currPrice = parseFloat(currentMarketPrices[code]) || 0;
         let floating = 0;
         if(currPrice > 0) { floating = (currPrice * data.lot * 100) - data.cost; totalFloating += floating; }
+        
         const div = document.createElement('div');
         div.className = 'card bg-white p-3 border-2 border-gray-200';
         div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
         summaryContainer.appendChild(div);
     });
+    
     document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
     document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
     
@@ -412,7 +472,9 @@ function editLog(index) {
     document.getElementById('log-fee-beli').value = log.feeBeli || defaultFeeBeli;
     document.getElementById('log-reason').value = log.reason || '';
     const sellContainer = document.getElementById('sell-fields-container');
-    if(log.sellPrice) {
+    
+    // UPDATED: Gunakan logic konsisten untuk menampilkan form jual
+    if(log.sellPrice !== null && log.sellPrice !== undefined && log.sellPrice !== '') {
         sellContainer.classList.remove('hidden');
         document.getElementById('log-sell-price').value = log.sellPrice;
         document.getElementById('log-sell-date').value = log.sellDate;
