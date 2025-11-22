@@ -202,7 +202,7 @@ function renderPerformanceTable() {
         });
         
         // Return % berdasarkan Initial Equity (Modal Awal)
-        // Catatan: Ini hanya menghitung realized gain/loss, bukan unrealized (karena tidak ada historical price)
+        // Catatan: Ini hanya menghitung realized gain/loss untuk periode tersebut
         return initialEquity > 0 ? (realizedPL / initialEquity) * 100 : 0;
     };
 
