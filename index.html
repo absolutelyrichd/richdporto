@@ -19,6 +19,7 @@
             --accent-green: #10b981;
             --accent-red: #f43f5e;
             --accent-orange: #fb923c;
+            --accent-purple: #a855f7; /* New accent for Developer */
         }
 
         body {
@@ -74,6 +75,7 @@
         .btn-secondary:hover { background-color: #f3f4f6; }
         .btn-accent { background-color: var(--accent-yellow); color: var(--border-color); }
         .btn-danger { background-color: var(--accent-red); color: white; border-color: #881337; }
+        .btn-developer { background-color: var(--accent-purple); color: white; border-color: #581c87; }
 
         input, select, textarea {
             display: block; width: 100%; padding: 0.75rem 1rem;
@@ -119,6 +121,11 @@
             border: 2px solid var(--border-color); box-shadow: 2px 2px 0px 0px var(--border-color);
             transform: translate(-1px, -1px);
         }
+        /* Specific style for Developer tab when active */
+        #tab-btn-developer.active {
+            background-color: var(--accent-purple); color: white;
+            border-color: #581c87;
+        }
 
         /* --- TABLES --- */
         .table-brutal {
@@ -130,13 +137,12 @@
         .table-brutal th {
             text-transform: uppercase; font-size: 0.75rem; font-weight: 700;
             padding: 1rem; text-align: left; border-bottom: 2px solid var(--border-color); color: #374151;
-            user-select: none; /* Prevent text selection on double click */
+            user-select: none;
         }
         .table-brutal td { padding: 1rem; border-bottom: 1px solid #e5e7eb; color: #1f2937; }
         .table-brutal tr:last-child td { border-bottom: none; }
         .table-brutal tr:hover td { background-color: #fffbeb; }
         
-        /* Sorting styles */
         th.sortable { cursor: pointer; transition: background-color 0.2s; }
         th.sortable:hover { background-color: #e5e7eb; }
         .sort-icon { display: inline-block; margin-left: 4px; font-size: 0.7em; opacity: 0.3; }
@@ -203,7 +209,6 @@
         .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Helper animation for mobile accordion */
         .accordion-arrow { transition: transform 0.3s ease; }
         .accordion-arrow.rotate-180 { transform: rotate(180deg); }
     </style>
@@ -262,6 +267,7 @@
                 <button id="tab-btn-saved" class="tab-button">Simulasi</button>
                 <button id="tab-btn-performance" class="tab-button">Performa</button>
                 <button id="tab-btn-settings" class="tab-button">Settings</button>
+                <button id="tab-btn-developer" class="tab-button bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200">Developer</button>
             </nav>
         </div>
 
@@ -315,30 +321,26 @@
                 </div>
             </div>
 
-            <!-- 2. TAB OPEN ORDER (NEW TAB FOR CARDS) -->
+            <!-- 2. TAB OPEN ORDER -->
             <div id="tab-content-open-order" class="tab-content">
                 <div class="card bg-blue-50 border-blue-200 mb-6">
                      <h2 class="text-2xl font-bold mb-4 text-blue-900">Open Order / Holdings</h2>
                      <p class="text-sm text-blue-800 mb-0">Berikut adalah ringkasan posisi saham Anda yang masih terbuka.</p>
                 </div>
-                <!-- Portfolio Summary Cards moved here -->
                 <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
             </div>
 
-            <!-- 3. TAB LOG (Updated) -->
+            <!-- 3. TAB LOG -->
             <div id="tab-content-log" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
                     <!-- SIDEBAR -->
                     <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24 self-start h-fit z-30">
-                        
-                        <!-- Card Ringkasan -->
                         <div class="card">
                             <div class="flex justify-between items-center mb-2 lg:mb-4 border-b-2 border-gray-200 pb-2 cursor-pointer lg:cursor-default" id="toggle-summary-btn">
                                 <h3 class="text-lg font-bold">Ringkasan</h3>
                                 <span id="arrow-summary" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
                             </div>
-                            
                             <div id="summary-content" class="space-y-4">
                                 <div>
                                     <label class="text-xs uppercase text-gray-500">Modal Awal</label>
@@ -353,13 +355,11 @@
                             </div>
                         </div>
 
-                        <!-- Card Filter -->
                         <div class="card">
                             <div class="flex justify-between items-center mb-2 lg:mb-4 cursor-pointer lg:cursor-default" id="toggle-filter-btn">
                                 <h3 class="text-lg font-bold">Filter</h3>
                                 <span id="arrow-filter" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
                             </div>
-
                             <div id="filter-content" class="space-y-3">
                                 <input type="text" id="filter-stock-code" placeholder="Kode Saham (e.g. BBCA)">
                                 <div class="grid grid-cols-2 gap-2"><input type="date" id="filter-date-from" class="text-xs"><input type="date" id="filter-date-to" class="text-xs"></div>
@@ -450,6 +450,40 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 7. TAB DEVELOPER (NEW) -->
+            <div id="tab-content-developer" class="tab-content">
+                <div class="max-w-3xl mx-auto">
+                    <div class="card bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                        <h2 class="text-2xl font-bold mb-6 border-b-2 border-gray-200 pb-4">Tools & Status</h2>
+                        
+                        <div class="space-y-4 font-mono text-sm mb-8">
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">User ID:</span>
+                                <span id="dev-user-id" class="font-bold text-purple-600 break-all text-right">Not Logged In</span>
+                            </div>
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">Memori Data:</span>
+                                <span id="dev-memory-size" class="font-bold">0 KB</span>
+                            </div>
+                            <div class="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                <span class="text-gray-500">Status:</span>
+                                <span class="font-bold text-green-600">Idle</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button id="btn-generate-dummy" class="btn btn-secondary border-purple-500 text-purple-700 hover:bg-purple-50">
+                                🤖 Generate Dummy Data
+                            </button>
+                            <button id="btn-hard-reset" class="btn btn-danger">
+                                ☠️ HARD RESET / CLEAR
+                            </button>
+                        </div>
+                        <p class="mt-4 text-xs text-gray-400 text-center">*Warning: Hard Reset akan menghapus seluruh data secara permanen.</p>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -514,12 +548,22 @@
             <button id="notification-ok-btn" class="btn btn-primary w-full">OK</button>
         </div>
     </div>
-    <div id="delete-confirm-modal" class="modal-overlay">
-        <div class="modal-content max-w-sm text-center">
-            <div class="text-4xl mb-2">⚠️</div><h3 class="text-xl font-bold mb-2">Yakin Hapus?</h3>
-            <div class="flex justify-center gap-3"><button id="cancel-delete-btn" class="btn btn-secondary">Batal</button><button id="confirm-delete-btn" class="btn btn-danger">Hapus</button></div>
+    
+    <!-- NEW GENERIC CONFIRM MODAL -->
+    <div id="generic-confirm-modal" class="modal-overlay">
+        <div class="modal-content max-w-sm text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div class="text-4xl mb-2">⚠️</div>
+            <h3 id="confirm-modal-title" class="text-xl font-black mb-2 uppercase">Konfirmasi</h3>
+            <p id="confirm-modal-message" class="mb-6 font-medium">Apakah anda yakin?</p>
+            <div class="flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="btn btn-secondary">Batal</button>
+                <button id="confirm-ok-btn" class="btn btn-primary">Ya, Lanjutkan</button>
+            </div>
         </div>
     </div>
+
+    <!-- Delete Modal is now redundant but kept if needed or replaced by generic -->
+    <div id="delete-confirm-modal" class="hidden"></div> 
 
     <!-- Import Logic Script -->
     <script type="module" src="script.js"></script>
