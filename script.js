@@ -72,7 +72,8 @@ const modals = {
     sell: document.getElementById('sell-modal'),
     notification: document.getElementById('notification-modal'),
     confirm: document.getElementById('generic-confirm-modal'),
-    dummy: document.getElementById('dummy-generator-modal')
+    dummy: document.getElementById('dummy-generator-modal'),
+    reset: document.getElementById('reset-options-modal') // NEW
 };
 
 // --- HELPERS ---
@@ -268,7 +269,6 @@ function initEquityChart() {
                     ticks: { 
                         color: '#374151', 
                         font: { family: 'Inter' },
-                        // UPDATE: STEP SIZE 1 JUTA (Agar grid line per 1 jt, tidak loncat 10)
                         stepSize: 1000000, 
                         callback: function(value) { return 'Rp ' + (value/1000000).toFixed(0) + 'jt'; }
                     } 
@@ -929,19 +929,58 @@ document.getElementById('dummy-form').addEventListener('submit', (e) => {
 document.getElementById('btn-open-dummy-modal').addEventListener('click', openDummyModal);
 document.getElementById('cancel-dummy-btn').addEventListener('click', () => closeModal(modals.dummy));
 
+// --- RESET DATA LOGIC (UPDATED) ---
+document.getElementById('btn-open-reset-modal').addEventListener('click', () => openModal(modals.reset));
+document.getElementById('btn-close-reset-modal').addEventListener('click', () => closeModal(modals.reset));
 
-function hardResetData() {
-    portfolioLog = [];
-    savedSimulations = [];
-    currentMarketPrices = {};
-    refreshData();
-    triggerAutoSave();
-    showNotification("Semua data telah dihapus.");
-}
-
-document.getElementById('btn-hard-reset').addEventListener('click', () => {
-    showConfirm(hardResetData, "PERINGATAN: Ini akan menghapus SELURUH data transaksi dan simulasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
+// 1. Reset Logs Only
+document.getElementById('btn-reset-logs').addEventListener('click', () => {
+    showConfirm(() => {
+        portfolioLog = [];
+        refreshData();
+        triggerAutoSave();
+        showNotification("Semua jurnal transaksi berhasil dihapus.", "RESET LOGS");
+        closeModal(modals.reset);
+    }, "Anda yakin ingin menghapus SEMUA riwayat transaksi? Data simulasi & harga pasar tetap aman.", "HAPUS TRANSAKSI");
 });
+
+// 2. Reset Simulations Only
+document.getElementById('btn-reset-simulations').addEventListener('click', () => {
+    showConfirm(() => {
+        savedSimulations = [];
+        refreshData();
+        triggerAutoSave();
+        showNotification("Semua simulasi tersimpan berhasil dihapus.", "RESET SIMULASI");
+        closeModal(modals.reset);
+    }, "Anda yakin ingin menghapus semua skenario simulasi?", "HAPUS SIMULASI");
+});
+
+// 3. Reset Market Prices Only
+document.getElementById('btn-reset-prices').addEventListener('click', () => {
+    showConfirm(() => {
+        currentMarketPrices = {};
+        refreshData(); // Recalculate summary with fallbacks
+        triggerAutoSave();
+        showNotification("Semua harga pasar manual telah di-reset.", "RESET HARGA");
+        closeModal(modals.reset);
+    }, "Reset semua input harga pasar manual ke default?", "RESET HARGA");
+});
+
+// 4. Full Hard Reset (Existing Logic moved here)
+document.getElementById('btn-reset-all').addEventListener('click', () => {
+    showConfirm(() => {
+        portfolioLog = [];
+        savedSimulations = [];
+        currentMarketPrices = {};
+        refreshData();
+        triggerAutoSave();
+        showNotification("Aplikasi telah di-reset total ke pengaturan awal.", "HARD RESET SELESAI");
+        closeModal(modals.reset);
+    }, "PERINGATAN: Ini akan menghapus SELURUH data (Log, Simulasi, Harga). Tindakan ini tidak dapat dibatalkan.", "HARD RESET WARNING");
+});
+
+// Removed old hard reset listener to avoid conflict if element is missing
+// document.getElementById('btn-hard-reset').addEventListener('click', ... ); 
 
 document.getElementById('sim-params-form').addEventListener('submit', (e) => { e.preventDefault(); ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'avg-strategy', 'avg-multiplier', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => { document.getElementById(id).value = document.getElementById(`modal-${id}`).value; }); calculateDashboard(); closeModal(modals.simParams); triggerAutoSave(); });
 
