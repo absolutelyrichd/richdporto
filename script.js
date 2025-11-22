@@ -73,7 +73,7 @@ const modals = {
     notification: document.getElementById('notification-modal'),
     confirm: document.getElementById('generic-confirm-modal'),
     dummy: document.getElementById('dummy-generator-modal'),
-    reset: document.getElementById('reset-options-modal') // NEW
+    reset: document.getElementById('reset-options-modal') 
 };
 
 // --- HELPERS ---
@@ -157,7 +157,7 @@ function initChart() {
     
     const initialData = new Array(periods.length).fill(0);
 
-    // UBAH KE LINE CHART DENGAN STEP 1 (Percent)
+    // LINE CHART DENGAN STEP 1 (Percent)
     performanceChart = new Chart(ctx, {
         type: 'line', 
         data: {
