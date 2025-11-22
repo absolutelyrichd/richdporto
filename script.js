@@ -23,8 +23,8 @@ window.firebase = { auth, db, provider, signInWithPopup, signOut, onAuthStateCha
 // --- DATA VARIABLES ---
 let portfolioLog = [];
 let savedSimulations = [];
-let performanceChart = null; // Initialize as null
-let equityChart = null;      // Initialize as null
+let performanceChart = null; 
+let equityChart = null;      
 let currentMarketPrices = {};
 let currentUser = null;
 let autoSaveTimer = null;
@@ -94,7 +94,7 @@ function showNotification(msg, title = 'INFO') {
     openModal(modals.notification);
 }
 
-// Helper khusus untuk menghitung Cash saat ini secara akurat (tanpa bergantung pada UI)
+// Helper khusus untuk menghitung Cash saat ini secara akurat
 function getPortfolioCashBalance() {
     const initialEquityEl = document.getElementById('initial-equity');
     const initialEquity = initialEquityEl ? (parseFloat(initialEquityEl.value) || 0) : 0;
@@ -113,7 +113,6 @@ function getPortfolioCashBalance() {
 
     return initialEquity - totalBuy + totalSell;
 }
-
 
 // --- GENERIC CONFIRMATION LOGIC ---
 let onConfirmAction = null;
@@ -149,28 +148,64 @@ function switchTab(name) {
 
 function initChart() {
     const canvas = document.getElementById('performanceChart');
-    if (!canvas) return; // Prevent crash if element missing
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (performanceChart) performanceChart.destroy();
     
     const initialData = new Array(periods.length).fill(0);
 
+    // UBAH KE LINE CHART
     performanceChart = new Chart(ctx, {
-        type: 'bar',
+        type: 'line', // Changed from bar to line
         data: {
             labels: periods,
             datasets: [
-                { label: 'Portfolio', data: initialData, backgroundColor: '#10b981', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false },
-                { label: 'IHSG', data: initialData, backgroundColor: '#fb923c', borderColor: '#18181b', borderWidth: 2, borderRadius: 4, borderSkipped: false }
+                { 
+                    label: 'Portfolio', 
+                    data: initialData, 
+                    borderColor: '#10b981', // Emerald Green
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#10b981',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.3 // Smooth curve
+                },
+                { 
+                    label: 'IHSG', 
+                    data: initialData, 
+                    borderColor: '#fb923c', // Orange
+                    backgroundColor: 'rgba(251, 146, 60, 0.1)', 
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#fb923c',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.3 // Smooth curve
+                }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { font: { family: 'Space Grotesk', weight: 'bold' }, color: '#18181b' } } },
+            plugins: { 
+                legend: { labels: { font: { family: 'Space Grotesk', weight: 'bold' }, color: '#18181b' } },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            },
             scales: {
                 y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { color: '#374151', font: { family: 'Inter' } } },
                 x: { grid: { display: false }, ticks: { color: '#374151', font: { family: 'Inter', weight: 'bold' } } }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             }
         }
     });
@@ -180,7 +215,7 @@ function initChart() {
 
 function initEquityChart() {
     const canvas = document.getElementById('equityChart');
-    if (!canvas) return; // Prevent crash if element missing
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (equityChart) equityChart.destroy();
