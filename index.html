@@ -19,7 +19,7 @@
             --accent-green: #10b981;
             --accent-red: #f43f5e;
             --accent-orange: #fb923c;
-            --accent-purple: #a855f7;
+            --accent-purple: #a855f7; /* New accent for Developer */
         }
 
         body {
@@ -42,9 +42,13 @@
             box-shadow: 4px 4px 0px 0px var(--shadow-color);
             padding: 1.5rem;
             transition: transform 0.1s ease-in-out;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.5rem; /* Tambahan margin bawah default untuk stacking mobile */
         }
-        @media (min-width: 1024px) { .card { margin-bottom: 0; } }
+        /* Reset margin bottom di desktop grid layout agar dikontrol oleh gap grid */
+        @media (min-width: 1024px) {
+            .card { margin-bottom: 0; }
+        }
+
         .card:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0px 0px var(--shadow-color); }
 
         .btn {
@@ -117,8 +121,10 @@
             border: 2px solid var(--border-color); box-shadow: 2px 2px 0px 0px var(--border-color);
             transform: translate(-1px, -1px);
         }
+        /* Specific style for Developer tab when active */
         #tab-btn-developer.active {
-            background-color: var(--accent-purple); color: white; border-color: #581c87;
+            background-color: var(--accent-purple); color: white;
+            border-color: #581c87;
         }
 
         /* --- TABLES --- */
@@ -160,7 +166,7 @@
         }
         .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 1px 1px 0px 0px var(--border-color); background-color: #e5e7eb; }
 
-        /* --- MODALS --- */
+        /* --- MODALS & OVERLAYS --- */
         .modal-overlay {
             position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
@@ -174,6 +180,7 @@
             padding: 2.5rem; width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto;
         }
 
+        /* --- LOGIN WALL OVERLAY --- */
         #login-wall-overlay {
             background-color: #e0e7ff;
             background-image: radial-gradient(#94a3b8 1px, transparent 1px);
@@ -347,7 +354,7 @@
                                     <div id="total-portfolio-value-display" class="text-xl font-black text-blue-700 tracking-tight">IDR 0</div>
                                 </div>
 
-                                <!-- CASH TERSEDIA -->
+                                <!-- CASH TERSEDIA (Renamed label for clarity) -->
                                 <div class="bg-gray-100 p-3 rounded border-2 border-gray-200">
                                     <div class="text-xs text-gray-500 font-bold uppercase">Cash (Buying Power)</div>
                                     <div id="current-equity-display" class="text-lg font-bold text-gray-700">IDR 0</div>
@@ -489,12 +496,11 @@
                             <button id="btn-open-dummy-modal" class="btn btn-secondary border-purple-500 text-purple-700 hover:bg-purple-50">
                                 🤖 Generator Data Dummy
                             </button>
-                            <!-- UPDATED BUTTON: Opens Menu Instead of Instant Reset -->
-                            <button id="btn-open-reset-modal" class="btn btn-danger">
-                                ⚠️ Menu Reset Data
+                            <button id="btn-hard-reset" class="btn btn-danger">
+                                ☠️ HARD RESET / CLEAR
                             </button>
                         </div>
-                        <p class="mt-4 text-xs text-gray-400 text-center">*Gunakan Menu Reset untuk menghapus data secara spesifik.</p>
+                        <p class="mt-4 text-xs text-gray-400 text-center">*Warning: Hard Reset akan menghapus seluruh data secara permanen.</p>
                     </div>
                 </div>
             </div>
@@ -594,40 +600,6 @@
                     <button type="submit" class="btn btn-primary bg-purple-600 border-purple-800 text-white">Generate</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- RESET OPTIONS MODAL (NEW) -->
-    <div id="reset-options-modal" class="modal-overlay">
-        <div class="modal-content max-w-md">
-            <h3 class="text-xl font-bold mb-4 text-red-600 border-b-2 border-red-100 pb-2">Pilih Data Dihapus</h3>
-            <div class="space-y-3">
-                <button id="btn-reset-logs" class="btn btn-secondary w-full flex justify-between items-center group hover:border-red-300">
-                    <span class="group-hover:text-red-600">🗑️ Hapus Jurnal Transaksi</span>
-                    <span class="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500">Logs Only</span>
-                </button>
-                <button id="btn-reset-simulations" class="btn btn-secondary w-full flex justify-between items-center group hover:border-red-300">
-                    <span class="group-hover:text-red-600">🗑️ Hapus Simulasi Tersimpan</span>
-                    <span class="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500">Sims Only</span>
-                </button>
-                <button id="btn-reset-prices" class="btn btn-secondary w-full flex justify-between items-center group hover:border-red-300">
-                    <span class="group-hover:text-red-600">🗑️ Hapus Harga Pasar</span>
-                    <span class="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500">Prices Only</span>
-                </button>
-                
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-red-200"></div>
-                    <span class="flex-shrink-0 mx-2 text-red-300 text-xs font-bold">ZONA BAHAYA</span>
-                    <div class="flex-grow border-t border-red-200"></div>
-                </div>
-
-                <button id="btn-reset-all" class="btn btn-danger w-full font-black py-3 border-4 border-red-800">
-                    ☠️ HAPUS SEMUA DATA (FULL RESET)
-                </button>
-            </div>
-            <div class="mt-6 text-center">
-                <button id="btn-close-reset-modal" class="text-gray-500 text-sm hover:underline">Batal / Tutup</button>
-            </div>
         </div>
     </div>
 
