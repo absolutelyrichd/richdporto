@@ -44,7 +44,7 @@ const tabButtons = {
     saved: document.getElementById('tab-btn-saved'), 
     performance: document.getElementById('tab-btn-performance'),
     settings: document.getElementById('tab-btn-settings'),
-    developer: document.getElementById('tab-btn-developer') // NEW
+    developer: document.getElementById('tab-btn-developer')
 };
 const tabContents = { 
     simulator: document.getElementById('tab-content-simulator'), 
@@ -53,7 +53,7 @@ const tabContents = {
     saved: document.getElementById('tab-content-saved'), 
     performance: document.getElementById('tab-content-performance'),
     settings: document.getElementById('tab-content-settings'),
-    developer: document.getElementById('tab-content-developer') // NEW
+    developer: document.getElementById('tab-content-developer')
 };
 
 const loginBtn = document.getElementById('login-btn');
@@ -69,7 +69,7 @@ const modals = {
     addLog: document.getElementById('add-log-modal'),
     sell: document.getElementById('sell-modal'),
     notification: document.getElementById('notification-modal'),
-    confirm: document.getElementById('generic-confirm-modal') // NEW
+    confirm: document.getElementById('generic-confirm-modal')
 };
 
 // --- HELPERS ---
@@ -153,17 +153,18 @@ function renderPerformanceTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    // 1. Hitung Nilai Portofolio Saat Ini (All Time) - Termasuk Floating
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalMarketValue = 0;
-    let cashFlow = 0;
+    let cashFlow = 0; // Untuk All Time
 
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
-        cashFlow -= buyVal;
+        cashFlow -= buyVal; 
 
         if(log.sellPrice) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            cashFlow += sellVal;
+            cashFlow += sellVal; 
         } else {
             const currPrice = parseFloat(currentMarketPrices[log.code]) || log.price;
             totalMarketValue += currPrice * log.lot * 100;
@@ -174,16 +175,55 @@ function renderPerformanceTable() {
     const totalPortfolioValue = currentCash + totalMarketValue;
     const allTimeReturn = initialEquity > 0 ? ((totalPortfolioValue - initialEquity) / initialEquity) * 100 : 0;
 
+    // Helper function: Menghitung Realized P/L (Closed Trade) berdasarkan tanggal
+    const getRealizedReturnForPeriod = (periodName) => {
+        const now = new Date();
+        let startDate = new Date();
+        startDate.setHours(0,0,0,0); // Reset jam
+
+        if (periodName === '1 Bln') startDate.setMonth(now.getMonth() - 1);
+        else if (periodName === '3 Bln') startDate.setMonth(now.getMonth() - 3);
+        else if (periodName === '6 Bln') startDate.setMonth(now.getMonth() - 6);
+        else if (periodName === '1 Thn') startDate.setFullYear(now.getFullYear() - 1);
+        else if (periodName === 'YTD') startDate = new Date(now.getFullYear(), 0, 1); // 1 Jan tahun ini
+        else return 0; // Should not happen for above cases
+
+        let realizedPL = 0;
+        portfolioLog.forEach(log => {
+            // Hanya hitung yang sudah dijual (Realized) dan masuk dalam tanggal periode
+            if (log.sellPrice && log.sellDate) {
+                const sellDate = new Date(log.sellDate);
+                if (sellDate >= startDate) {
+                    const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli || 0) / 100);
+                    const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual || 0) / 100);
+                    realizedPL += (sellVal - buyVal);
+                }
+            }
+        });
+        
+        // Return % berdasarkan Initial Equity (Modal Awal)
+        // Catatan: Ini hanya menghitung realized gain/loss, bukan unrealized (karena tidak ada historical price)
+        return initialEquity > 0 ? (realizedPL / initialEquity) * 100 : 0;
+    };
+
+    // 2. Render Baris Tabel
     periods.forEach((period, index) => {
         const isAllTime = period === 'All Time';
-        const portReturn = isAllTime ? allTimeReturn : 0;
-        const displayReturn = isAllTime ? portReturn.toFixed(2) + '%' : '-';
-        const colorClass = isAllTime ? (portReturn >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400';
+        let portReturn = 0;
+
+        if (isAllTime) {
+            portReturn = allTimeReturn;
+        } else {
+            portReturn = getRealizedReturnForPeriod(period);
+        }
+
+        const displayReturn = portReturn.toFixed(2) + '%';
+        const colorClass = portReturn >= 0 ? 'text-green-600' : 'text-red-600';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="font-bold">${period}</td>
-            <td class="${colorClass} font-bold">${displayReturn}</td>
+            <td class="${colorClass} font-bold">${displayReturn} ${!isAllTime ? '<span class="text-[10px] text-gray-400 font-normal">(Realized)</span>' : ''}</td>
             <td>
                 <input type="number" step="0.01" class="ihsg-input w-24 p-1 border rounded text-right bg-gray-50" data-index="${index}" placeholder="0.00"> %
             </td>
@@ -192,27 +232,43 @@ function renderPerformanceTable() {
         tbody.appendChild(tr);
     });
 
+    // 3. Update Chart (All Time Bar)
     if(performanceChart) {
+        // Update data All Time (index 5)
         performanceChart.data.datasets[0].data[5] = allTimeReturn;
+        
+        // Update data periods lain (index 0-4)
+        for(let i=0; i<5; i++) {
+            performanceChart.data.datasets[0].data[i] = getRealizedReturnForPeriod(periods[i]);
+        }
         performanceChart.update();
     }
 
+    // 4. Event Listener untuk Input IHSG
     document.querySelectorAll('.ihsg-input').forEach(input => {
         input.addEventListener('input', (e) => {
-            const idx = e.target.dataset.index;
+            const idx = parseInt(e.target.dataset.index);
             const ihsgVal = parseFloat(e.target.value) || 0;
-            const isAllTimeRow = periods[idx] === 'All Time';
-            const portVal = isAllTimeRow ? allTimeReturn : 0; 
+            const periodName = periods[idx];
             
-            if(isAllTimeRow) {
-                const alpha = portVal - ihsgVal;
-                const alphaCell = document.getElementById(`alpha-${idx}`);
-                alphaCell.textContent = alpha.toFixed(2) + '%';
-                alphaCell.className = `font-bold ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
-                if(performanceChart) {
-                    performanceChart.data.datasets[1].data[5] = ihsgVal;
-                    performanceChart.update();
-                }
+            // Hitung ulang nilai portofolio untuk baris ini agar bisa hitung alpha
+            let currentPortReturn = 0;
+            if (periodName === 'All Time') {
+                currentPortReturn = allTimeReturn;
+            } else {
+                currentPortReturn = getRealizedReturnForPeriod(periodName);
+            }
+            
+            // Update Alpha Cell
+            const alpha = currentPortReturn - ihsgVal;
+            const alphaCell = document.getElementById(`alpha-${idx}`);
+            alphaCell.textContent = alpha.toFixed(2) + '%';
+            alphaCell.className = `font-bold ${alpha >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            
+            // Update Chart IHSG Bar
+            if(performanceChart) {
+                performanceChart.data.datasets[1].data[idx] = ihsgVal;
+                performanceChart.update();
             }
         });
     });
