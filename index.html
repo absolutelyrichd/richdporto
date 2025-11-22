@@ -344,12 +344,22 @@
                             <div id="summary-content" class="space-y-4">
                                 <div>
                                     <label class="text-xs uppercase text-gray-500">Modal Awal</label>
-                                    <input type="number" id="initial-equity" value="100000000" class="text-right font-mono font-bold text-lg">
+                                    <input type="number" id="initial-equity" value="100000000" class="text-right font-mono font-bold text-lg bg-yellow-50 border-yellow-300 focus:ring-yellow-400">
                                 </div>
+                                
+                                <!-- NEW: TOTAL ASET (EQUITY) -->
+                                <div class="bg-blue-50 p-3 rounded border-2 border-blue-200 relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 bg-blue-200 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-bl">NET WORTH</div>
+                                    <div class="text-xs text-blue-500 font-bold uppercase mb-1">Total Aset</div>
+                                    <div id="total-portfolio-value-display" class="text-xl font-black text-blue-700 tracking-tight">IDR 0</div>
+                                </div>
+
+                                <!-- CASH TERSEDIA (Renamed label for clarity) -->
                                 <div class="bg-gray-100 p-3 rounded border-2 border-gray-200">
-                                    <div class="text-xs text-gray-500">Cash Tersedia</div>
-                                    <div id="current-equity-display" class="text-xl font-bold text-emerald-600">IDR 0</div>
+                                    <div class="text-xs text-gray-500 font-bold uppercase">Cash (Buying Power)</div>
+                                    <div id="current-equity-display" class="text-lg font-bold text-gray-700">IDR 0</div>
                                 </div>
+
                                 <div id="realized-pl-summary"></div>
                                 <div id="floating-pl-summary"></div>
                             </div>

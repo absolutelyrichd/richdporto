@@ -682,35 +682,81 @@ function calculatePortfolioSummary() {
     const initialEquity = parseFloat(document.getElementById('initial-equity').value) || 0;
     let totalBuy = 0, totalSell = 0, realizedPL = 0;
     let stockHoldings = {};
+
+    // 1. Hitung Cash Flow & Holdings
     portfolioLog.forEach(log => {
         const buyVal = log.price * log.lot * 100 * (1 + (log.feeBeli||0)/100);
         totalBuy += buyVal;
+        
         if(log.sellPrice) {
             const sellVal = log.sellPrice * log.lot * 100 * (1 - (log.feeJual||0)/100);
-            totalSell += sellVal; realizedPL += (sellVal - buyVal);
+            totalSell += sellVal; 
+            realizedPL += (sellVal - buyVal);
         } else {
+            // Akumulasi Holding untuk menghitung Market Value nanti
             if(!stockHoldings[log.code]) stockHoldings[log.code] = { lot: 0, cost: 0 };
-            stockHoldings[log.code].lot += log.lot; stockHoldings[log.code].cost += buyVal;
+            stockHoldings[log.code].lot += log.lot; 
+            stockHoldings[log.code].cost += buyVal;
         }
     });
-    const currentEquity = initialEquity - totalBuy + totalSell;
-    document.getElementById('current-equity-display').textContent = formatCurrency(currentEquity);
-    document.getElementById('realized-pl-summary').innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
+
+    // 2. Hitung Cash Tersedia (Buying Power)
+    const currentCash = initialEquity - totalBuy + totalSell;
+    document.getElementById('current-equity-display').textContent = formatCurrency(currentCash);
+
+    // 3. Hitung Floating P/L & Total Market Value
     const summaryContainer = document.getElementById('portfolio-summary-by-stock');
     summaryContainer.innerHTML = '';
+    
     let totalFloating = 0;
+    let totalMarketValue = 0; // Nilai pasar dari saham yang dipegang
+
     Object.keys(stockHoldings).forEach(code => {
         const data = stockHoldings[code];
         const avgPrice = data.cost / (data.lot * 100);
+        
+        // LOGIKA PENTING: 
+        // Jika user belum set harga pasar, kita gunakan harga beli (avgPrice) sebagai nilai sementara.
+        // Ini supaya Total Aset tidak terlihat 'anjlok' hanya karena harga pasar belum diisi.
         const currPrice = parseFloat(currentMarketPrices[code]) || 0;
+        const effectivePrice = currPrice > 0 ? currPrice : avgPrice;
+
         let floating = 0;
-        if(currPrice > 0) { floating = (currPrice * data.lot * 100) - data.cost; totalFloating += floating; }
+        // Hitung floating P/L hanya jika ada harga pasar yang diisi user
+        if(currPrice > 0) { 
+            floating = (currPrice * data.lot * 100) - data.cost; 
+            totalFloating += floating; 
+        }
+
+        // Hitung Market Value Saham menggunakan effectivePrice
+        totalMarketValue += (effectivePrice * data.lot * 100);
+
+        // Render Card Saham
         const div = document.createElement('div');
         div.className = 'card bg-white p-3 border-2 border-gray-200';
         div.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-black text-lg">${code}</span><span class="text-xs bg-gray-100 px-2 rounded">Lot: ${data.lot}</span></div><div class="text-xs text-gray-500 mb-1">Avg: ${formatCurrency(avgPrice)}</div><div class="flex items-center gap-2 mb-2"><span class="text-xs">Market:</span><input type="number" value="${currPrice || ''}" class="price-input w-24 text-right p-1 h-6 text-sm border-gray-300" placeholder="Harga" data-code="${code}"></div><div class="text-right font-bold ${floating>=0?'text-green-500':'text-red-500'}">${currPrice > 0 ? formatCurrency(floating, true) : 'Set Price'}</div>`;
         summaryContainer.appendChild(div);
     });
+
+    // 4. Hitung Total Aset (Net Worth)
+    // Total Aset = Cash Tersedia + Nilai Saham
+    const totalAsset = currentCash + totalMarketValue;
+    
+    // Update UI Total Aset
+    const totalAssetDisplay = document.getElementById('total-portfolio-value-display');
+    if(totalAssetDisplay) {
+        totalAssetDisplay.textContent = formatCurrency(totalAsset);
+        // Beri warna biru/hijau jika aset tumbuh, merah jika turun dari modal awal
+        if (totalAsset >= initialEquity) {
+            totalAssetDisplay.className = "text-xl font-black text-blue-700 tracking-tight";
+        } else {
+            totalAssetDisplay.className = "text-xl font-black text-red-600 tracking-tight";
+        }
+    }
+
     document.querySelectorAll('.price-input').forEach(input => { input.onchange = (e) => updatePrice(e.target.dataset.code, e.target.value); });
+    
+    document.getElementById('realized-pl-summary').innerHTML = `<div class="flex justify-between text-sm mt-2 font-bold ${realizedPL>=0?'text-green-600':'text-red-500'}"><span>Realized P/L</span> <span>${formatCurrency(realizedPL, true)}</span></div>`;
     document.getElementById('floating-pl-summary').innerHTML = `<div class="flex justify-between text-sm font-bold ${totalFloating>=0?'text-green-600':'text-red-500'}"><span>Floating P/L</span> <span>${formatCurrency(totalFloating, true)}</span></div>`;
     
     renderPerformanceTable();
@@ -855,40 +901,13 @@ function initMobileAccordion() {
 }
 
 window.addEventListener('load', () => {
-    initChart(); calculateDashboard(); 
-    document.querySelectorAll('.tab-button').forEach(btn => { btn.addEventListener('click', (e) => switchTab(e.target.id.replace('tab-btn-', ''))); });
-    document.getElementById('open-add-log-modal-btn').addEventListener('click', () => { document.getElementById('log-form').reset(); document.getElementById('log-edit-index').value = ''; document.getElementById('sell-fields-container').classList.add('hidden'); document.getElementById('log-buy-date').value = new Date().toISOString().split('T')[0]; document.getElementById('log-fee-beli').value = defaultFeeBeli; openModal(modals.addLog); });
-    document.getElementById('cancel-add-log-btn').addEventListener('click', () => closeModal(modals.addLog));
-    document.getElementById('open-sim-params-modal-btn').addEventListener('click', () => { ['stock-code', 'initial-price', 'initial-lot', 'dividend', 'avg-down-percent', 'avg-levels', 'tp1-percent', 'tp2-percent', 'sim-reason'].forEach(id => document.getElementById(`modal-${id}`).value = document.getElementById(id).value); openModal(modals.simParams); });
-    document.getElementById('cancel-sim-params-btn').addEventListener('click', () => closeModal(modals.simParams));
-    document.getElementById('cancel-sell-btn').addEventListener('click', () => closeModal(modals.sell));
-    document.getElementById('notification-ok-btn').addEventListener('click', () => closeModal(modals.notification));
+    initChart(); 
+    calculateDashboard(); 
     
-    // --- AUTH HANDLER ---
-    const handleLogin = async () => { try { await signInWithPopup(auth, provider); } catch(e) { showNotification(e.message); } };
-    loginBtn.addEventListener('click', handleLogin); 
-    overlayLoginBtn.addEventListener('click', handleLogin); 
-
-    logoutBtn.addEventListener('click', () => signOut(auth));
-    
-    onAuthStateChanged(auth, (user) => { 
-        currentUser = user; 
-        if(user) { 
-            loginWallOverlay.classList.add('hidden-wall');
-            loginBtn.classList.add('hidden'); 
-            userInfoDiv.classList.remove('hidden'); 
-            userInfoDiv.classList.add('flex'); 
-            userNameSpan.textContent = user.displayName; 
-            loadCloudData(); 
-        } else { 
-            loginWallOverlay.classList.remove('hidden-wall');
-            loginBtn.classList.add('hidden');
-            userInfoDiv.classList.add('hidden'); 
-            userInfoDiv.classList.remove('flex'); 
-            portfolioLog = []; 
-            savedSimulations = []; 
-            refreshData(); 
-        } 
+    // ADD THIS LISTENER: Update calculation when Modal Awal changes
+    document.getElementById('initial-equity').addEventListener('input', () => {
+        calculatePortfolioSummary();
+        triggerAutoSave();
     });
 
     const nav = document.getElementById('tab-nav-wrapper'); const navOffset = nav.offsetTop; window.addEventListener('scroll', () => { if(window.scrollY >= navOffset) nav.classList.add('sticky-state'); else nav.classList.remove('sticky-state'); });
