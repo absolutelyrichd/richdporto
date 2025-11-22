@@ -156,9 +156,9 @@ function initChart() {
     
     const initialData = new Array(periods.length).fill(0);
 
-    // UBAH KE LINE CHART
+    // UBAH KE LINE CHART DENGAN STEP 1
     performanceChart = new Chart(ctx, {
-        type: 'line', // Changed from bar to line
+        type: 'line', 
         data: {
             labels: periods,
             datasets: [
@@ -200,7 +200,14 @@ function initChart() {
                 }
             },
             scales: {
-                y: { grid: { color: '#e5e7eb', borderDash: [4, 4] }, ticks: { color: '#374151', font: { family: 'Inter' } } },
+                y: { 
+                    grid: { color: '#e5e7eb', borderDash: [4, 4] }, 
+                    ticks: { 
+                        color: '#374151', 
+                        font: { family: 'Inter' },
+                        stepSize: 1 // <--- INI YANG DIUBAH (Langkah sumbu Y per 1 unit)
+                    } 
+                },
                 x: { grid: { display: false }, ticks: { color: '#374151', font: { family: 'Inter', weight: 'bold' } } }
             },
             interaction: {
