@@ -222,7 +222,8 @@
             <h1 class="text-6xl font-black mb-2 tracking-tighter text-black uppercase leading-[0.85] drop-shadow-sm">AREA<br>TERBATAS</h1>
             <div class="w-24 h-2 bg-black mx-auto mb-4 mt-2"></div>
             <p class="font-bold text-black mb-10 text-sm uppercase tracking-wider">Silakan identifikasi diri anda</p>
-            <button id="overlay-login-btn" class="w-full bg-white text-black font-black text-lg py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+            
+            <button id="overlay-login-btn" class="w-full bg-white text-black font-black text-lg py-4 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden mb-4">
                 <div class="absolute inset-0 bg-gray-100 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200 z-0"></div>
                 <svg class="w-7 h-7 relative z-10" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -232,6 +233,11 @@
                 </svg>
                 <span class="relative z-10 tracking-tight">MASUK DENGAN GOOGLE</span>
             </button>
+
+            <!-- GUEST LOGIN BUTTON (NEW) -->
+            <div class="text-center">
+                <button id="guest-login-btn" class="text-xs font-bold text-gray-600 hover:text-black underline tracking-widest cursor-pointer">MASUK SEBAGAI TAMU (GUEST)</button>
+            </div>
         </div>
     </div>
 

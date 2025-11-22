@@ -64,6 +64,7 @@ const userNameSpan = document.getElementById('user-name');
 const syncStatusSpan = document.getElementById('sync-status');
 const loginWallOverlay = document.getElementById('login-wall-overlay');
 const overlayLoginBtn = document.getElementById('overlay-login-btn');
+const guestLoginBtn = document.getElementById('guest-login-btn'); 
 
 const modals = {
     simParams: document.getElementById('sim-params-modal'),
@@ -120,7 +121,6 @@ function switchTab(name) {
 
 function initChart() {
     // Chart 1: Returns
-    // FIXED: Use separate array instances for data to prevent referencing issues
     const portfolioData = new Array(periods.length).fill(0);
     const ihsgData = new Array(periods.length).fill(0);
 
@@ -147,7 +147,6 @@ function initChart() {
     });
 
     // Chart 2: Equity Growth
-    // FIXED: Add check to ensure canvas exists to prevent null error on load
     const equityCanvas = document.getElementById('equityChart');
     if (equityCanvas) {
         const ctxEq = equityCanvas.getContext('2d');
@@ -719,6 +718,59 @@ function triggerAutoSave() { if(!currentUser) return; syncStatusSpan.style.opaci
 async function loadCloudData() { if(!currentUser) return; const docSnap = await getDoc(doc(db, "portfolios", currentUser.uid)); if(docSnap.exists()) { const data = docSnap.data(); portfolioLog = data.portfolioLog || []; savedSimulations = data.savedSimulations || []; currentMarketPrices = data.currentMarketPrices || {}; refreshData(); } }
 function refreshData() { filteredLogsData = portfolioLog; renderLogTable(); renderSavedSimulations(); calculateDashboard(); renderPerformanceTable(); updateDeveloperStats(); }
 
+// --- GUEST MODE LOGIC (NEW) ---
+const enableGuestMode = () => {
+    currentUser = { uid: 'guest_user', displayName: 'Tamu' };
+    
+    // Hide Wall
+    loginWallOverlay.classList.add('hidden-wall');
+    loginBtn.classList.add('hidden'); 
+    userInfoDiv.classList.remove('hidden'); 
+    userInfoDiv.classList.add('flex'); 
+    userNameSpan.textContent = currentUser.displayName; 
+    
+    // Load Guest Data (LocalStorage)
+    const guestData = localStorage.getItem('portfolio_guest_data');
+    if(guestData) {
+        const data = JSON.parse(guestData);
+        portfolioLog = data.portfolioLog || []; 
+        savedSimulations = data.savedSimulations || []; 
+        currentMarketPrices = data.currentMarketPrices || {}; 
+    } else {
+        portfolioLog = []; savedSimulations = [];
+    }
+    refreshData();
+    showNotification('Masuk sebagai Tamu. Data disimpan di browser ini.');
+};
+
+guestLoginBtn.addEventListener('click', enableGuestMode);
+
+// Override AutoSave for Guest
+const originalTriggerAutoSave = triggerAutoSave;
+triggerAutoSave = () => {
+    if(currentUser && currentUser.uid === 'guest_user') {
+        syncStatusSpan.style.opacity = 1; 
+        clearTimeout(autoSaveTimer); 
+        autoSaveTimer = setTimeout(() => { 
+            const data = { portfolioLog, savedSimulations, currentMarketPrices, updatedAt: new Date().toISOString() }; 
+            localStorage.setItem('portfolio_guest_data', JSON.stringify(data));
+            syncStatusSpan.textContent = 'SAVED (LOCAL)'; 
+            setTimeout(() => syncStatusSpan.style.opacity = 0, 2000); 
+        }, 1000); 
+    } else {
+        // Call original if not guest
+        // We need to redefine it here because 'originalTriggerAutoSave' captured the old reference
+        // But since we are replacing the function globally in this scope, we can just copy the logic:
+        if(!currentUser) return; 
+        syncStatusSpan.style.opacity = 1; 
+        clearTimeout(autoSaveTimer); 
+        autoSaveTimer = setTimeout(async () => { 
+            const data = { portfolioLog, savedSimulations, currentMarketPrices, updatedAt: new Date().toISOString() }; 
+            try { await setDoc(doc(db, "portfolios", currentUser.uid), data); syncStatusSpan.textContent = 'SAVED'; setTimeout(() => syncStatusSpan.style.opacity = 0, 2000); } catch(e) { syncStatusSpan.textContent = 'ERROR'; } 
+        }, 1000);
+    }
+};
+
 // --- MOBILE ACCORDION LOGIC ---
 function initMobileAccordion() {
     const toggleSummary = document.getElementById('toggle-summary-btn');
@@ -768,7 +820,11 @@ window.addEventListener('load', () => {
     loginBtn.addEventListener('click', handleLogin); 
     overlayLoginBtn.addEventListener('click', handleLogin); 
 
-    logoutBtn.addEventListener('click', () => signOut(auth));
+    logoutBtn.addEventListener('click', () => {
+        signOut(auth);
+        currentUser = null; // Force clear for guest logout
+        location.reload(); // Simple reload to reset state
+    });
     
     onAuthStateChanged(auth, (user) => { 
         currentUser = user; 
@@ -780,13 +836,14 @@ window.addEventListener('load', () => {
             userNameSpan.textContent = user.displayName; 
             loadCloudData(); 
         } else { 
-            loginWallOverlay.classList.remove('hidden-wall');
+            // If no user and no guest mode active (loginWallOverlay not hidden)
+            if (!loginWallOverlay.classList.contains('hidden-wall')) {
+                loginWallOverlay.classList.remove('hidden-wall');
+            }
             loginBtn.classList.add('hidden');
             userInfoDiv.classList.add('hidden'); 
             userInfoDiv.classList.remove('flex'); 
-            portfolioLog = []; 
-            savedSimulations = []; 
-            refreshData(); 
+            // Don't clear data immediately if it was guest mode, but reload handles that.
         } 
     });
 
