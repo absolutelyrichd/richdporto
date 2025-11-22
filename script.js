@@ -39,6 +39,7 @@ const periods = ['1 Bln', '3 Bln', '6 Bln', 'YTD', '1 Thn', 'All Time'];
 // --- DOM ELEMENTS ---
 const tabButtons = { 
     simulator: document.getElementById('tab-btn-simulator'), 
+    openOrder: document.getElementById('tab-btn-open-order'), // NEW
     log: document.getElementById('tab-btn-log'), 
     saved: document.getElementById('tab-btn-saved'), 
     performance: document.getElementById('tab-btn-performance'),
@@ -46,6 +47,7 @@ const tabButtons = {
 };
 const tabContents = { 
     simulator: document.getElementById('tab-content-simulator'), 
+    openOrder: document.getElementById('tab-content-open-order'), // NEW
     log: document.getElementById('tab-content-log'), 
     saved: document.getElementById('tab-content-saved'), 
     performance: document.getElementById('tab-content-performance'),

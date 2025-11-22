@@ -250,6 +250,7 @@
         <div id="tab-nav-wrapper" class="mb-8 z-40">
             <nav class="tab-nav-container">
                 <button id="tab-btn-simulator" class="tab-button active">Kalkulator</button>
+                <button id="tab-btn-open-order" class="tab-button">Open Order</button>
                 <button id="tab-btn-log" class="tab-button">Jurnal Transaksi</button>
                 <button id="tab-btn-saved" class="tab-button">Simulasi</button>
                 <button id="tab-btn-performance" class="tab-button">Performa</button>
@@ -307,24 +308,30 @@
                 </div>
             </div>
 
-            <!-- 2. TAB LOG (Updated for Mobile Stacking Logic) -->
+            <!-- 2. TAB OPEN ORDER (NEW TAB FOR CARDS) -->
+            <div id="tab-content-open-order" class="tab-content">
+                <div class="card bg-blue-50 border-blue-200 mb-6">
+                     <h2 class="text-2xl font-bold mb-4 text-blue-900">Open Order / Holdings</h2>
+                     <p class="text-sm text-blue-800 mb-0">Berikut adalah ringkasan posisi saham Anda yang masih terbuka.</p>
+                </div>
+                <!-- Portfolio Summary Cards moved here -->
+                <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
+            </div>
+
+            <!-- 3. TAB LOG (Updated) -->
             <div id="tab-content-log" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     
-                    <!-- SIDEBAR (Updated Logic) -->
-                    <!-- logic: lg:sticky hanya aktif di desktop. z-index diatur. -->
+                    <!-- SIDEBAR -->
                     <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24 self-start h-fit z-30">
                         
-                        <!-- Card Ringkasan dengan Mobile Accordion -->
+                        <!-- Card Ringkasan -->
                         <div class="card">
-                            <!-- Header Clickable di Mobile -->
                             <div class="flex justify-between items-center mb-2 lg:mb-4 border-b-2 border-gray-200 pb-2 cursor-pointer lg:cursor-default" id="toggle-summary-btn">
                                 <h3 class="text-lg font-bold">Ringkasan</h3>
-                                <!-- Arrow Icon (Hidden on Desktop) -->
                                 <span id="arrow-summary" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
                             </div>
                             
-                            <!-- Content (Default Hidden on Mobile via JS init, Block on Desktop) -->
                             <div id="summary-content" class="space-y-4">
                                 <div>
                                     <label class="text-xs uppercase text-gray-500">Modal Awal</label>
@@ -339,15 +346,13 @@
                             </div>
                         </div>
 
-                        <!-- Card Filter dengan Mobile Accordion -->
+                        <!-- Card Filter -->
                         <div class="card">
-                            <!-- Header Clickable di Mobile -->
                             <div class="flex justify-between items-center mb-2 lg:mb-4 cursor-pointer lg:cursor-default" id="toggle-filter-btn">
                                 <h3 class="text-lg font-bold">Filter</h3>
                                 <span id="arrow-filter" class="lg:hidden text-xl font-bold transform transition-transform">▼</span>
                             </div>
 
-                            <!-- Content -->
                             <div id="filter-content" class="space-y-3">
                                 <input type="text" id="filter-stock-code" placeholder="Kode Saham (e.g. BBCA)">
                                 <div class="grid grid-cols-2 gap-2"><input type="date" id="filter-date-from" class="text-xs"><input type="date" id="filter-date-to" class="text-xs"></div>
@@ -360,7 +365,6 @@
 
                     <!-- Main Content -->
                     <div class="lg:col-span-3">
-                        <div id="portfolio-summary-by-stock" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
                         <div class="card min-h-[500px]">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-2xl font-bold">Jurnal Transaksi</h2>
@@ -382,7 +386,7 @@
                 </div>
             </div>
 
-            <!-- 3. TAB SAVED -->
+            <!-- 4. TAB SAVED -->
             <div id="tab-content-saved" class="tab-content">
                 <div class="card">
                     <h2 class="text-2xl font-bold mb-6">Simulasi Tersimpan</h2>
@@ -395,7 +399,7 @@
                 </div>
             </div>
 
-            <!-- 4. TAB PERFORMANCE -->
+            <!-- 5. TAB PERFORMANCE -->
             <div id="tab-content-performance" class="tab-content">
                 <div class="card">
                     <h2 class="text-2xl font-bold mb-2">Analisa Performa</h2>
@@ -409,7 +413,7 @@
                 </div>
             </div>
 
-            <!-- 5. TAB SETTINGS -->
+            <!-- 6. TAB SETTINGS -->
             <div id="tab-content-settings" class="tab-content">
                 <div class="max-w-2xl mx-auto space-y-6">
                     <div class="card">
